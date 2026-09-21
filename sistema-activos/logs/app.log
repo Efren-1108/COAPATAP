@@ -1,0 +1,17 @@
+[2026-07-15 08:06:52] [INFO] Empleado creado: id=6 nomina=1008
+[2026-07-30 19:52:12] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-04 17:25:30] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-04 17:35:03] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:25:51] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:27:21] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:30:31] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:34:07] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:42:19] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:45:09] [INFO] usuarios.creado id=2 usuario=Efren
+[2026-08-06 21:45:57] [INFO] auth.login usuario=admin rol=superusuario
+[2026-08-06 21:46:34] [INFO] usuarios.reset_password id=2
+[2026-08-06 21:47:09] [INFO] auth.login usuario=Efren rol=usuario
+[2026-09-07 14:28:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-16 20:12:49] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-21 12:17:25] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-21 13:35:16] [INFO] auth.login usuario=admin rol=superusuario
