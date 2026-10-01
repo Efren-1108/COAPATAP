@@ -43,11 +43,11 @@ require_once __DIR__ . '/../includes/header.php';
 <!-- Modal de edición -->
 <div class="modal-backdrop" id="activoModal">
     <div class="modal">
-        <div class="modal__header">
-            <h2 class="modal__title" id="modalTitle">➕ Nuevo activo</h2>
-            <button class="modal__close" onclick="App.closeModal('activoModal')">×</button>
-        </div>
-        <form id="activoForm" enctype="multipart/form-data">
+        <form id="activoForm" enctype="multipart/form-data" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+            <div class="modal__header">
+                <h2 class="modal__title" id="modalTitle">➕ Nuevo activo</h2>
+                <button type="button" class="modal__close" onclick="App.closeModal('activoModal')">×</button>
+            </div>
             <div class="modal__body">
                 <input type="hidden" name="id" value="">
                 <input type="hidden" name="ruta_imagen" value="">
