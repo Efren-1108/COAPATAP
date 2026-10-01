@@ -273,17 +273,22 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     border: 1px solid var(--c-border);
     background: var(--c-surface);
     margin-bottom: 1.5rem;
+    width: 100%;
 }
 .table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.92rem;
+    table-layout: fixed;
 }
 .table th, .table td {
     padding: 0.8rem 0.95rem;
     text-align: left;
     border-bottom: 1px solid var(--c-border);
     vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .table th {
     background: var(--c-bg);
@@ -295,6 +300,13 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     position: sticky;
     top: 0;
     z-index: 1;
+}
+.col-foto {
+    width: 70px !important;
+    text-align: center !important;
+}
+.col-foto .table__thumb, .col-foto .table__noimg {
+    margin: 0 auto;
 }
 .table tbody tr:hover { background: var(--c-primary-light); }
 .table tbody tr:last-child td { border-bottom: none; }
@@ -385,11 +397,12 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 800px;
-    max-height: 92vh;
+    max-height: 90vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     animation: slideUp 0.22s ease;
+    position: relative;
 }
 .modal__header {
     display: flex;
@@ -398,6 +411,7 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     padding: 1.1rem 1.5rem;
     border-bottom: 1px solid var(--c-border);
     background: var(--c-bg);
+    flex-shrink: 0;
 }
 .modal__title { margin: 0; font-size: 1.15rem; }
 .modal__close {
@@ -414,6 +428,20 @@ textarea.form-control { min-height: 90px; resize: vertical; }
 .modal__body {
     padding: 1.5rem;
     overflow-y: auto;
+    flex: 1 1 auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-border) transparent;
+}
+/* Estilos para que la barra de desplazamiento sea visible en Chrome/Edge/Safari */
+.modal__body::-webkit-scrollbar {
+    width: 8px;
+}
+.modal__body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal__body::-webkit-scrollbar-thumb {
+    background-color: var(--c-border);
+    border-radius: 10px;
 }
 .modal__footer {
     padding: 1rem 1.5rem;
@@ -421,6 +449,8 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex-shrink: 0;
+    background: var(--c-surface);
 }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -783,7 +813,36 @@ textarea.form-control { min-height: 90px; resize: vertical; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 
-/* ============ RESPONSIVE ============ */
+/* ============ VISOR DE IMAGENES ============ */
+.modal--image-viewer {
+    max-width: 90vw;
+    background: transparent;
+}
+.modal--image-viewer .modal__header {
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border-bottom: none;
+}
+.modal--image-viewer .modal__title {
+    color: #fff;
+}
+.modal--image-viewer .modal__close {
+    color: #fff;
+}
+.modal__body--center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent !important;
+    padding: 0 !important;
+}
+.viewer-img {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+}
 @media (max-width: 768px) {
     .topbar__inner { flex-wrap: wrap; }
     .nav {

@@ -1,0 +1,31 @@
+# =====================================================
+# Sistema de Control de Activos Fijos
+# Archivo .gitignore
+# =====================================================
+
+# PHP / logs
+*.log
+logs/
+!logs/.gitkeep
+
+# Uploads (fotos de activos)
+uploads/*
+!uploads/.gitkeep
+!uploads/index.html
+
+# Entorno
+.env
+.env.local
+config/config.local.php
+
+# Sistema
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencias
+vendor/
+node_modules/

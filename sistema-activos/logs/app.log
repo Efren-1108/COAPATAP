@@ -15,3 +15,30 @@
 [2026-09-16 20:12:49] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 12:17:25] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 13:35:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-21 14:18:43] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 20:09:55] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 21:27:27] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 22:22:11] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-24 13:20:07] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 06:51:11] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 06:52:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 09:51:06] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 13:00:07] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 10:52:06] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 11:13:01] [INFO] usuarios.reset_password id=2
+[2026-09-26 11:13:30] [INFO] auth.login usuario=Efren rol=usuario
+[2026-09-26 11:50:03] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:25:31] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:48:35] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:58:08] [INFO] Imagen subida: 20260926_125808_a46ede30.jpg
+[2026-09-26 12:58:08] [INFO] Activo actualizado: id=4 inv=ECO-0004 por usuario_id=1
+[2026-09-26 13:56:08] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 14:03:39] [INFO] Imagen subida: 20260926_140339_756b7eb0.jpg
+[2026-09-26 14:03:39] [INFO] Activo actualizado: id=3 inv=ECO-0003 por usuario_id=1
+[2026-09-26 17:06:08] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:13:13] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:39:14] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:45:53] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:46:27] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 12:49:24] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 13:12:14] [INFO] auth.login usuario=admin rol=superusuario

@@ -96,11 +96,13 @@ function render(lista) {
                 <td>${App.esc(a.modelo || '—')}</td>
                 <td>${App.money(a.costo)}</td>
                 <td>${empTxt}</td>
-                <td>
-                    ${a.ruta_imagen
-                        ? `<img class="table__thumb" src="${App.esc(a.ruta_imagen)}" alt="Foto" loading="lazy">`
-                        : `<div class="table__noimg">S/F</div>`}
-                </td>
+        ${a.ruta_imagen
+            ? `<td class="col-foto">
+                <img class="table__thumb" src="${App.esc(a.ruta_imagen)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(a.ruta_imagen)}')" style="cursor: pointer;" title="Haz clic para ampliar">
+               </td>`
+            : `<td class="col-foto">
+                <div class="table__noimg">S/F</div>
+               </td>`}
                 <td>
                     <div class="table__actions">
                         <button class="btn btn--ghost btn--sm" onclick="editar(${a.id})">✏️</button>
@@ -164,6 +166,14 @@ window.eliminar = async (id, desc) => {
         cargarActivos();
     } catch (err) {
         App.toast(err.message, 'error');
+    }
+};
+
+window.viewImage = (src) => {
+    const img = document.getElementById('viewerImage');
+    if (img) {
+        img.src = src;
+        App.openModal('imageViewerModal');
     }
 };
 
