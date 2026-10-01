@@ -37,7 +37,7 @@ function base_url(): string
 }
 
 // ============ UPLOADS ============
-define('UPLOAD_DIR', __DIR__ . '/../uploads/');
+define('UPLOAD_DIR', __DIR__ . '/../public/uploads/');
 define('UPLOAD_URL', 'uploads/');           // ruta pública relativa
 define('MAX_UPLOAD_SIZE', 50 * 1024 * 1024);  // 50 MB
 define('ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);

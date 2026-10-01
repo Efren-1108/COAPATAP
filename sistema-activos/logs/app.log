@@ -43,3 +43,37 @@
 [2026-10-01 12:49:24] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 13:12:14] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 14:06:04] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:18:52] [INFO] Imagen subida: 20261001_141852_705b30d9.png
+[2026-10-01 14:18:52] [INFO] Activo actualizado: id=2 inv=ECO-0002 por usuario_id=1
+[2026-10-01 14:25:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:27:52] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:34:14] [INFO] Imagen subida: 20261001_143414_88941b3b.png
+[2026-10-01 14:34:14] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:38] [INFO] Imagen subida: 20261001_143438_ab861c1e.jpeg
+[2026-10-01 14:34:38] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:39] [INFO] Imagen subida: 20261001_143439_db59fcf2.jpeg
+[2026-10-01 14:34:39] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:49] [INFO] Imagen subida: 20261001_143449_fa5a1a4c.jpeg
+[2026-10-01 14:34:49] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:36:07] [INFO] Imagen subida: 20261001_143607_8f0fa8e2.png
+[2026-10-01 14:36:07] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:36:35] [INFO] Imagen subida: 20261001_143635_efa3c03f.jpeg
+[2026-10-01 14:36:35] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:40:19] [INFO] Imagen subida: 20261001_144019_ce7954a8.png
+[2026-10-01 14:40:19] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:46:34] [INFO] Imagen subida: 20261001_144634_6548b5e1.png
+[2026-10-01 14:46:34] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 15:02:36] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 15:05:59] [INFO] Imagen subida: 20261001_150559_2d44370a.jpg
+[2026-10-01 15:05:59] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:12:47] [INFO] Imagen subida: 20261001_151247_3e684be4.png
+[2026-10-01 15:12:47] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:16:00] [INFO] Imagen subida: 20261001_151600_adfc79e1.jpg
+[2026-10-01 15:16:01] [INFO] Activo actualizado: id=1 inv=ECO-0001 por usuario_id=1
+[2026-10-01 15:24:01] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 15:24:24] [INFO] Imagen subida: 20261001_152424_1f1944f5.png
+[2026-10-01 15:24:24] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:24:35] [INFO] Imagen subida: 20261001_152435_d3f3f5a7.jpg
+[2026-10-01 15:24:35] [INFO] Activo actualizado: id=2 inv=ECO-0002 por usuario_id=1
+[2026-10-01 15:24:45] [INFO] Imagen subida: 20261001_152445_604711e4.jpg
+[2026-10-01 15:24:45] [INFO] Activo actualizado: id=1 inv=ECO-0001 por usuario_id=1

@@ -102,7 +102,7 @@ function render(lista) {
                </td>`
             : `<td class="col-foto">
                 <div class="table__noimg">S/F</div>
-               </td>`}
+               </td>`}}
                 <td>
                     <div class="table__actions">
                         <button class="btn btn--ghost btn--sm" onclick="editar(${a.id})">✏️</button>
@@ -129,9 +129,9 @@ busqueda.addEventListener('input', () => {
 
 btnNuevo.addEventListener('click', () => {
     form.reset();
-    form.id.value = '';
-    form.ruta_imagen.value = '';
-    form.observaciones.value = '';
+    form.elements.id.value = '';
+    form.elements.ruta_imagen.value = '';
+    form.elements.observaciones.value = '';
     modalTitle.textContent = '➕ Nuevo activo';
     imgPreview.innerHTML = '<div class="image-preview__placeholder">Sin imagen</div>';
     formError.style.display = 'none';
@@ -189,7 +189,7 @@ imgInput.addEventListener('change', () => {
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = form.id.value;
+    const id = form.elements['id'].value;
 
     // Validaciones cliente
     const desc = form.descripcion.value.trim();
