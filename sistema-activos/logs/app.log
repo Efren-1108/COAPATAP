@@ -15,3 +15,9 @@
 [2026-09-16 20:12:49] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 12:17:25] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 13:35:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-21 14:21:44] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 16:06:05] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 16:16:17] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:47:12] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:13] [INFO] Empleado creado: id=8 nomina=1010 por usuario_id=1
+[2026-10-02 12:10:01] [INFO] Empleado actualizado: id=8 nomina=1011 por usuario_id=1
