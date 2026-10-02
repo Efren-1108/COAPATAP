@@ -80,3 +80,4 @@
 [2026-10-01 15:43:05] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 19:01:15] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 19:03:26] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:07:36] [INFO] auth.login usuario=admin rol=superusuario
