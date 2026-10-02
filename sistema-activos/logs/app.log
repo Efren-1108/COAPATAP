@@ -81,3 +81,10 @@
 [2026-10-01 19:01:15] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 19:03:26] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 19:07:36] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:29:40] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:59:26] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:59:54] [INFO] auth.login usuario=Efren rol=usuario
+[2026-10-02 12:00:53] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:38] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:57] [INFO] auth.login usuario=Efren rol=usuario
+[2026-10-02 12:05:21] [INFO] auth.login usuario=admin rol=superusuario
