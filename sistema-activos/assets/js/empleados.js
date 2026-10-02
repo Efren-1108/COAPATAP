@@ -16,10 +16,8 @@ let empleadosCache = [];
 document.addEventListener('DOMContentLoaded', cargar);
 
 async function cargar() {
-    tablaBody.innerHTML = '<tr><td colspan="6" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
+    tablaBody.innerHTML = '<tr><td colspan="5" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
     try {
-        // Cargamos empleados y activos en paralelo para poder contar los bienes
-        // asignados por empleado (la columna "Bienes").
         const [resEmp, resAct] = await Promise.all([
             App.api('empleados.php'),
             App.api('activos.php'),
@@ -27,12 +25,11 @@ async function cargar() {
         if (!resEmp.ok) throw new Error(resEmp.error);
         if (!resAct.ok) throw new Error(resAct.error);
         empleadosCache = resEmp.data;
-        // Cache expuesto a render() para contar bienes por empleado.
         window._activosCache = resAct.data;
         render(empleadosCache);
         cargarStats();
     } catch (err) {
-        tablaBody.innerHTML = `<tr><td colspan="6" class="empty-state">${App.esc(err.message)}</td></tr>`;
+        tablaBody.innerHTML = `<tr><td colspan="5" class="empty-state">${App.esc(err.message)}</td></tr>`;
         App.toast(err.message, 'error');
     }
 }
@@ -55,16 +52,13 @@ async function cargarStats() {
 
 function render(lista) {
     if (!lista.length) {
-        tablaBody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state__icon">📭</div>No hay empleados. Pulsa "Nuevo empleado" para empezar.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state__icon">📭</div>No hay empleados. Pulsa "Nuevo empleado" para empezar.</div></td></tr>';
         return;
     }
-    // Para mostrar el número de bienes por empleado, cruzamos con activosCache
-    // (cargado en cargarEmpleados() / o se hace un conteo local).
     tablaBody.innerHTML = lista.map(e => {
         const bienesCount = (window._activosCache || []).filter(a => a.empleado_id === e.id).length;
         return `
         <tr>
-            <td>${e.id}</td>
             <td><strong>${App.esc(e.numero_nomina)}</strong></td>
             <td>${App.esc(e.nombre)}</td>
             <td>${App.esc(e.cargo)}</td>
@@ -74,9 +68,8 @@ function render(lista) {
                     <button class="btn btn--ghost btn--sm" onclick="editar(${e.id})">✏️ Editar</button>
                     <button class="btn btn--danger btn--sm" onclick="eliminar(${e.id}, '${App.esc(e.nombre).replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
                 </div>
-            </td>
-        </tr>
-    `;}).join('');
+            </tr>
+        `;}).join('');
 }
 
 busqueda.addEventListener('input', () => {
@@ -92,7 +85,7 @@ busqueda.addEventListener('input', () => {
 
 btnNuevo.addEventListener('click', () => {
     form.reset();
-    form.id.value = '';
+    form.elements['id'].value = '';
     modalTitle.textContent = '➕ Nuevo empleado';
     formError.style.display = 'none';
     App.openModal('empleadoModal');

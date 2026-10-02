@@ -20,7 +20,7 @@ let activosCache   = [];
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-    tablaBody.innerHTML = '<tr><td colspan="9" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
+    tablaBody.innerHTML = '<tr><td colspan="8" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
     try {
         await Promise.all([cargarEmpleados(), cargarActivos()]);
         cargarStats();
@@ -78,31 +78,34 @@ function cargarStats() {
 
 function render(lista) {
     if (!lista.length) {
-        tablaBody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos. Pulsa "Nuevo activo" para empezar.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos. Pulsa "Nuevo activo" para empezar.</div></td></tr>';
         return;
     }
     tablaBody.innerHTML = lista.map(a => {
         const empTxt = a.empleado_id
             ? `<strong>${App.esc(a.empleado_nombre || '')}</strong><br><small>${App.esc(a.cargo || '')}</small>`
             : '<span class="badge badge--warning">Sin asignar</span>';
+
+        let imgPath = a.ruta_imagen || '';
+        if (imgPath.startsWith('public/')) {
+            imgPath = imgPath.replace('public/', '');
+        }
+
         return `
             <tr>
-                <td>${a.id}</td>
-                <td>
-                    <strong>${App.esc(a.descripcion)}</strong>
-                </td>
+                <td><strong>${App.esc(a.descripcion)}</strong></td>
                 <td>${App.esc(a.num_inventario)}</td>
                 <td>${App.esc(a.marca || '—')}</td>
                 <td>${App.esc(a.modelo || '—')}</td>
                 <td>${App.money(a.costo)}</td>
                 <td>${empTxt}</td>
-        ${a.ruta_imagen
-            ? `<td class="col-foto">
-                <img class="table__thumb" src="${App.esc(a.ruta_imagen)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(a.ruta_imagen)}')" style="cursor: pointer;" title="Haz clic para ampliar">
-               </td>`
-            : `<td class="col-foto">
-                <div class="table__noimg">S/F</div>
-               </td>`}}
+                ${imgPath
+                    ? `<td class="col-foto">
+                        <img class="table__thumb" src="${App.esc(imgPath)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(imgPath)}')" style="cursor: pointer;" title="Haz clic para ampliar">
+                       </td>`
+                    : `<td class="col-foto">
+                        <div class="table__noimg">S/F</div>
+                       </td>`}
                 <td>
                     <div class="table__actions">
                         <button class="btn btn--ghost btn--sm" onclick="editar(${a.id})">✏️</button>
@@ -129,9 +132,9 @@ busqueda.addEventListener('input', () => {
 
 btnNuevo.addEventListener('click', () => {
     form.reset();
-    form.elements.id.value = '';
-    form.elements.ruta_imagen.value = '';
-    form.elements.observaciones.value = '';
+    form.elements['id'].value = '';
+    form.elements['ruta_imagen'].value = '';
+    form.elements['observaciones'].value = '';
     modalTitle.textContent = '➕ Nuevo activo';
     imgPreview.innerHTML = '<div class="image-preview__placeholder">Sin imagen</div>';
     formError.style.display = 'none';

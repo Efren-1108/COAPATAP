@@ -77,3 +77,6 @@
 [2026-10-01 15:24:35] [INFO] Activo actualizado: id=2 inv=ECO-0002 por usuario_id=1
 [2026-10-01 15:24:45] [INFO] Imagen subida: 20261001_152445_604711e4.jpg
 [2026-10-01 15:24:45] [INFO] Activo actualizado: id=1 inv=ECO-0001 por usuario_id=1
+[2026-10-01 15:43:05] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:01:15] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:03:26] [INFO] auth.login usuario=admin rol=superusuario

@@ -25,7 +25,6 @@ require_once __DIR__ . '/../includes/header.php';
     <table class="table" id="tablaActivos">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Descripción</th>
                 <th>Inventario</th>
                 <th>Marca</th>
