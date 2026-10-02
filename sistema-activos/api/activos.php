@@ -144,6 +144,19 @@ try {
                 json_response(['ok' => false, 'error' => 'Otro activo ya tiene ese número de inventario'], 409);
             }
 
+            // Gestión de imagen antigua: si se subió una nueva, borrar la anterior
+            if (isset($input['ruta_imagen'])) {
+                $stmtImg = $pdo->prepare("SELECT ruta_imagen FROM activos WHERE id = :id");
+                $stmtImg->execute([':id' => $id]);
+                $oldImg = $stmtImg->fetchColumn();
+                if ($oldImg && $oldImg !== $input['ruta_imagen']) {
+                    $fullPath = __DIR__ . '/../' . $oldImg;
+                    if (file_exists($fullPath)) {
+                        @unlink($fullPath);
+                    }
+                }
+            }
+
             $sql = "UPDATE activos SET
                 descripcion=:desc, num_inventario=:ni, marca=:mar, modelo=:mod,
                 serie=:ser, material=:mat, fecha_adq=:fec, factura=:fac,

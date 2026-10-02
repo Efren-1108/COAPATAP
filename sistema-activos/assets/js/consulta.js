@@ -72,7 +72,7 @@ function renderResultado(res) {
                                 <td>${App.money(a.costo)}</td>
                                 <td>
                                     ${a.ruta_imagen
-                                        ? `<img class="table__thumb" src="${App.esc(a.ruta_imagen)}" alt="Foto" loading="lazy">`
+                                        ? `<img class="table__thumb" src="${App.esc(a.ruta_imagen)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(a.ruta_imagen)}')" style="cursor: pointer;" title="Haz clic para ampliar">`
                                         : `<div class="table__noimg">S/F</div>`}
                                 </td>
                             </tr>
@@ -140,6 +140,14 @@ async function imprimirResguardo() {
         App.toast(err.message, 'error');
     }
 }
+
+window.viewImage = (src) => {
+    const img = document.getElementById('viewerImage');
+    if (img) {
+        img.src = src;
+        App.openModal('imageViewerModal');
+    }
+};
 
 function renderResguardoImprimible(res) {
     const e = res.empleado;

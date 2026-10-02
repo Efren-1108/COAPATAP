@@ -39,4 +39,17 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<!-- Modal Visor de Imagenes -->
+<div class="modal-backdrop" id="imageViewerModal">
+    <div class="modal modal--image-viewer">
+        <div class="modal__header">
+            <h2 class="modal__title">Vista Previa de Imagen</h2>
+            <button class="modal__close" onclick="App.closeModal('imageViewerModal')">×</button>
+        </div>
+        <div class="modal__body modal__body--center">
+            <img id="viewerImage" src="" alt="Vista ampliada" class="viewer-img">
+        </div>
+    </div>
+</div>
+
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -15,9 +15,85 @@
 [2026-09-16 20:12:49] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 12:17:25] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 13:35:16] [INFO] auth.login usuario=admin rol=superusuario
+<<<<<<< HEAD
 [2026-09-21 14:21:44] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 16:06:05] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-01 16:16:17] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 11:47:12] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 12:01:13] [INFO] Empleado creado: id=8 nomina=1010 por usuario_id=1
 [2026-10-02 12:10:01] [INFO] Empleado actualizado: id=8 nomina=1011 por usuario_id=1
+=======
+[2026-09-21 14:18:43] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 20:09:55] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 21:27:27] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-23 22:22:11] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-24 13:20:07] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 06:51:11] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 06:52:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 09:51:06] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-25 13:00:07] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 10:52:06] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 11:13:01] [INFO] usuarios.reset_password id=2
+[2026-09-26 11:13:30] [INFO] auth.login usuario=Efren rol=usuario
+[2026-09-26 11:50:03] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:25:31] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:48:35] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 12:58:08] [INFO] Imagen subida: 20260926_125808_a46ede30.jpg
+[2026-09-26 12:58:08] [INFO] Activo actualizado: id=4 inv=ECO-0004 por usuario_id=1
+[2026-09-26 13:56:08] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 14:03:39] [INFO] Imagen subida: 20260926_140339_756b7eb0.jpg
+[2026-09-26 14:03:39] [INFO] Activo actualizado: id=3 inv=ECO-0003 por usuario_id=1
+[2026-09-26 17:06:08] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:13:13] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:39:14] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:45:53] [INFO] auth.login usuario=admin rol=superusuario
+[2026-09-26 17:46:27] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 12:49:24] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 13:12:14] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:06:04] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:18:52] [INFO] Imagen subida: 20261001_141852_705b30d9.png
+[2026-10-01 14:18:52] [INFO] Activo actualizado: id=2 inv=ECO-0002 por usuario_id=1
+[2026-10-01 14:25:16] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:27:52] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 14:34:14] [INFO] Imagen subida: 20261001_143414_88941b3b.png
+[2026-10-01 14:34:14] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:38] [INFO] Imagen subida: 20261001_143438_ab861c1e.jpeg
+[2026-10-01 14:34:38] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:39] [INFO] Imagen subida: 20261001_143439_db59fcf2.jpeg
+[2026-10-01 14:34:39] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:34:49] [INFO] Imagen subida: 20261001_143449_fa5a1a4c.jpeg
+[2026-10-01 14:34:49] [ERROR] Error en activos: SQLSTATE[42601]: Syntax error: 7 ERROR:  hay múltiples asignaciones a la misma columna «descripcion»
+[2026-10-01 14:36:07] [INFO] Imagen subida: 20261001_143607_8f0fa8e2.png
+[2026-10-01 14:36:07] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:36:35] [INFO] Imagen subida: 20261001_143635_efa3c03f.jpeg
+[2026-10-01 14:36:35] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:40:19] [INFO] Imagen subida: 20261001_144019_ce7954a8.png
+[2026-10-01 14:40:19] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 14:46:34] [INFO] Imagen subida: 20261001_144634_6548b5e1.png
+[2026-10-01 14:46:34] [INFO] Activo actualizado: id=5 inv=ECO-0005 por usuario_id=1
+[2026-10-01 15:02:36] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 15:05:59] [INFO] Imagen subida: 20261001_150559_2d44370a.jpg
+[2026-10-01 15:05:59] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:12:47] [INFO] Imagen subida: 20261001_151247_3e684be4.png
+[2026-10-01 15:12:47] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:16:00] [INFO] Imagen subida: 20261001_151600_adfc79e1.jpg
+[2026-10-01 15:16:01] [INFO] Activo actualizado: id=1 inv=ECO-0001 por usuario_id=1
+[2026-10-01 15:24:01] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 15:24:24] [INFO] Imagen subida: 20261001_152424_1f1944f5.png
+[2026-10-01 15:24:24] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-01 15:24:35] [INFO] Imagen subida: 20261001_152435_d3f3f5a7.jpg
+[2026-10-01 15:24:35] [INFO] Activo actualizado: id=2 inv=ECO-0002 por usuario_id=1
+[2026-10-01 15:24:45] [INFO] Imagen subida: 20261001_152445_604711e4.jpg
+[2026-10-01 15:24:45] [INFO] Activo actualizado: id=1 inv=ECO-0001 por usuario_id=1
+[2026-10-01 15:43:05] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:01:15] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:03:26] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 19:07:36] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:29:40] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:59:26] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:59:54] [INFO] auth.login usuario=Efren rol=usuario
+[2026-10-02 12:00:53] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:38] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:57] [INFO] auth.login usuario=Efren rol=usuario
+[2026-10-02 12:05:21] [INFO] auth.login usuario=admin rol=superusuario
+>>>>>>> 64d572d628e08fb065ff82bd105c4d5f62d09841

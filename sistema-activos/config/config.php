@@ -37,9 +37,9 @@ function base_url(): string
 }
 
 // ============ UPLOADS ============
-define('UPLOAD_DIR', __DIR__ . '/../uploads/');
+define('UPLOAD_DIR', __DIR__ . '/../public/uploads/');
 define('UPLOAD_URL', 'uploads/');           // ruta pública relativa
-define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024);  // 5 MB
+define('MAX_UPLOAD_SIZE', 50 * 1024 * 1024);  // 50 MB
 define('ALLOWED_MIME', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 define('ALLOWED_EXT',  ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 
@@ -59,8 +59,10 @@ function db(): PDO
 {
     static $pdo = null;
     if ($pdo === null) {
+        
         $dsn = sprintf(
-            'pgsql:host=%s;port=%s;dbname=%s',
+           
+        'pgsql:host=%s;port=%s;dbname=%s',
             DB_HOST, DB_PORT, DB_NAME
         );
         try {
