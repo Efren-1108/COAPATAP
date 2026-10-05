@@ -88,3 +88,8 @@
 [2026-10-02 12:01:38] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 12:01:57] [INFO] auth.login usuario=Efren rol=usuario
 [2026-10-02 12:05:21] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:53:10] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:24:06] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:24:50] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:37:06] [INFO] Imagen subida: 20261002_143706_a7e8b2e7.jpg
+[2026-10-02 14:37:06] [INFO] Activo creado: id=7 inv=ECO-08 por usuario_id=1
