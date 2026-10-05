@@ -57,3 +57,44 @@ function setLoading(on) {
     spinner.hidden = !on;
     label.style.opacity = on ? '0.6' : '1';
 }
+
+/* Mostrar u ocultar contraseña */
+(() => {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('passwordEye');
+
+    if (!passwordInput || !toggleButton || !eyeIcon) {
+        return;
+    }
+
+    toggleButton.addEventListener('click', () => {
+        const mostrar = passwordInput.type === 'password';
+
+        passwordInput.type = mostrar ? 'text' : 'password';
+
+        toggleButton.setAttribute(
+            'aria-label',
+            mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña'
+        );
+
+        toggleButton.setAttribute(
+            'title',
+            mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña'
+        );
+
+        toggleButton.setAttribute('aria-pressed', String(mostrar));
+
+        eyeIcon.innerHTML = mostrar
+            ? `
+                <path d="M3 3l18 18"/>
+                <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/>
+                <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a14.8 14.8 0 0 1-3 3.8"/>
+                <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3.6 7 10 7a10 10 0 0 0 3-.5"/>
+            `
+            : `
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/>
+                <circle cx="12" cy="12" r="3"/>
+            `;
+    });
+})();

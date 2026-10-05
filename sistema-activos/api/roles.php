@@ -57,14 +57,28 @@ try {
                 json_response(['ok' => false, 'error' => 'Ya existe un rol con esa clave'], 409);
             }
 
-            $stmt = $pdo->prepare("INSERT INTO roles (clave, nombre, descripcion, activo) VALUES (:c, :n, :d, :a) RETURNING id");
-            $stmt->execute([':c' => strtolower($clave), ':n' => $nombre, ':d' => $desc ?: null, ':a' => $activo]);
+            $stmt = $pdo->prepare("
+    INSERT INTO roles (clave, nombre, descripcion, activo)
+    VALUES (:c, :n, :d, :a)
+    RETURNING id
+");
+
+           $stmt->bindValue(':c', strtolower($clave), PDO::PARAM_STR);
+           $stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
+
+           if ($desc === '') {
+           $stmt->bindValue(':d', null, PDO::PARAM_NULL);
+        } else {
+          $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
+}
+
+            $stmt->bindValue(':a', $activo, PDO::PARAM_BOOL);
+            $stmt->execute();
             $newId = (int)$stmt->fetchColumn();
             logger("rol creado: id={$newId} clave={$clave}");
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Rol registrado correctamente'], 201);
             break;
         }
-
         case 'PUT': {
             if (!$id) json_response(['ok' => false, 'error' => 'ID requerido'], 400);
             $input   = json_input();
@@ -75,9 +89,26 @@ try {
             if ($nombre === '' || strlen($nombre) < 2) {
                 json_response(['ok' => false, 'error' => 'El nombre es obligatorio'], 400);
             }
+            $stmt = $pdo->prepare("
+    UPDATE roles
+    SET nombre = :n,
+        descripcion = :d,
+        activo = :a
+    WHERE id = :id
+");
 
-            $stmt = $pdo->prepare("UPDATE roles SET nombre=:n, descripcion=:d, activo=:a WHERE id=:id");
-            $stmt->execute([':n' => $nombre, ':d' => $desc ?: null, ':a' => $activo, ':id' => $id]);
+$stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
+
+if ($desc === '') {
+    $stmt->bindValue(':d', null, PDO::PARAM_NULL);
+} else {
+    $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
+}
+
+$stmt->bindValue(':a', $activo, PDO::PARAM_BOOL);
+$stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+$stmt->execute();
             logger("rol actualizado: id={$id}");
             json_response(['ok' => true, 'message' => 'Rol actualizado correctamente']);
             break;

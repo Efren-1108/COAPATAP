@@ -15,6 +15,14 @@
 [2026-09-16 20:12:49] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 12:17:25] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-21 13:35:16] [INFO] auth.login usuario=admin rol=superusuario
+<<<<<<< HEAD
+[2026-09-21 14:21:44] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 16:06:05] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-01 16:16:17] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 11:47:12] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:01:13] [INFO] Empleado creado: id=8 nomina=1010 por usuario_id=1
+[2026-10-02 12:10:01] [INFO] Empleado actualizado: id=8 nomina=1011 por usuario_id=1
+=======
 [2026-09-21 14:18:43] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-23 20:09:55] [INFO] auth.login usuario=admin rol=superusuario
 [2026-09-23 21:27:27] [INFO] auth.login usuario=admin rol=superusuario
@@ -88,8 +96,87 @@
 [2026-10-02 12:01:38] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 12:01:57] [INFO] auth.login usuario=Efren rol=usuario
 [2026-10-02 12:05:21] [INFO] auth.login usuario=admin rol=superusuario
+<<<<<<< HEAD
 [2026-10-02 12:53:10] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 14:24:06] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 14:24:50] [INFO] auth.login usuario=admin rol=superusuario
 [2026-10-02 14:37:06] [INFO] Imagen subida: 20261002_143706_a7e8b2e7.jpg
 [2026-10-02 14:37:06] [INFO] Activo creado: id=7 inv=ECO-08 por usuario_id=1
+=======
+>>>>>>> 64d572d628e08fb065ff82bd105c4d5f62d09841
+[2026-10-02 12:24:55] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-02 12:26:17] [INFO] Imagen subida: 20261002_122617_db09f447.jpg
+[2026-10-02 12:26:17] [INFO] Activo creado: id=7 inv=ECO-10101 por usuario_id=1
+[2026-10-02 12:36:08] [INFO] Imagen subida: 20261002_123608_212c12af.jpg
+[2026-10-02 12:36:08] [INFO] Activo actualizado: id=6 inv=ECO-0006 por usuario_id=1
+[2026-10-02 12:36:59] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:39:42] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 7 = ''
+[2026-10-02 12:40:00] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 7 = ''
+[2026-10-02 12:40:05] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 7 = ''
+[2026-10-02 12:40:14] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 7 = ''
+[2026-10-02 12:40:44] [INFO] usuarios.creado id=3 usuario=Kevin
+[2026-10-02 12:41:02] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 5 = ''
+[2026-10-02 12:41:23] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 5 = ''
+[2026-10-02 12:41:34] [INFO] usuarios.actualizado id=3
+[2026-10-02 12:42:00] [INFO] usuarios.eliminado id=3
+[2026-10-02 12:42:30] [INFO] usuarios.creado id=4 usuario=alsaa
+[2026-10-02 12:42:45] [INFO] usuarios.eliminado id=4
+[2026-10-02 12:43:45] [INFO] area actualizada: id=1
+[2026-10-02 12:45:02] [INFO] area creada: id=2 clave=informatica
+[2026-10-02 12:45:13] [INFO] area actualizada: id=2
+[2026-10-02 12:45:27] [INFO] area actualizada: id=2
+[2026-10-02 12:45:32] [ERROR] areas error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 3 = ''
+[2026-10-02 12:45:54] [INFO] area actualizada: id=2
+[2026-10-02 12:46:06] [ERROR] areas error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 4 = ''
+[2026-10-02 12:46:21] [INFO] area eliminada: id=2
+[2026-10-02 12:46:34] [INFO] area creada: id=3 clave=prueba
+[2026-10-02 12:46:41] [INFO] area eliminada: id=3
+[2026-10-02 12:49:15] [INFO] rol creado: id=3 clave=usuarionormal
+[2026-10-02 12:49:39] [ERROR] roles error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 3 = ''
+[2026-10-02 12:49:56] [INFO] rol actualizado: id=3
+[2026-10-02 12:51:37] [INFO] auth.change_password usuario_id=1
+[2026-10-02 12:51:53] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:52:13] [INFO] auth.change_password usuario_id=1
+[2026-10-02 12:56:42] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 12:58:06] [INFO] usuarios.creado id=5 usuario=Leonardo
+[2026-10-02 12:59:25] [INFO] area creada: id=4 clave=prueba
+[2026-10-02 12:59:40] [INFO] usuarios.actualizado id=5
+[2026-10-02 13:00:57] [INFO] auth.login usuario=Leonardo rol=usuarionormal
+[2026-10-02 13:01:53] [INFO] auth.login usuario=Leonardo rol=usuarionormal
+[2026-10-02 13:02:19] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 13:03:28] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:05:43] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:24:12] [INFO] rol actualizado: id=3
+[2026-10-02 14:24:24] [INFO] rol actualizado: id=3
+[2026-10-02 14:24:38] [INFO] rol actualizado: id=3
+[2026-10-02 14:25:00] [INFO] rol actualizado: id=3
+[2026-10-02 14:25:42] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-02 14:25:55] [INFO] rol actualizado: id=3
+[2026-10-02 14:26:54] [INFO] auth.login usuario=Leonardo rol=usuarionormal
+[2026-10-04 13:48:50] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-04 14:15:32] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-04 14:32:35] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 5 = ''
+[2026-10-04 14:48:50] [ERROR] usuarios error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 7 = ''
+[2026-10-04 19:31:02] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-04 19:31:27] [INFO] usuarios.actualizado id=5
+[2026-10-04 19:31:39] [INFO] usuarios.actualizado id=5
+[2026-10-04 19:31:45] [INFO] usuarios.actualizado id=5
+[2026-10-04 19:32:17] [ERROR] areas error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 3 = ''
+[2026-10-04 19:37:50] [INFO] area actualizada: id=4
+[2026-10-04 19:37:59] [ERROR] roles error: SQLSTATE[22P02]: Invalid text representation: 7 ERROR:  la sintaxis de entrada no es válida para tipo boolean: «»
+CONTEXT:  portal sin nombre, parámetro 3 = ''
+[2026-10-04 19:43:04] [INFO] rol actualizado: id=3
+[2026-10-05 11:18:55] [INFO] auth.login usuario=admin rol=superusuario
+>>>>>>> 2d0a6b48d4f12bd1526cd1bf5a25ac28f1b0ab50

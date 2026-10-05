@@ -83,6 +83,8 @@ require_once __DIR__ . '/../includes/header.php';
                         <label class="checkbox">
                             <input type="checkbox" name="estado" value="1" checked>
                             <span>Usuario activo</span>
+                            
+                            
                         </label>
                     </div>
                 </div>
