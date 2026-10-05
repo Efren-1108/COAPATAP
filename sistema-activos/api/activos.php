@@ -157,7 +157,7 @@ try {
                 }
             }
 
-            $sql = "UPDATE activos SET
+            $sql = " activos SET
                 descripcion=:desc, num_inventario=:ni, marca=:mar, modelo=:mod,
                 serie=:ser, material=:mat, fecha_adq=:fec, factura=:fac,
                 costo=:cos, observaciones=:obs, empleado_id=:eid, ruta_imagen=:img
@@ -180,7 +180,7 @@ try {
             ]);
 
             $log = $pdo->prepare("INSERT INTO log_actividades (tabla, accion, registro_id, detalle, usuario, usuario_id, area_id)
-                                  VALUES ('activos', 'UPDATE', :id, :det, :usr, :uid, :aid)");
+                                  VALUES ('activos', '', :id, :det, :usr, :uid, :aid)");
             $log->execute([
                 ':id'  => $id,
                 ':det' => "Activo actualizado: {$input['descripcion']} (inv {$input['num_inventario']})",

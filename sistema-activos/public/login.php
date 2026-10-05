@@ -37,12 +37,17 @@ if (current_user() !== null) {
                        required minlength="3" autocomplete="username"
                        placeholder="ej. admin" autofocus>
             </div>
-            <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" name="password" class="form-control"
-                       required minlength="8" autocomplete="current-password"
-                       placeholder="••••••••">
-            </div>
+            
+<div class="form-group">
+    <label for="password">Contraseña</label>
+
+    <div class="password-wrapper">
+        <input type="password" id="password" name="password"
+               class="form-control"
+               required minlength="8"
+               autocomplete="current-password"
+               placeholder="••••••••">
+    </div>
 
             <div class="form-error" id="formError" hidden></div>
 

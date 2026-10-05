@@ -154,15 +154,38 @@ try {
                   (:nom, :usr, :cor, :pwd, :aid, :rid, :est)
                 RETURNING id
             ");
-            $stmt->execute([
-                ':nom' => $nombre,
-                ':usr' => $user,
-                ':cor' => $correo ?: null,
-                ':pwd' => $hash,
-                ':aid' => $areaId,
-                ':rid' => $rolId,
-                ':est' => $estado,
-            ]);
+          $stmt = $pdo->prepare("
+    INSERT INTO usuarios
+      (nombre_completo, nombre_usuario, correo, password_hash,
+       area_id, rol_id, estado)
+    VALUES
+      (:nom, :usr, :cor, :pwd, :aid, :rid, :est)
+    RETURNING id
+");
+
+    $stmt->bindValue(':nom', $nombre, PDO::PARAM_STR);
+    $stmt->bindValue(':usr', $user, PDO::PARAM_STR);
+
+    if ($correo === '') {
+    $stmt->bindValue(':cor', null, PDO::PARAM_NULL);
+    } else {
+    $stmt->bindValue(':cor', $correo, PDO::PARAM_STR);
+    }
+
+    $stmt->bindValue(':pwd', $hash, PDO::PARAM_STR);
+
+    if ($areaId === null) {
+    $stmt->bindValue(':aid', null, PDO::PARAM_NULL);
+    } else {
+    $stmt->bindValue(':aid', $areaId, PDO::PARAM_INT);
+    }
+
+    $stmt->bindValue(':rid', $rolId, PDO::PARAM_INT);
+
+// IMPORTANTE
+$stmt->bindValue(':est', $estado, PDO::PARAM_BOOL);
+
+$stmt->execute();
             $newId = (int)$stmt->fetchColumn();
             logger("usuarios.creado id={$newId} usuario={$user}");
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Usuario registrado correctamente'], 201);
@@ -231,26 +254,67 @@ try {
             }
 
             // Armar SQL
-            $sql = "UPDATE usuarios SET nombre_completo=:nom, correo=:cor, area_id=:aid, rol_id=:rid, estado=:est";
-            $params = [
-                ':nom' => $nombre,
-                ':cor' => $correo ?: null,
-                ':aid' => $areaId,
-                ':rid' => $rolId,
-                ':est' => $estado,
-                ':id'  => $id,
-            ];
-            if ($pwd !== null && $pwd !== '') {
-                if (strlen($pwd) < 8) {
-                    json_response(['ok' => false, 'error' => 'La contraseña debe tener al menos 8 caracteres'], 400);
-                }
-                $sql .= ", password_hash=:pwd";
-                $params[':pwd'] = password_hash($pwd, PASSWORD_DEFAULT);
-            }
-            $sql .= " WHERE id=:id";
+        $sql = "UPDATE usuarios 
+        SET nombre_completo = :nom,
+            correo = :cor,
+            area_id = :aid,
+            rol_id = :rid,
+            estado = :est";
 
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+        if ($pwd !== null && $pwd !== '') {
+        if (strlen($pwd) < 8) {
+        json_response([
+            'ok' => false,
+            'error' => 'La contraseña debe tener al menos 8 caracteres'
+        ], 400);
+        }
+
+        $sql .= ", password_hash = :pwd";
+ }
+
+$sql .= " WHERE id = :id";
+
+$stmt = $pdo->prepare($sql);
+
+// Datos normales
+$stmt->bindValue(':nom', $nombre, PDO::PARAM_STR);
+
+if ($correo === '') {
+    $stmt->bindValue(':cor', null, PDO::PARAM_NULL);
+} else {
+    $stmt->bindValue(':cor', $correo, PDO::PARAM_STR);
+}
+
+// Área puede ser NULL
+if ($areaId === null) {
+    $stmt->bindValue(':aid', null, PDO::PARAM_NULL);
+} else {
+    $stmt->bindValue(':aid', $areaId, PDO::PARAM_INT);
+}
+
+$stmt->bindValue(':rid', $rolId, PDO::PARAM_INT);
+
+// IMPORTANTE: PostgreSQL recibe TRUE/FALSE real
+$stmt->bindValue(':est', $estado, PDO::PARAM_BOOL);
+
+if ($pwd !== null && $pwd !== '') {
+    $stmt->bindValue(
+        ':pwd',
+        password_hash($pwd, PASSWORD_DEFAULT),
+        PDO::PARAM_STR
+    );
+}
+
+$stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+$stmt->execute();
+
+logger("usuarios.actualizado id={$id}");
+
+json_response([
+    'ok' => true,
+    'message' => 'Usuario actualizado correctamente'
+]);
             logger("usuarios.actualizado id={$id}");
             json_response(['ok' => true, 'message' => 'Usuario actualizado correctamente']);
             break;
