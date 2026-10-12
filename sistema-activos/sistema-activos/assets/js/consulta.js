@@ -141,14 +141,6 @@ async function imprimirResguardo() {
     }
 }
 
-window.viewImage = (src) => {
-    const img = document.getElementById('viewerImage');
-    if (img) {
-        img.src = src;
-        App.openModal('imageViewerModal');
-    }
-};
-
 function renderResguardoImprimible(res) {
     const e = res.empleado;
     const activos = res.activos;

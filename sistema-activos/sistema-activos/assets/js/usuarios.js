@@ -12,7 +12,7 @@ const busqueda    = document.getElementById('busqueda');
 const statsBox    = document.getElementById('stats');
 const selectRol   = document.getElementById('rol_id');
 const selectArea  = document.getElementById('area_id');
-const passInput   = form.password;
+const passInput   = form.querySelector('input[name="password"]');
 const passReq     = document.getElementById('passReq');
 const areaReq     = document.getElementById('areaReq');
 

@@ -2,7 +2,13 @@
 /**
  * API: Gestión de roles
  * Acceso: solo superusuario
+ *
+ * Cambios:
+ *   - [FIX] Queries con interpolación reemplazadas por prepared statements.
+ *   - [FIX] PARAM_BOOL reemplazado por 't'/'f' (compatibilidad PostgreSQL).
+ *   - [MEJORA] CSRF exigido en mutaciones (require_super_csrf).
  */
+
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
@@ -21,7 +27,11 @@ try {
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
                 if (!$row) json_response(['ok' => false, 'error' => 'Rol no encontrado'], 404);
-                $row['usuarios_count'] = (int)$pdo->query("SELECT COUNT(*) FROM usuarios WHERE rol_id = {$row['id']}")->fetchColumn();
+
+                $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE rol_id = :id");
+                $stmtCount->execute([':id' => $row['id']]);
+                $row['usuarios_count'] = (int)$stmtCount->fetchColumn();
+
                 json_response(['ok' => true, 'data' => $row]);
             }
             $rows = $pdo->query("
@@ -58,27 +68,26 @@ try {
             }
 
             $stmt = $pdo->prepare("
-    INSERT INTO roles (clave, nombre, descripcion, activo)
-    VALUES (:c, :n, :d, :a)
-    RETURNING id
-");
-
-           $stmt->bindValue(':c', strtolower($clave), PDO::PARAM_STR);
-           $stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
-
-           if ($desc === '') {
-           $stmt->bindValue(':d', null, PDO::PARAM_NULL);
-        } else {
-          $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
-}
-
-            $stmt->bindValue(':a', $activo, PDO::PARAM_BOOL);
+                INSERT INTO roles (clave, nombre, descripcion, activo)
+                VALUES (:c, :n, :d, :a)
+                RETURNING id
+            ");
+            $stmt->bindValue(':c', strtolower($clave), PDO::PARAM_STR);
+            $stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
+            if ($desc === '') {
+                $stmt->bindValue(':d', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':a', $activo ? 't' : 'f', PDO::PARAM_STR);
             $stmt->execute();
+
             $newId = (int)$stmt->fetchColumn();
             logger("rol creado: id={$newId} clave={$clave}");
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Rol registrado correctamente'], 201);
             break;
         }
+
         case 'PUT': {
             if (!$id) json_response(['ok' => false, 'error' => 'ID requerido'], 400);
             $input   = json_input();
@@ -90,25 +99,22 @@ try {
                 json_response(['ok' => false, 'error' => 'El nombre es obligatorio'], 400);
             }
             $stmt = $pdo->prepare("
-    UPDATE roles
-    SET nombre = :n,
-        descripcion = :d,
-        activo = :a
-    WHERE id = :id
-");
+                UPDATE roles
+                SET nombre = :n,
+                    descripcion = :d,
+                    activo = :a
+                WHERE id = :id
+            ");
+            $stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
+            if ($desc === '') {
+                $stmt->bindValue(':d', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':a', $activo ? 't' : 'f', PDO::PARAM_STR);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
 
-$stmt->bindValue(':n', $nombre, PDO::PARAM_STR);
-
-if ($desc === '') {
-    $stmt->bindValue(':d', null, PDO::PARAM_NULL);
-} else {
-    $stmt->bindValue(':d', $desc, PDO::PARAM_STR);
-}
-
-$stmt->bindValue(':a', $activo, PDO::PARAM_BOOL);
-$stmt->bindValue(':id', $id, PDO::PARAM_INT);
-
-$stmt->execute();
             logger("rol actualizado: id={$id}");
             json_response(['ok' => true, 'message' => 'Rol actualizado correctamente']);
             break;
@@ -117,12 +123,17 @@ $stmt->execute();
         case 'DELETE':
             if (!$id) json_response(['ok' => false, 'error' => 'ID requerido'], 400);
 
-            // Proteger roles del sistema
-            $clave = $pdo->query("SELECT clave FROM roles WHERE id = {$id}")->fetchColumn();
+            $stmtC = $pdo->prepare("SELECT clave FROM roles WHERE id = :id");
+            $stmtC->execute([':id' => $id]);
+            $clave = $stmtC->fetchColumn();
+
             if (in_array($clave, ['superusuario', 'usuario'], true)) {
                 json_response(['ok' => false, 'error' => "El rol '{$clave}' es parte del sistema y no se puede eliminar."], 409);
             }
-            $cnt = (int)$pdo->query("SELECT COUNT(*) FROM usuarios WHERE rol_id = {$id}")->fetchColumn();
+
+            $stmtCnt = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE rol_id = :id");
+            $stmtCnt->execute([':id' => $id]);
+            $cnt = (int)$stmtCnt->fetchColumn();
             if ($cnt > 0) {
                 json_response([
                     'ok'    => false,

@@ -29,7 +29,7 @@ const App = (() => {
 
         // ------------------------------------------------------------
         // CSRF: agregar token en métodos mutación
-        // El token lo inyecta el servidor en window.CSRF_TOKEN (header.php o login.php)
+        // El token lo inyecta el servidor en window.CSRF_TOKEN
         // y se actualiza automáticamente si el servidor lo rota.
         // ------------------------------------------------------------
         if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
@@ -69,7 +69,6 @@ const App = (() => {
 
         // ------------------------------------------------------------
         // Si el servidor rotó el token CSRF, actualizarlo en memoria.
-        // (Ocurre tras login, cambio de contraseña, etc.)
         // ------------------------------------------------------------
         if (data && typeof data.csrf_token === 'string' && data.csrf_token.length > 0) {
             window.CSRF_TOKEN = data.csrf_token;
@@ -157,8 +156,36 @@ const App = (() => {
         else document.addEventListener('DOMContentLoaded', fn);
     }
 
-    return { api, toast, openModal, closeModal, confirm, money, date, esc, formToObject, fillForm, ready };
+    /** Visor de imágenes (modal) */
+    function viewImage(src) {
+        const img = document.getElementById('viewerImage');
+        if (img) {
+            img.src = src;
+            openModal('imageViewerModal');
+        }
+    }
+
+    return {
+        api,
+        toast,
+        openModal,
+        closeModal,
+        confirm,
+        money,
+        date,
+        esc,
+        formToObject,
+        fillForm,
+        ready,
+        viewImage,
+    };
 })();
+
+/* =====================================================
+   Exponer funciones globales usadas por atributos onclick
+   (así los templates pueden usar onclick="viewImage(...)")
+   ===================================================== */
+window.viewImage = App.viewImage;
 
 /* ============ NAV TOGGLE ============ */
 document.addEventListener('DOMContentLoaded', () => {

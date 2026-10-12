@@ -2,13 +2,16 @@
 /**
  * Página de diagnóstico del sistema.
  * Verifica: PHP, extensiones, conexión a BD, tablas, datos de ejemplo, API y permisos de uploads.
- * Acceso: http://localhost/sistema-activos/public/diagnostico.php
+ *
+ * Cambios:
+ *   - [MEJORA] Fallback a file_get_contents si cURL no está disponible.
  */
+
 $page_title = 'Diagnóstico del sistema';
-$page_js    = ''; // sin JS de página
+$page_js    = '';
 require_once __DIR__ . '/../config/config.php';
 
-$checks = []; // cada elemento: ['ok'=>bool, 'label'=>string, 'detail'=>string]
+$checks = [];
 
 // ============ 1) PHP ============
 $checks[] = [
@@ -18,7 +21,7 @@ $checks[] = [
 ];
 
 // ============ 2) Extensiones ============
-$extensions = ['pdo', 'pdo_pgsql', 'fileinfo', 'json', 'curl'];
+$extensions = ['pdo', 'pdo_pgsql', 'fileinfo', 'json'];
 foreach ($extensions as $ext) {
     $checks[] = [
         'ok'     => extension_loaded($ext),
@@ -26,6 +29,12 @@ foreach ($extensions as $ext) {
         'detail' => extension_loaded($ext) ? 'cargada' : 'NO cargada — revisa php.ini',
     ];
 }
+// cURL es opcional (tiene fallback)
+$checks[] = [
+    'ok'     => true,
+    'label'  => 'Extensión PHP: curl (opcional)',
+    'detail' => extension_loaded('curl') ? 'cargada' : 'no cargada — se usará file_get_contents como fallback',
+];
 
 // ============ 3) Conexión a BD ============
 $dbConnected = false;
@@ -51,7 +60,7 @@ try {
 }
 
 // ============ 4) Tablas esperadas ============
-$expectedTables = ['empleados', 'activos', 'log_actividades'];
+$expectedTables = ['empleados', 'activos', 'log_actividades', 'usuarios', 'roles', 'areas', 'modulos', 'rol_permisos'];
 $existingTables = [];
 $tableCounts    = [];
 if ($dbConnected) {
@@ -88,7 +97,7 @@ if ($dbConnected && isset($tableCounts['empleados'])) {
         'label'  => 'Datos de ejemplo (empleados)',
         'detail' => $tableCounts['empleados'] > 0
             ? "{$tableCounts['empleados']} empleado(s) registrado(s)"
-            : 'tabla vacía — la migración insertó 5 de ejemplo, revisa migracion.sql',
+            : 'tabla vacía',
     ];
 }
 if ($dbConnected && isset($tableCounts['activos'])) {
@@ -97,25 +106,24 @@ if ($dbConnected && isset($tableCounts['activos'])) {
         'label'  => 'Datos de ejemplo (activos)',
         'detail' => $tableCounts['activos'] > 0
             ? "{$tableCounts['activos']} activo(s) registrado(s)"
-            : 'tabla vacía — la migración insertó 6 de ejemplo',
+            : 'tabla vacía',
     ];
 }
 
 // ============ 6) Endpoints de la API ============
-$apiBase = $apiBaseUrl ?? rtrim((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']), '/');
+$apiBase = rtrim((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']), '/');
+$apiBase = preg_replace('#/public$#', '', $apiBase) . '/api';
+
 $endpoints = [
-    ['empleados.php',          'API empleados (GET)'],
-    ['activos.php',            'API activos (GET)'],
+    ['auth.php',              'API auth (GET sin sesión → 401)'],
     ['consulta.php?nomina=1001', 'API consulta por nómina'],
 ];
 
-// Para consulta.php, si no hay empleados registrados, saltamos la verificación de contenido útil
-$hasNominaExample = $dbConnected && isset($tableCounts['empleados']) && $tableCounts['empleados'] > 0;
-$sampleNomina     = null;
-if ($hasNominaExample) {
+// Ajustar nómina de ejemplo
+if ($dbConnected && isset($tableCounts['empleados']) && $tableCounts['empleados'] > 0) {
     $sampleNomina = (int)$pdo->query("SELECT numero_nomina FROM empleados ORDER BY numero_nomina ASC LIMIT 1")->fetchColumn();
     if ($sampleNomina > 0) {
-        $endpoints[2][0] = "consulta.php?nomina={$sampleNomina}";
+        $endpoints[1][0] = "consulta.php?nomina={$sampleNomina}";
     }
 }
 
@@ -123,9 +131,8 @@ foreach ($endpoints as [$url, $label]) {
     $full = $apiBase . '/' . $url;
     $http = 0;
     $body = null;
-    $err  = 'cURL no disponible';
+    $err  = '';
     $contentType = '';
-    $debugInfo   = '';
 
     if (function_exists('curl_init')) {
         $ch = curl_init($full);
@@ -139,32 +146,56 @@ foreach ($endpoints as [$url, $label]) {
         $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $err  = curl_error($ch) ?: '';
-        $errNo = curl_errno($ch);
         curl_close($ch);
-        $debugInfo = $errNo ? "cURL errno $errNo" : '';
+    } else {
+        $ctx = stream_context_create([
+            'http' => [
+                'method'        => 'GET',
+                'timeout'       => 5,
+                'ignore_errors' => true,
+                'header'        => "Accept: application/json\r\n",
+            ],
+        ]);
+        $body = @file_get_contents($full, false, $ctx);
+        if (isset($http_response_header[0])) {
+            if (preg_match('#HTTP/\S+\s+(\d+)#', $http_response_header[0], $m)) {
+                $http = (int)$m[1];
+            }
+            foreach ($http_response_header as $h) {
+                if (stripos($h, 'Content-Type:') === 0) {
+                    $contentType = trim(substr($h, 13));
+                }
+            }
+        }
+        if ($body === false) {
+            $err = 'No se pudo conectar (file_get_contents)';
+        }
     }
 
     $ok = false;
     $detail = '';
-    if (!function_exists('curl_init')) {
-        $detail = 'Extensión cURL no cargada — habilítala en php.ini (extension=curl)';
-    } elseif ($body === false || $body === null) {
-        $detail = trim("No se pudo conectar: $err $debugInfo");
+    if ($body === false || $body === null) {
+        $detail = trim("No se pudo conectar: $err");
     } else {
         $json = json_decode($body, true);
         if (!is_array($json)) {
             $snippet = trim(substr((string)$body, 0, 200));
-            $detail = "HTTP $http — respuesta no es JSON. Content-Type: $contentType";
             $checks[] = [
                 'ok'     => false,
                 'label'  => $label,
-                'detail' => $detail,
+                'detail' => "HTTP $http — respuesta no es JSON. Content-Type: $contentType",
                 'extra'  => $snippet,
             ];
             continue;
         }
         if (empty($json['ok'])) {
-            $detail = "HTTP $http — " . ($json['error'] ?? 'error desconocido');
+            // Para auth.php sin sesión, esperamos 401. Eso es OK.
+            if (strpos($url, 'auth.php') === 0 && $http === 401) {
+                $ok = true;
+                $detail = "HTTP $http — protegido correctamente (No autenticado)";
+            } else {
+                $detail = "HTTP $http — " . ($json['error'] ?? 'error desconocido');
+            }
         } else {
             $ok = true;
             if (isset($json['data']) && is_array($json['data'])) {
@@ -206,6 +237,9 @@ $passed   = count(array_filter($checks, fn($c) => $c['ok']));
 $failed   = $total - $passed;
 $allOk    = $failed === 0;
 $severity = $allOk ? 'success' : ($passed > 0 ? 'warning' : 'danger');
+
+// ============ CSRF (no es un check, es una prueba) ============
+$csrfExists = !empty($_SESSION['csrf_token']);
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -322,6 +356,11 @@ require_once __DIR__ . '/../includes/header.php';
             <?php if ($dbInfo): ?>
                 <tr><th>PostgreSQL</th><td><?= e($dbInfo['version']) ?></td></tr>
             <?php endif; ?>
+            <tr><th>base_url()</th><td><?= e(base_url()) ?></td></tr>
+            <tr><th>app_url()</th><td><?= e(app_url()) ?></td></tr>
+            <tr><th>login_url()</th><td><?= e(login_url()) ?></td></tr>
+            <tr><th>api_url()</th><td><?= e(api_url()) ?></td></tr>
+            <tr><th>CSRF token</th><td><?= $csrfExists ? '✅ generado' : '— no generado (normal si no has iniciado sesión)' ?></td></tr>
         </tbody>
     </table>
 </div>

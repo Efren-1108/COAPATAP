@@ -8,10 +8,10 @@
 logs/
 !logs/.gitkeep
 
-# Uploads (fotos de activos)
-uploads/*
-!uploads/.gitkeep
-!uploads/index.html
+# Uploads (fotos de activos) — están en public/uploads/
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/index.html
 
 # Entorno
 .env

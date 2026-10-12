@@ -28,7 +28,7 @@ $esSuper = $user ? $user['es_superusuario'] : false;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($page_title) ?> · <?= e(APP_NAME) ?></title>
     <link rel="stylesheet" href="<?= e($assetsBase) ?>css/styles.css">
-    <link rel="icon" type="image/png" href="<?= e($assetsBase) ?>img/logo.png">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
     <script>
     window.API_BASE = <?= json_encode($apiBaseUrl) ?>;
     window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;

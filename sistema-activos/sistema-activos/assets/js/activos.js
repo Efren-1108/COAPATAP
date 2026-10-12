@@ -33,7 +33,6 @@ async function cargarEmpleados() {
     const res = await App.api('empleados.php');
     if (!res.ok) throw new Error(res.error);
     empleadosCache = res.data;
-    // Llenar select
     const options = ['<option value="">— Sin asignar —</option>'].concat(
         empleadosCache.map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)} — ${App.esc(e.cargo)}</option>`)
     );
@@ -44,7 +43,8 @@ async function cargarActivos() {
     const res = await App.api('activos.php');
     if (!res.ok) throw new Error(res.error);
     activosCache = res.data;
-    render(activosCache);
+    aplicarFiltroYRender();  // conserva el filtro
+    cargarStats();           // refresca stats
 }
 
 function cargarStats() {
@@ -69,11 +69,27 @@ function cargarStats() {
         <div class="stat">
             <span class="stat__icon">💰</span>
             <div>
-                <div class="stat__num">${App.money(costo).replace('$', '$')}</div>
+                <div class="stat__num">${App.money(costo)}</div>
                 <div class="stat__lbl">Valor total del inventario</div>
             </div>
         </div>
     `;
+}
+
+function aplicarFiltroYRender() {
+    const q = (busqueda?.value || '').toLowerCase().trim();
+    if (!q) {
+        render(activosCache);
+        return;
+    }
+    const filtrados = activosCache.filter(a =>
+        (a.descripcion    || '').toLowerCase().includes(q) ||
+        (a.num_inventario || '').toLowerCase().includes(q) ||
+        (a.marca          || '').toLowerCase().includes(q) ||
+        (a.modelo         || '').toLowerCase().includes(q) ||
+        (a.serie          || '').toLowerCase().includes(q)
+    );
+    render(filtrados);
 }
 
 function render(lista) {
@@ -117,18 +133,7 @@ function render(lista) {
     }).join('');
 }
 
-busqueda.addEventListener('input', () => {
-    const q = busqueda.value.toLowerCase().trim();
-    if (!q) { render(activosCache); return; }
-    const filtrados = activosCache.filter(a =>
-        (a.descripcion    || '').toLowerCase().includes(q) ||
-        (a.num_inventario || '').toLowerCase().includes(q) ||
-        (a.marca          || '').toLowerCase().includes(q) ||
-        (a.modelo         || '').toLowerCase().includes(q) ||
-        (a.serie          || '').toLowerCase().includes(q)
-    );
-    render(filtrados);
-});
+busqueda.addEventListener('input', aplicarFiltroYRender);
 
 btnNuevo.addEventListener('click', () => {
     form.reset();
@@ -172,14 +177,6 @@ window.eliminar = async (id, desc) => {
     }
 };
 
-window.viewImage = (src) => {
-    const img = document.getElementById('viewerImage');
-    if (img) {
-        img.src = src;
-        App.openModal('imageViewerModal');
-    }
-};
-
 imgInput.addEventListener('change', () => {
     const f = imgInput.files[0];
     if (!f) return;
@@ -194,7 +191,6 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = form.elements['id'].value;
 
-    // Validaciones cliente
     const desc = form.descripcion.value.trim();
     const ni   = form.num_inventario.value.trim();
     const costo = form.costo.value;
@@ -204,12 +200,16 @@ form.addEventListener('submit', async (e) => {
 
     let rutaImagen = form.ruta_imagen.value || null;
 
-    // Subir imagen si hay nueva
     if (imgInput.files && imgInput.files[0]) {
         try {
             const fd = new FormData();
             fd.append('imagen', imgInput.files[0]);
-            const r = await fetch(window.API_BASE + 'upload.php', { method: 'POST', body: fd });
+            const r = await fetch(window.API_BASE + 'upload.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-CSRF-Token': window.CSRF_TOKEN || '' },
+                body: fd
+            });
             const j = await r.json();
             if (!j.ok) throw new Error(j.error);
             rutaImagen = j.ruta;

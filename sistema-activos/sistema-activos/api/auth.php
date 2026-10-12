@@ -157,6 +157,7 @@ try {
             rate_limit_login_reset($usuario);
 
             session_regenerate_id(true);
+            $_SESSION['_loaded_at'] = microtime(true); // invalida cache
             $_SESSION['user_id'] = (int)$row['id'];
 
             $csrfToken = csrf_rotate();
