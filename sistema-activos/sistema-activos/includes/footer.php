@@ -8,9 +8,9 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="<?= e($assetsBase) ?>js/app.js"></script>
-    <?php if (isset($page_js)): ?>
-        <script src="<?= e($assetsBase) ?>js/<?= e($page_js) ?>"></script>
-    <?php endif; ?>
+    <script src="<?= e($assetsBase) ?>js/app.js?v=<?= time() ?>"></script>
+<?php if (isset($page_js)): ?>
+    <script src="<?= e($assetsBase) ?>js/<?= e($page_js) ?>?v=<?= time() ?>"></script>
+<?php endif; ?>
 </body>
 </html>

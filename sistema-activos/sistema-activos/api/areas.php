@@ -9,7 +9,7 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
-$user   = require_super();     // ← bloquea todo lo que no sea superusuario
+$user   = require_super_csrf();     // ← bloquea todo lo que no sea superusuario
 
 try {
     $pdo = db();

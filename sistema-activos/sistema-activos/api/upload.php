@@ -9,7 +9,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 // Exigir sesión activa para subir imágenes.
-require_auth();
+require_auth_csrf();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);

@@ -18,7 +18,10 @@ if (current_user() !== null) {
     <title>Iniciar sesión · <?= e(APP_NAME) ?></title>
     <link rel="stylesheet" href="<?= e(base_url()) ?>/assets/css/styles.css">
     <link rel="icon" type="image/png" href="<?= e(base_url()) ?>/assets/img/logo.png">
-    <script>window.API_BASE = <?= json_encode((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . base_url() . '/api/') ?>;</script>
+    <script>
+    window.API_BASE = <?= json_encode((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . base_url() . '/api/') ?>;
+    window.CSRF_TOKEN = ''; // se asigna tras login
+    </script>
 </head>
 <body class="login-page">
 
@@ -67,7 +70,7 @@ if (current_user() !== null) {
     </div>
 </div>
 
-<script src="<?= e(base_url()) ?>/assets/js/app.js"></script>
-<script src="<?= e(base_url()) ?>/assets/js/auth.js"></script>
+<script src="<?= e(base_url()) ?>/assets/js/app.js?v=<?= time() ?>"></script>
+<script src="<?= e(base_url()) ?>/assets/js/auth.js?v=<?= time() ?>"></script>
 </body>
 </html>

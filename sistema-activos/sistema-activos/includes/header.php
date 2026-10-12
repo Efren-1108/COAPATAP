@@ -29,7 +29,10 @@ $esSuper = $user ? $user['es_superusuario'] : false;
     <title><?= e($page_title) ?> · <?= e(APP_NAME) ?></title>
     <link rel="stylesheet" href="<?= e($assetsBase) ?>css/styles.css">
     <link rel="icon" type="image/png" href="<?= e($assetsBase) ?>img/logo.png">
-    <script>window.API_BASE = <?= json_encode($apiBaseUrl) ?>;</script>
+    <script>
+    window.API_BASE = <?= json_encode($apiBaseUrl) ?>;
+    window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+    </script>
 </head>
 <body>
     <header class="topbar">

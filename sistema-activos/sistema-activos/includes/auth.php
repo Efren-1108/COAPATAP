@@ -13,6 +13,12 @@
  *   require_once __DIR__ . '/../includes/auth.php';
  *   $user = require_auth();           // devuelve 401 JSON si no hay sesión
  *   $user = require_super();          // devuelve 403 JSON si no es super
+ *
+ * Cambios respecto a la versión anterior:
+ *   - [FIX] require_auth() ahora redirige correctamente al login usando
+ *           login_url() en lugar de calcular la ruta manualmente.
+ *   - [MEJORA] Se documenta mejor cada función.
+ *   - [MEJORA] Se agrega require_auth_csrf() y require_super_csrf().
  */
 
 require_once __DIR__ . '/../config/config.php';
@@ -112,6 +118,10 @@ function is_super(): bool
 /**
  * Exige sesión. Si no hay, devuelve 401 JSON (API) o redirige a login.php (página).
  * Devuelve siempre el array del usuario actual si la sesión es válida.
+ *
+ * IMPORTANTE: la redirección se hace a login_url() que construye la URL
+ * completa usando base_url() + '/public/login.php', funcionando sin importar
+ * dónde esté instalado el proyecto.
  */
 function require_auth(): array
 {
@@ -120,10 +130,10 @@ function require_auth(): array
         if (is_ajax_request()) {
             json_response(['ok' => false, 'error' => 'No autenticado'], 401);
         }
-        // Detectar si estamos en /public o en raíz para no romper la redirección.
-        $base = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-        $loginUrl = (basename($base) === 'public' ? '' : '/public') . '/login.php';
-        header('Location: ' . $loginUrl);
+
+        // Redirigir al login usando la URL absoluta correcta.
+        // login_url() ya incluye host + carpeta del proyecto + /public/login.php
+        header('Location: ' . login_url());
         exit;
     }
     return $u;
@@ -135,6 +145,42 @@ function require_auth(): array
 function require_super(): array
 {
     $u = require_auth();
+    if (!$u['es_superusuario']) {
+        if (is_ajax_request()) {
+            json_response(['ok' => false, 'error' => 'Sin permisos (se requiere superusuario)'], 403);
+        }
+        http_response_code(403);
+        echo '<h1>403 — Sin permisos</h1><p>Esta sección es solo para el superusuario.</p>';
+        exit;
+    }
+    return $u;
+}
+
+/**
+ * Exige sesión + token CSRF válido en métodos mutación (POST/PUT/DELETE).
+ * Los GET pasan sin validar CSRF.
+ *
+ * Uso en APIs:
+ *   $user = require_auth_csrf();
+ */
+function require_auth_csrf(): array
+{
+    $u = require_auth();
+
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (in_array($method, ['POST', 'PUT', 'DELETE', 'PATCH'], true)) {
+        csrf_require();
+    }
+
+    return $u;
+}
+
+/**
+ * Exige sesión + rol superusuario + token CSRF válido en mutaciones.
+ */
+function require_super_csrf(): array
+{
+    $u = require_auth_csrf();
     if (!$u['es_superusuario']) {
         if (is_ajax_request()) {
             json_response(['ok' => false, 'error' => 'Sin permisos (se requiere superusuario)'], 403);

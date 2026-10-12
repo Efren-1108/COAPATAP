@@ -10,32 +10,71 @@ const App = (() => {
             const base = (typeof window !== 'undefined' && window.API_BASE) || '/api/';
             url = base + url.replace(/^\/+/, '');
         }
+
+        const method = (options.method || 'GET').toUpperCase();
+
+        // Extraer opción personalizada antes de pasarla a fetch
+        const skipAuthRedirect = !!options.skipAuthRedirect;
+
         const opts = {
-            method: options.method || 'GET',
+            method,
             credentials: 'same-origin', // enviar cookies de sesión
             headers: { 'Content-Type': 'application/json' },
             ...options,
         };
+        delete opts.skipAuthRedirect; // fetch no lo entiende
+
+        // Asegurar headers como objeto
+        opts.headers = opts.headers || {};
+
+        // ------------------------------------------------------------
+        // CSRF: agregar token en métodos mutación
+        // El token lo inyecta el servidor en window.CSRF_TOKEN (header.php o login.php)
+        // y se actualiza automáticamente si el servidor lo rota.
+        // ------------------------------------------------------------
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+            const token = (typeof window !== 'undefined' && window.CSRF_TOKEN) || '';
+            if (token) {
+                opts.headers['X-CSRF-Token'] = token;
+            }
+        }
+
+        // Serializar body si es objeto
         if (options.body && typeof options.body !== 'string') {
             opts.body = JSON.stringify(options.body);
         }
+
         const res = await fetch(url, opts);
         let data = null;
         try { data = await res.json(); } catch (e) { /* noop */ }
-        if (res.status === 401) {
-            // Sesión expirada o no autenticado → mandar al login
+
+        // ------------------------------------------------------------
+        // Sesión expirada / no autenticado → redirigir al login
+        // SALVO si se pidió explícitamente skipAuthRedirect (ej. login)
+        // ------------------------------------------------------------
+        if (res.status === 401 && !skipAuthRedirect) {
             const path = window.location.pathname;
             const inPublic = path.includes('/public/');
-            // Calcular la ruta al login a partir de la raíz del proyecto
             const loginUrl = inPublic
                 ? path.replace(/\/public\/.*$/, '/public/login.php')
                 : path.replace(/\/[^/]*$/, '/public/login.php');
             window.location.href = loginUrl;
             return;
         }
+
         if (!res.ok) {
+            // Si skipAuthRedirect, propagar el error real en lugar de undefined
             throw new Error((data && data.error) || `HTTP ${res.status}`);
         }
+
+        // ------------------------------------------------------------
+        // Si el servidor rotó el token CSRF, actualizarlo en memoria.
+        // (Ocurre tras login, cambio de contraseña, etc.)
+        // ------------------------------------------------------------
+        if (data && typeof data.csrf_token === 'string' && data.csrf_token.length > 0) {
+            window.CSRF_TOKEN = data.csrf_token;
+        }
+
         return data;
     }
 
