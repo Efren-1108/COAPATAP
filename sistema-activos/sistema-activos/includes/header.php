@@ -30,8 +30,8 @@ $esSuper = $user ? $user['es_superusuario'] : false;
     <link rel="stylesheet" href="<?= e($assetsBase) ?>css/styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
     <script>
-    window.API_BASE = <?= json_encode($apiBaseUrl) ?>;
-    window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
+        window.API_BASE = <?= json_encode($apiBaseUrl) ?>;
+        window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
     </script>
 </head>
 <body>
@@ -48,14 +48,13 @@ $esSuper = $user ? $user['es_superusuario'] : false;
             <nav class="nav" aria-label="Navegación principal">
                 <a class="nav__link <?= $current === 'index.php' ? 'is-active' : '' ?>" href="index.php">🔍 Consulta</a>
                 <?php if (has_permission('empleados')): ?>
-                    <a class="nav__link <?= $current === 'empleados.php' ? 'is-active' : '' ?>" href="empleados.php">👥 Empleados</a>
+                    <a class="nav__link <?= in_array($current, ['empleados.php', 'areas.php']) ? 'is-active' : '' ?>" href="empleados.php">👥 Empleados y Áreas</a>
                 <?php endif; ?>
                 <?php if (has_permission('activos')): ?>
                     <a class="nav__link <?= $current === 'activos.php' ? 'is-active' : '' ?>" href="activos.php">📦 Activos</a>
                 <?php endif; ?>
                 <?php if ($esSuper): ?>
                     <a class="nav__link <?= $current === 'usuarios.php' ? 'is-active' : '' ?>" href="usuarios.php">🔐 Usuarios</a>
-                    <a class="nav__link <?= $current === 'areas.php' ? 'is-active' : '' ?>" href="areas.php">🏢 Áreas</a>
                     <a class="nav__link <?= $current === 'roles.php' ? 'is-active' : '' ?>" href="roles.php">🛡️ Roles</a>
                 <?php endif; ?>
             </nav>

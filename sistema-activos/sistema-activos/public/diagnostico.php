@@ -12,6 +12,7 @@ $page_js    = '';
 require_once __DIR__ . '/../config/config.php';
 
 $checks = [];
+$pdo = null; // Se asigna en el bloque try/catch de la conexion
 
 // ============ 1) PHP ============
 $checks[] = [
@@ -146,7 +147,10 @@ foreach ($endpoints as [$url, $label]) {
         $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $err  = curl_error($ch) ?: '';
-        curl_close($ch);
+        // curl_close está deprecado en PHP 8.5; en versiones anteriores lo cerramos.
+        if (PHP_VERSION_ID < 80500) {
+            curl_close($ch);
+        }
     } else {
         $ctx = stream_context_create([
             'http' => [

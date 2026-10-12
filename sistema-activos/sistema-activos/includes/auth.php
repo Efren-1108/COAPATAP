@@ -43,8 +43,7 @@ if (!function_exists('is_ajax_request')) {
  * Carga (o recarga desde BD) los datos del usuario actualmente logueado.
  * Devuelve null si no hay sesión o el usuario ya no existe / está inactivo.
  */
-function load_current_user(int $userId): ?array
-{
+function load_current_user(int $userId): ?array{
     static $cache = null;
     $cacheKey = $userId . ':' . ($_SESSION['_loaded_at'] ?? '');
     if ($cache !== null && $cacheKey === ($cache['__k'] ?? '')) {

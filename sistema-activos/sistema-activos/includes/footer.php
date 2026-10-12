@@ -1,3 +1,14 @@
+<?php
+/**
+ * Footer compartido.
+ * Espera que la variable $assetsBase esté definida por header.php.
+ * Si no lo está (ej. incluido aislado), la calcula.
+ */
+if (!isset($assetsBase)) {
+    $assetsBase = base_url() . '/assets/';
+}
+?>    
+    
     </main>
 
     <footer class="footer">

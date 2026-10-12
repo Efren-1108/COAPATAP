@@ -909,3 +909,246 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     outline-offset: 2px;
     border-radius: 4px;
 }
+
+/* =====================================================
+   Módulo combinado: Empleados y Áreas
+   - Tabs (pestañas)
+   - Cards de áreas expandibles
+   - Filas de empleados dentro de cada área
+   - Input con botón (select + ➕)
+   ===================================================== */
+
+/* ============ TABS / PESTAÑAS ============ */
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 2px solid var(--c-border);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.tab {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    background: transparent;
+    color: var(--c-muted);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: var(--transition);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.tab:hover { color: var(--c-text); }
+.tab.is-active {
+    color: var(--c-primary);
+    border-bottom-color: var(--c-primary);
+}
+.tab__count {
+    background: var(--c-bg);
+    color: var(--c-muted);
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.tab.is-active .tab__count {
+    background: var(--c-primary-light);
+    color: var(--c-primary-dark);
+}
+
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+/* ============ CARDS DE ÁREA ============ */
+.area-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: var(--transition);
+}
+.area-card:hover { box-shadow: var(--shadow); }
+
+.area-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: var(--c-surface);
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.area-card__header:hover { background: var(--c-bg); }
+
+.area-card__info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex: 1;
+    min-width: 0;
+}
+.area-card__icon {
+    font-size: 1.75rem;
+    flex-shrink: 0;
+}
+.area-card__body {
+    min-width: 0;
+    flex: 1;
+}
+.area-card__name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--c-text);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.area-card__meta {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    margin: 0.15rem 0 0;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.area-card__meta code {
+    background: var(--c-bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+.area-card__actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+.area-card__toggle {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--c-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+.area-card__toggle:hover { background: var(--c-border); }
+
+.area-card__content {
+    display: none;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--c-border);
+    background: var(--c-surface);
+}
+.area-card.is-open .area-card__content { display: block; }
+.area-card.is-open .area-card__toggle { transform: rotate(180deg); }
+
+.area-card__desc {
+    color: var(--c-muted);
+    font-size: 0.9rem;
+    margin: 0.85rem 0;
+    padding: 0.6rem 0.85rem;
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--c-primary);
+}
+
+.area-card__employees {
+    margin: 0.75rem 0;
+}
+
+.area-card__empty {
+    text-align: center;
+    padding: 1rem;
+    color: var(--c-muted);
+    font-size: 0.9rem;
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--c-border);
+    margin: 0.75rem 0;
+}
+
+.area-card__footer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--c-border);
+    flex-wrap: wrap;
+}
+
+/* ============ FILA DE EMPLEADO (dentro de un área) ============ */
+.employee-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--c-border);
+    gap: 0.75rem;
+    transition: var(--transition);
+}
+.employee-row:last-child { border-bottom: none; }
+.employee-row:hover { background: var(--c-bg); }
+
+.employee-row__info {
+    min-width: 0;
+    flex: 1;
+}
+.employee-row__nomina {
+    font-weight: 700;
+    color: var(--c-primary);
+    font-size: 0.85rem;
+    margin-right: 0.5rem;
+}
+.employee-row__name {
+    font-weight: 600;
+    color: var(--c-text);
+}
+.employee-row__cargo {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--c-muted);
+    margin-top: 0.15rem;
+}
+.employee-row__actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+/* ============ INPUT CON BOTÓN (select + ➕) ============ */
+.input-with-button {
+    display: flex;
+    gap: 0.4rem;
+    align-items: stretch;
+}
+.input-with-button .form-control {
+    flex: 1;
+    min-width: 0;
+}
+.input-with-button .btn {
+    padding: 0 0.75rem;
+    flex-shrink: 0;
+}
+
+/* ============ MODAL MINI ============ */
+.modal--mini { max-width: 480px; }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 720px) {
+    .area-card__header { flex-direction: column; align-items: stretch; }
+    .area-card__actions { justify-content: flex-end; }
+    .employee-row { flex-direction: column; align-items: stretch; }
+    .employee-row__actions { justify-content: flex-end; }
+    .input-with-button { flex-wrap: wrap; }
+}
