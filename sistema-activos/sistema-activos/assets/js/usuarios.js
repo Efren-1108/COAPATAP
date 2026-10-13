@@ -139,42 +139,77 @@ function cargarStats() {
 
 function render(lista) {
     if (!lista.length) {
-        tablaBody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state__icon">🔐</div>No hay usuarios. Pulsa "Nuevo usuario" para empezar.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state__icon">🔐</div>No hay usuarios. Pulsa "Nuevo usuario" para empezar.</div></td></tr>';
         return;
     }
     tablaBody.innerHTML = lista.map(u => {
+        // Rol badge
         const rolBadge = u.rol_clave === 'superusuario'
             ? '<span class="badge badge--super">🛡️ ' + App.esc(u.rol_nombre) + '</span>'
             : '<span class="badge badge--usuario">' + App.esc(u.rol_nombre) + '</span>';
+
+        // Área con icono
+        const areaTxt = u.area_nombre
+            ? '<span class="u-area">🏢 ' + App.esc(u.area_nombre) + '</span>'
+            : '<span class="u-area muted">— sin área —</span>';
+
+        // Contacto: usuario + correo
+        const correo = u.correo
+            ? `<span class="u-correo" title="${App.esc(u.correo)}">${App.esc(u.correo)}</span>`
+            : '<span class="u-correo muted">— sin correo —</span>';
+
+        // Estado
         const estadoBadge = u.estado
             ? '<span class="badge badge--active">Activo</span>'
             : '<span class="badge badge--inactive">Inactivo</span>';
-        const area = u.area_nombre
-            ? '🏢 ' + App.esc(u.area_nombre)
-            : '<span class="muted">—</span>';
+
+        // Último acceso compacto
         const ultimo = u.ultimo_acceso
-            ? new Date(u.ultimo_acceso).toLocaleString('es-MX')
+            ? formatFechaCorta(u.ultimo_acceso)
             : '<span class="muted">— nunca —</span>';
+
         return `
             <tr>
-                <td>${u.id}</td>
-                <td><strong>${App.esc(u.nombre_completo)}</strong></td>
-                <td><code>@${App.esc(u.nombre_usuario)}</code></td>
-                <td>${u.correo ? App.esc(u.correo) : '<span class="muted">—</span>'}</td>
-                <td>${rolBadge}</td>
-                <td>${area}</td>
+                <td class="u-id">${u.id}</td>
+                <td class="u-nombre">
+                    <strong title="${App.esc(u.nombre_completo)}">${App.esc(u.nombre_completo)}</strong>
+                </td>
+                <td class="u-contacto">
+                    <div class="u-usuario">@${App.esc(u.nombre_usuario)}</div>
+                    ${correo}
+                </td>
+                <td class="u-rolarea">
+                    <div>${rolBadge}</div>
+                    <div>${areaTxt}</div>
+                </td>
                 <td>${estadoBadge}</td>
-                <td>${ultimo}</td>
-                <td>
+                <td class="u-ultimo">${ultimo}</td>
+                <td class="table__col-actions">
                     <div class="table__actions">
-                        <button class="btn btn--ghost btn--sm" onclick="editar(${u.id})">✏️</button>
-                        <button class="btn btn--danger-outline btn--sm" onclick="abrirReset(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')">🔑</button>
-                        <button class="btn btn--danger btn--sm" onclick="eliminar(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')">🗑️</button>
+                        <button class="btn btn--ghost btn--sm" onclick="editar(${u.id})" title="Editar">✏️</button>
+                        <button class="btn btn--danger-outline btn--sm" onclick="abrirReset(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Restablecer contraseña">🔑</button>
+                        <button class="btn btn--danger btn--sm" onclick="eliminar(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+/**
+ * Formatea una fecha en formato compacto.
+ * Ej: "13 Oct, 15:22"
+ */
+function formatFechaCorta(value) {
+    if (!value) return '<span class="muted">—</span>';
+    const d = new Date(value);
+    if (isNaN(d)) return '<span class="muted">—</span>';
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const dia = d.getDate();
+    const mes = meses[d.getMonth()];
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `<span title="${d.toLocaleString('es-MX')}">${dia} ${mes}, ${hh}:${mm}</span>`;
 }
 
 busqueda.addEventListener('input', () => {

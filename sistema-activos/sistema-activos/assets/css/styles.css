@@ -1372,3 +1372,145 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     font-size: 0.92rem;
     white-space: nowrap;
 }
+
+/* =====================================================
+   Tabla de Usuarios — Optimizada y responsive
+   ===================================================== */
+
+.table--usuarios {
+    table-layout: auto;       /* dejar que el navegador ajuste */
+    min-width: 900px;         /* ancho mínimo para que no se aplaste */
+}
+
+/* Anchos sugeridos */
+.table--usuarios th:nth-child(1),
+.table--usuarios td:nth-child(1) { width: 50px; text-align: center; }
+
+.table--usuarios th:nth-child(2),
+.table--usuarios td:nth-child(2) { min-width: 160px; }
+
+.table--usuarios th:nth-child(3),
+.table--usuarios td:nth-child(3) { min-width: 180px; }
+
+.table--usuarios th:nth-child(4),
+.table--usuarios td:nth-child(4) { min-width: 170px; }
+
+.table--usuarios th:nth-child(5),
+.table--usuarios td:nth-child(5) { width: 100px; text-align: center; }
+
+.table--usuarios th:nth-child(6),
+.table--usuarios td:nth-child(6) { width: 130px; white-space: nowrap; }
+
+/* ============ Columna ID ============ */
+.u-id {
+    font-weight: 600;
+    color: var(--c-muted);
+    font-size: 0.85rem;
+}
+
+/* ============ Nombre ============ */
+.u-nombre strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+}
+
+/* ============ Contacto ============ */
+.u-contacto {
+    line-height: 1.3;
+}
+.u-usuario {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85rem;
+    color: var(--c-primary);
+    font-weight: 600;
+}
+.u-correo {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--c-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+/* ============ Rol / Área ============ */
+.u-rolarea {
+    line-height: 1.4;
+}
+.u-rolarea > div {
+    margin-bottom: 0.15rem;
+}
+.u-rolarea > div:last-child {
+    margin-bottom: 0;
+}
+.u-area {
+    font-size: 0.82rem;
+    color: var(--c-text);
+}
+
+/* ============ Último acceso ============ */
+.u-ultimo {
+    font-size: 0.85rem;
+    color: var(--c-text);
+    cursor: help;
+}
+
+/* ============ Columna de acciones (sticky) ============ */
+.table--usuarios .table__col-actions {
+    position: sticky;
+    right: 0;
+    background: var(--c-surface);
+    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.06);
+    z-index: 2;
+    text-align: right;
+    padding-right: 0.75rem;
+}
+.table--usuarios thead .table__col-actions {
+    background: var(--c-bg);
+    z-index: 3;
+}
+.table--usuarios tbody tr:hover .table__col-actions {
+    background: var(--c-primary-light);
+}
+
+/* Los botones de acción en una sola fila sin salirse */
+.table--usuarios .table__actions {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
+.table--usuarios .table__actions .btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    min-width: 32px;
+}
+
+/* ============ Responsive ============ */
+@media (max-width: 900px) {
+    .table--usuarios {
+        min-width: 100%;
+    }
+
+    /* Ocultar columnas menos críticas en pantallas chicas */
+    .table--usuarios th:nth-child(1),
+    .table--usuarios td:nth-child(1),
+    .table--usuarios th:nth-child(6),
+    .table--usuarios td:nth-child(6) {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    /* En móvil, ocultar también contacto y estado */
+    .table--usuarios th:nth-child(3),
+    .table--usuarios td:nth-child(3),
+    .table--usuarios th:nth-child(5),
+    .table--usuarios td:nth-child(5) {
+        display: none;
+    }
+}

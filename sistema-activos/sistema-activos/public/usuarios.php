@@ -22,18 +22,16 @@ require_once __DIR__ . '/../includes/header.php';
 <div id="stats" class="stats"></div>
 
 <div class="table-wrap">
-    <table class="table" id="tablaUsuarios">
+    <table class="table table--usuarios" id="tablaUsuarios">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Nombre completo</th>
-                <th>Usuario</th>
-                <th>Correo</th>
-                <th>Rol</th>
-                <th>Área</th>
-                <th>Estado</th>
-                <th>Último acceso</th>
-                <th class="no-print" style="text-align: right;">Acciones</th>
+                <th style="width: 50px;">ID</th>
+                <th>Nombre</th>
+                <th>Contacto</th>
+                <th>Rol / Área</th>
+                <th style="width: 100px;">Estado</th>
+                <th style="width: 130px;">Último acceso</th>
+                <th class="no-print table__col-actions">Acciones</th>
             </tr>
         </thead>
         <tbody></tbody>
