@@ -15,31 +15,74 @@ require_once __DIR__ . '/../includes/header.php';
     <button class="btn btn--primary" id="btnNuevo">➕ Nuevo activo</button>
 </section>
 
-<div class="toolbar no-print">
+<!-- ============ TABS ============ -->
+<div class="tabs" role="tablist">
+    <button class="tab is-active" data-tab="areas" role="tab">
+        🏢 Por área <span class="tab__count" id="countAreas">0</span>
+    </button>
+    <button class="tab" data-tab="empleados" role="tab">
+        👥 Por empleado <span class="tab__count" id="countEmpleados">0</span>
+    </button>
+    <button class="tab" data-tab="todos" role="tab">
+        📦 Todos <span class="tab__count" id="countTodos">0</span>
+    </button>
+    <button class="tab" data-tab="stats" role="tab">
+        📊 Estadísticas
+    </button>
+</div>
+
+<!-- ============ FILTROS GLOBALES ============ -->
+<div class="toolbar no-print" id="toolbarActivos">
     <input type="text" id="busqueda" placeholder="🔎 Buscar por descripción, inventario, marca, modelo, serie...">
+    <select id="filtroArea">
+        <option value="">🏢 Todas las áreas</option>
+    </select>
+    <select id="filtroEmpleado">
+        <option value="">👤 Todos los empleados</option>
+    </select>
+    <button class="btn btn--ghost btn--sm" id="btnExpandirTodo" title="Expandir todo">⬇ Expandir</button>
+    <button class="btn btn--ghost btn--sm" id="btnContraerTodo" title="Contraer todo">⬆ Contraer</button>
 </div>
 
-<div id="stats" class="stats"></div>
-
-<div class="table-wrap">
-    <table class="table" id="tablaActivos">
-        <thead>
-            <tr>
-                <th>Descripción</th>
-                <th>Inventario</th>
-                <th>Marca</th>
-                <th>Modelo</th>
-                <th>Costo</th>
-                <th>Asignado a</th>
-                <th>Foto</th>
-                <th class="no-print" style="text-align: right;">Acciones</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<!-- ============ PANEL: POR ÁREA ============ -->
+<div class="tab-panel is-active" id="panelAreas" data-panel="areas">
+    <div id="listaAreasConActivos"></div>
 </div>
 
-<!-- Modal de edición -->
+<!-- ============ PANEL: POR EMPLEADO ============ -->
+<div class="tab-panel" id="panelEmpleados" data-panel="empleados">
+    <div id="listaEmpleadosConActivos"></div>
+</div>
+
+<!-- ============ PANEL: TODOS ============ -->
+<div class="tab-panel" id="panelTodos" data-panel="todos">
+    <div id="statsResumen" class="stats"></div>
+    <div class="table-wrap">
+        <table class="table" id="tablaActivos">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Inventario</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Costo</th>
+                    <th>Asignado a</th>
+                    <th>Área</th>
+                    <th>Foto</th>
+                    <th class="no-print" style="text-align: right;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============ PANEL: ESTADÍSTICAS ============ -->
+<div class="tab-panel" id="panelStats" data-panel="stats">
+    <div id="statsDashboard"></div>
+</div>
+
+<!-- ============ MODAL: ACTIVO ============ -->
 <div class="modal-backdrop" id="activoModal">
     <div class="modal">
         <form id="activoForm" enctype="multipart/form-data" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
@@ -108,7 +151,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <div id="imagenPreview" class="image-preview__placeholder">Sin imagen</div>
                             <div>
                                 <input type="file" name="imagen" id="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
-                                <span class="form-text">Formatos: JPG, PNG, GIF, WEBP. Máx. 5 MB.</span>
+                                <span class="form-text">Formatos: JPG, PNG, GIF, WEBP. Máx. 50 MB.</span>
                             </div>
                         </div>
                     </div>
@@ -124,7 +167,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<!-- Modal Visor de Imagenes -->
+<!-- ============ MODAL: VISOR DE IMÁGENES ============ -->
 <div class="modal-backdrop" id="imageViewerModal">
     <div class="modal modal--image-viewer">
         <div class="modal__header">
@@ -145,7 +188,6 @@ document.getElementById('empleado_id').addEventListener('change', function() {
     const obs = document.querySelector('textarea[name="observaciones"]');
     if (this.value && (!obs.value || obs.value.trim() === '')) {
         const txt = this.options[this.selectedIndex].text;
-        // Tomar solo el nombre entre [nómina] y — cargo
         const match = txt.match(/\]\s+(.+?)\s+—/);
         if (match) {
             obs.value = 'ASIGNADO A ' + match[1];
