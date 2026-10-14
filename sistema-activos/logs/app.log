@@ -172,3 +172,8 @@ CONTEXT:  portal sin nombre, parámetro 3 = ''
 CONTEXT:  portal sin nombre, parámetro 3 = ''
 [2026-10-04 19:43:04] [INFO] rol actualizado: id=3
 [2026-10-05 11:18:55] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-05 11:27:56] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-05 11:30:23] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-05 11:34:44] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-05 11:35:09] [INFO] auth.login usuario=admin rol=superusuario
+[2026-10-12 21:11:25] [INFO] auth.login usuario=admin rol=superusuario
