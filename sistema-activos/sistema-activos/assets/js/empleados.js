@@ -1,12 +1,16 @@
 /* =====================================================
    empleados.js — Módulo combinado: Áreas + Empleados
+   Con soporte de Adscripciones (jerarquía)
    ===================================================== */
 
-// ============ REFERENCIAS GLOBALES ============
+// ============ REFERENCIAS ============
 const listaAreas          = document.getElementById('listaAreas');
 const tablaEmpleados      = document.querySelector('#tablaEmpleados tbody');
 const busquedaAreas       = document.getElementById('busquedaAreas');
 const busquedaEmpleados   = document.getElementById('busquedaEmpleados');
+const filtroAdscAreas     = document.getElementById('filtroAdscripcionAreas');
+const filtroAdscEmp       = document.getElementById('filtroAdscripcionEmpleados');
+const filtroAreaEmp       = document.getElementById('filtroAreaEmpleados');
 const btnNuevaArea        = document.getElementById('btnNuevaArea');
 const btnNuevoEmpleado    = document.getElementById('btnNuevoEmpleado');
 
@@ -14,22 +18,26 @@ const empleadoForm        = document.getElementById('empleadoForm');
 const empleadoModalTitle  = document.getElementById('modalTitleEmpleado');
 const formErrorEmpleado   = document.getElementById('formErrorEmpleado');
 const selectAreaEmpleado  = document.getElementById('selectAreaEmpleado');
+const hintAdscEmpleado    = document.getElementById('hintAdscripcionEmpleado');
 
 const areaForm            = document.getElementById('areaForm');
 const areaModalTitle      = document.getElementById('modalTitleArea');
 const formErrorArea       = document.getElementById('formErrorArea');
+const selectAdscArea      = document.getElementById('selectAdscripcionArea');
 
 const areaInlineForm      = document.getElementById('areaInlineForm');
 const formErrorAreaInline = document.getElementById('formErrorAreaInline');
 const btnNuevaAreaInline  = document.getElementById('btnNuevaAreaInline');
+const selectAdscInline    = document.getElementById('selectAdscripcionInline');
 
 const countAreas          = document.getElementById('countAreas');
 const countEmpleados      = document.getElementById('countEmpleados');
 
 // ============ ESTADO ============
-let areasCache      = [];
-let empleadosCache  = [];
-let areasExpandidas = new Set(); // IDs de áreas abiertas
+let adscripcionesCache = [];
+let areasCache         = [];
+let empleadosCache     = [];
+let areasExpandidas    = new Set();
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', init);
@@ -42,25 +50,26 @@ async function init() {
 
 async function cargarTodo() {
     try {
-        await Promise.all([cargarAreas(), cargarEmpleados()]);
+        const [resAdsc, resAreas, resEmp] = await Promise.all([
+            App.api('adscripciones.php'),
+            App.api('areas.php'),
+            App.api('empleados.php'),
+        ]);
+        if (!resAdsc.ok)  throw new Error(resAdsc.error);
+        if (!resAreas.ok) throw new Error(resAreas.error);
+        if (!resEmp.ok)   throw new Error(resEmp.error);
+
+        adscripcionesCache = resAdsc.data.filter(a => a.activo);
+        areasCache         = resAreas.data.filter(a => a.activo);
+        empleadosCache     = resEmp.data;
+
+        llenarFiltros();
         renderAreas();
         renderEmpleados();
         actualizarContadores();
     } catch (err) {
         App.toast(err.message, 'error');
     }
-}
-
-async function cargarAreas() {
-    const res = await App.api('areas.php');
-    if (!res.ok) throw new Error(res.error);
-    areasCache = res.data.filter(a => a.activo);
-}
-
-async function cargarEmpleados() {
-    const res = await App.api('empleados.php');
-    if (!res.ok) throw new Error(res.error);
-    empleadosCache = res.data;
 }
 
 // ============ TABS ============
@@ -86,6 +95,9 @@ function wireEvents() {
 
     busquedaAreas.addEventListener('input', renderAreas);
     busquedaEmpleados.addEventListener('input', renderEmpleados);
+    filtroAdscAreas.addEventListener('change', renderAreas);
+    filtroAdscEmp.addEventListener('change', renderEmpleados);
+    filtroAreaEmp.addEventListener('change', renderEmpleados);
 
     areaForm.addEventListener('submit', onSubmitArea);
     empleadoForm.addEventListener('submit', onSubmitEmpleado);
@@ -94,27 +106,63 @@ function wireEvents() {
     btnNuevaAreaInline.addEventListener('click', () => {
         areaInlineForm.reset();
         formErrorAreaInline.style.display = 'none';
+        llenarSelectAdscripciones(selectAdscInline, null);
         App.openModal('areaInlineModal');
     });
 
-    // Delegación de clicks en los cards de áreas
+    // Al cambiar el área en el modal de empleado, mostrar la adscripción
+    selectAreaEmpleado.addEventListener('change', actualizarHintAdscEmpleado);
+
     listaAreas.addEventListener('click', onAreaCardClick);
+}
+
+// ============ LLENAR FILTROS Y SELECTS ============
+function llenarFiltros() {
+    // Filtro de adscripciones para áreas
+    const optsAdsc = ['<option value="">🏛️ Todas las adscripciones</option>']
+        .concat(adscripcionesCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`));
+    filtroAdscAreas.innerHTML = optsAdsc.join('');
+    filtroAdscEmp.innerHTML = optsAdsc.join('');
+
+    // Filtro de áreas para empleados
+    const optsAreas = ['<option value="">🏢 Todas las áreas</option>']
+        .concat(areasCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`));
+    filtroAreaEmp.innerHTML = optsAreas.join('');
+}
+
+function llenarSelectAdscripciones(select, selectedId = null) {
+    const opts = ['<option value="">— Selecciona una adscripción —</option>']
+        .concat(adscripcionesCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => `<option value="${a.id}" ${selectedId === a.id ? 'selected' : ''}>${App.esc(a.nombre)}</option>`));
+    select.innerHTML = opts.join('');
 }
 
 // ============ RENDER: ÁREAS ============
 function renderAreas() {
     const q = (busquedaAreas.value || '').toLowerCase().trim();
-    const filtradas = q
-        ? areasCache.filter(a =>
+    const filtroAdsc = filtroAdscAreas.value ? parseInt(filtroAdscAreas.value, 10) : null;
+
+    let filtradas = areasCache;
+    if (filtroAdsc !== null) {
+        filtradas = filtradas.filter(a => a.adscripcion_id === filtroAdsc);
+    }
+    if (q) {
+        filtradas = filtradas.filter(a =>
             a.clave.toLowerCase().includes(q) ||
-            a.nombre.toLowerCase().includes(q))
-        : areasCache;
+            a.nombre.toLowerCase().includes(q)
+        );
+    }
 
     if (!filtradas.length) {
         listaAreas.innerHTML = `
             <div class="card empty-state">
                 <div class="empty-state__icon">🏢</div>
-                <p>No hay áreas registradas. Pulsa "Nueva área" para empezar.</p>
+                <p>No hay áreas que coincidan.</p>
             </div>
         `;
         return;
@@ -127,6 +175,10 @@ function renderAreaCard(area) {
     const empleadosArea = empleadosCache.filter(e => e.area_id === area.id);
     const isOpen = areasExpandidas.has(area.id);
     const numEmp = empleadosArea.length;
+
+    const adscBadge = area.adscripcion_nombre
+        ? `<span class="badge badge--adsc">🏛️ ${App.esc(area.adscripcion_nombre)}</span>`
+        : '<span class="badge badge--warning">Sin adscripción</span>';
 
     const empleadosHTML = numEmp === 0
         ? `<div class="area-card__empty">Sin empleados asignados a esta área.</div>`
@@ -159,6 +211,7 @@ function renderAreaCard(area) {
                         <h3 class="area-card__name">${App.esc(area.nombre)}</h3>
                         <div class="area-card__meta">
                             <code>${App.esc(area.clave)}</code>
+                            ${adscBadge}
                             <span class="badge">${numEmp} empleado${numEmp === 1 ? '' : 's'}</span>
                         </div>
                     </div>
@@ -191,38 +244,29 @@ function onAreaCardClick(e) {
     const areaCard = e.target.closest('.area-card');
     const areaId = areaCard ? parseInt(areaCard.dataset.areaId, 10) : null;
 
-    // Si el click fue en el header pero dentro de .area-card__actions, ignorar toggle
     const inActions = e.target.closest('.area-card__actions');
     if (action === 'toggle-area' && inActions) return;
 
     switch (action) {
         case 'toggle-area':
             if (areaId) {
-                if (areasExpandidas.has(areaId)) {
-                    areasExpandidas.delete(areaId);
-                } else {
-                    areasExpandidas.add(areaId);
-                }
+                if (areasExpandidas.has(areaId)) areasExpandidas.delete(areaId);
+                else areasExpandidas.add(areaId);
                 renderAreas();
             }
             break;
-
         case 'nuevo-empleado-area':
             abrirModalEmpleado(null, parseInt(target.dataset.areaId, 10));
             break;
-
         case 'editar-area':
             editarArea(parseInt(target.dataset.id, 10));
             break;
-
         case 'eliminar-area':
             eliminarArea(parseInt(target.dataset.id, 10), target.dataset.nombre);
             break;
-
         case 'editar-empleado':
             editarEmpleado(parseInt(target.dataset.id, 10));
             break;
-
         case 'eliminar-empleado':
             eliminarEmpleado(parseInt(target.dataset.id, 10), target.dataset.nombre);
             break;
@@ -232,40 +276,66 @@ function onAreaCardClick(e) {
 // ============ RENDER: EMPLEADOS (tabla plana) ============
 function renderEmpleados() {
     const q = (busquedaEmpleados.value || '').toLowerCase().trim();
-    const filtrados = q
-        ? empleadosCache.filter(e =>
+    const filtroAdsc = filtroAdscEmp.value ? parseInt(filtroAdscEmp.value, 10) : null;
+    const filtroArea = filtroAreaEmp.value ? parseInt(filtroAreaEmp.value, 10) : null;
+
+    let filtrados = empleadosCache;
+
+    if (filtroAdsc !== null) {
+        filtrados = filtrados.filter(e => {
+            const area = areasCache.find(a => a.id === e.area_id);
+            return area && area.adscripcion_id === filtroAdsc;
+        });
+    }
+    if (filtroArea !== null) {
+        filtrados = filtrados.filter(e => e.area_id === filtroArea);
+    }
+    if (q) {
+        filtrados = filtrados.filter(e =>
             String(e.numero_nomina).includes(q) ||
             e.nombre.toLowerCase().includes(q) ||
             e.cargo.toLowerCase().includes(q) ||
-            (e.area_nombre || '').toLowerCase().includes(q))
-        : empleadosCache;
+            (e.area_nombre || '').toLowerCase().includes(q) ||
+            (e.adscripcion_nombre || '').toLowerCase().includes(q)
+        );
+    }
 
     if (!filtrados.length) {
         tablaEmpleados.innerHTML = `
-            <tr><td colspan="5">
+            <tr><td colspan="6">
                 <div class="empty-state">
                     <div class="empty-state__icon">📭</div>
-                    No hay empleados. Pulsa "Nuevo empleado" para empezar.
+                    No hay empleados que coincidan.
                 </div>
             </td></tr>
         `;
         return;
     }
 
-    tablaEmpleados.innerHTML = filtrados.map(e => `
-        <tr>
-            <td><strong>${App.esc(e.numero_nomina)}</strong></td>
-            <td>${App.esc(e.nombre)}</td>
-            <td>${App.esc(e.cargo)}</td>
-            <td>${e.area_nombre ? '🏢 ' + App.esc(e.area_nombre) : '<span class="muted">— sin área —</span>'}</td>
-            <td style="text-align: right;">
-                <div class="table__actions">
-                    <button class="btn btn--ghost btn--sm" onclick="editarEmpleado(${e.id})">✏️</button>
-                    <button class="btn btn--danger btn--sm" onclick="eliminarEmpleado(${e.id}, '${App.esc(e.nombre).replace(/'/g, "\\'")}')">🗑️</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
+    tablaEmpleados.innerHTML = filtrados.map(e => {
+        const adscTxt = e.adscripcion_nombre
+            ? `🏛️ ${App.esc(e.adscripcion_nombre)}`
+            : '<span class="muted">— sin adscripción —</span>';
+        const areaTxt = e.area_nombre
+            ? `🏢 ${App.esc(e.area_nombre)}`
+            : '<span class="muted">— sin área —</span>';
+
+        return `
+            <tr>
+                <td><strong>${App.esc(e.numero_nomina)}</strong></td>
+                <td>${App.esc(e.nombre)}</td>
+                <td>${App.esc(e.cargo)}</td>
+                <td>${adscTxt}</td>
+                <td>${areaTxt}</td>
+                <td style="text-align: right;">
+                    <div class="table__actions">
+                        <button class="btn btn--ghost btn--sm" onclick="editarEmpleado(${e.id})">✏️</button>
+                        <button class="btn btn--danger btn--sm" onclick="eliminarEmpleado(${e.id}, '${App.esc(e.nombre).replace(/'/g, "\\'")}')">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function actualizarContadores() {
@@ -278,6 +348,7 @@ function abrirModalEmpleado(id = null, areaIdPredefinida = null) {
     empleadoForm.reset();
     empleadoForm.elements['id'].value = '';
     formErrorEmpleado.style.display = 'none';
+    hintAdscEmpleado.textContent = '';
 
     llenarSelectAreas(areaIdPredefinida);
 
@@ -286,17 +357,35 @@ function abrirModalEmpleado(id = null, areaIdPredefinida = null) {
         cargarEmpleadoEnForm(id);
     } else {
         empleadoModalTitle.textContent = '➕ Nuevo empleado';
+        actualizarHintAdscEmpleado();
     }
 
     App.openModal('empleadoModal');
 }
 
 function llenarSelectAreas(selectedId = null) {
-    const opciones = ['<option value="">— Selecciona un área —</option>']
-        .concat(areasCache.map(a =>
-            `<option value="${a.id}" ${selectedId === a.id ? 'selected' : ''}>${App.esc(a.nombre)}</option>`
-        ));
-    selectAreaEmpleado.innerHTML = opciones.join('');
+    const opts = ['<option value="">— Selecciona un área —</option>']
+        .concat(areasCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => {
+                const adsc = a.adscripcion_nombre ? ` (${a.adscripcion_nombre})` : '';
+                return `<option value="${a.id}" ${selectedId === a.id ? 'selected' : ''}>${App.esc(a.nombre)}${adsc}</option>`;
+            }));
+    selectAreaEmpleado.innerHTML = opts.join('');
+}
+
+function actualizarHintAdscEmpleado() {
+    const areaId = parseInt(selectAreaEmpleado.value, 10);
+    if (!areaId) {
+        hintAdscEmpleado.textContent = '';
+        return;
+    }
+    const area = areasCache.find(a => a.id === areaId);
+    if (area && area.adscripcion_nombre) {
+        hintAdscEmpleado.textContent = `🏛️ Adscripción: ${area.adscripcion_nombre}`;
+    } else {
+        hintAdscEmpleado.textContent = '⚠️ Esta área no tiene adscripción asignada.';
+    }
 }
 
 async function cargarEmpleadoEnForm(id) {
@@ -312,7 +401,6 @@ async function cargarEmpleadoEnForm(id) {
 
         // Asegurar que el área esté en el select
         if (e.area_id) {
-            // Si el área no está en el select (ej. inactiva), agregarla
             if (!areasCache.find(a => a.id === e.area_id)) {
                 const opt = document.createElement('option');
                 opt.value = e.area_id;
@@ -323,6 +411,8 @@ async function cargarEmpleadoEnForm(id) {
         } else {
             selectAreaEmpleado.value = '';
         }
+
+        actualizarHintAdscEmpleado();
     } catch (err) {
         App.toast(err.message, 'error');
         App.closeModal('empleadoModal');
@@ -352,10 +442,7 @@ async function onSubmitEmpleado(e) {
         if (!res.ok) throw new Error(res.error);
         App.toast(res.message, 'success');
         App.closeModal('empleadoModal');
-        await cargarEmpleados();
-        renderAreas();
-        renderEmpleados();
-        actualizarContadores();
+        await cargarTodo();
     } catch (err) {
         mostrarErrorEmpleado(err.message);
     }
@@ -372,6 +459,10 @@ function abrirModalArea(id = null) {
     areaForm.elements['id'].value = '';
     areaForm.elements['activo'].checked = true;
     formErrorArea.style.display = 'none';
+
+    // Pre-seleccionar la adscripción por defecto si solo hay una
+    const defaultAdsc = adscripcionesCache.length === 1 ? adscripcionesCache[0].id : null;
+    llenarSelectAdscripciones(selectAdscArea, defaultAdsc);
 
     if (id) {
         areaModalTitle.textContent = '✏️ Editar área';
@@ -393,6 +484,8 @@ async function cargarAreaEnForm(id) {
         areaForm.elements['nombre'].value = a.nombre;
         areaForm.elements['descripcion'].value = a.descripcion || '';
         areaForm.elements['activo'].checked = !!a.activo;
+        // Seleccionar adscripción
+        llenarSelectAdscripciones(selectAdscArea, a.adscripcion_id);
     } catch (err) {
         App.toast(err.message, 'error');
         App.closeModal('areaModal');
@@ -403,14 +496,16 @@ async function onSubmitArea(e) {
     e.preventDefault();
     const id = areaForm.elements['id'].value;
     const data = {
-        clave:       areaForm.elements['clave'].value.trim(),
-        nombre:      areaForm.elements['nombre'].value.trim(),
-        descripcion: areaForm.elements['descripcion'].value.trim(),
-        activo:      areaForm.elements['activo'].checked,
+        clave:          areaForm.elements['clave'].value.trim(),
+        nombre:         areaForm.elements['nombre'].value.trim(),
+        descripcion:    areaForm.elements['descripcion'].value.trim(),
+        adscripcion_id: areaForm.elements['adscripcion_id'].value || null,
+        activo:         areaForm.elements['activo'].checked,
     };
 
     if (data.clave.length < 2)  return mostrarErrorArea('La clave es obligatoria');
     if (data.nombre.length < 2) return mostrarErrorArea('El nombre es obligatorio');
+    if (!data.adscripcion_id)   return mostrarErrorArea('Selecciona una adscripción');
 
     const method = id ? 'PUT' : 'POST';
     const url    = id ? `areas.php?id=${id}` : 'areas.php';
@@ -420,9 +515,7 @@ async function onSubmitArea(e) {
         if (!res.ok) throw new Error(res.error);
         App.toast(res.message, 'success');
         App.closeModal('areaModal');
-        await cargarAreas();
-        renderAreas();
-        actualizarContadores();
+        await cargarTodo();
     } catch (err) {
         mostrarErrorArea(err.message);
     }
@@ -437,13 +530,15 @@ function mostrarErrorArea(msg) {
 async function onSubmitAreaInline(e) {
     e.preventDefault();
     const data = {
-        clave:  areaInlineForm.elements['clave'].value.trim(),
-        nombre: areaInlineForm.elements['nombre'].value.trim(),
-        activo: true,
+        clave:          areaInlineForm.elements['clave'].value.trim(),
+        nombre:         areaInlineForm.elements['nombre'].value.trim(),
+        adscripcion_id: areaInlineForm.elements['adscripcion_id'].value || null,
+        activo:         true,
     };
 
     if (data.clave.length < 2)  return mostrarErrorAreaInline('La clave es obligatoria');
     if (data.nombre.length < 2) return mostrarErrorAreaInline('El nombre es obligatorio');
+    if (!data.adscripcion_id)   return mostrarErrorAreaInline('Selecciona una adscripción');
 
     try {
         const res = await App.api('areas.php', { method: 'POST', body: data });
@@ -452,10 +547,10 @@ async function onSubmitAreaInline(e) {
         App.toast('Área creada. Ahora puedes asignarla.', 'success');
         App.closeModal('areaInlineModal');
 
-        await cargarAreas();
-        // Seleccionar la nueva área en el select del empleado        selectAreaEmpleado.value = res.id;
-        renderAreas();
-        actualizarContadores();
+        await cargarTodo();
+        // Seleccionar el área nueva en el modal de empleado
+        llenarSelectAreas(res.id);
+        actualizarHintAdscEmpleado();
     } catch (err) {
         mostrarErrorAreaInline(err.message);
     }
@@ -494,15 +589,12 @@ async function eliminarEmpleado(id, nombre) {
         const res = await App.api(`empleados.php?id=${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(res.error);
         App.toast(res.message, 'success');
-        await cargarEmpleados();
-        renderAreas();
-        renderEmpleados();
-        actualizarContadores();
+        await cargarTodo();
     } catch (err) {
         App.toast(err.message, 'error');
     }
 }
 
-// ============ EXPONER AL WINDOW (para onclick inline de la tabla) ============
+// ============ EXPONER AL WINDOW ============
 window.editarEmpleado = editarEmpleado;
 window.eliminarEmpleado = eliminarEmpleado;

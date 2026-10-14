@@ -17,7 +17,10 @@ require_once __DIR__ . '/../includes/header.php';
 
 <!-- ============ TABS ============ -->
 <div class="tabs" role="tablist">
-    <button class="tab is-active" data-tab="areas" role="tab">
+    <button class="tab is-active" data-tab="adscripciones" role="tab">
+        🏛️ Por adscripción <span class="tab__count" id="countAdsc">0</span>
+    </button>
+    <button class="tab" data-tab="areas" role="tab">
         🏢 Por área <span class="tab__count" id="countAreas">0</span>
     </button>
     <button class="tab" data-tab="empleados" role="tab">
@@ -34,6 +37,9 @@ require_once __DIR__ . '/../includes/header.php';
 <!-- ============ FILTROS GLOBALES ============ -->
 <div class="toolbar no-print" id="toolbarActivos">
     <input type="text" id="busqueda" placeholder="🔎 Buscar por descripción, inventario, marca, modelo, serie...">
+    <select id="filtroAdscripcion">
+        <option value="">🏛️ Todas las adscripciones</option>
+    </select>
     <select id="filtroArea">
         <option value="">🏢 Todas las áreas</option>
     </select>
@@ -44,8 +50,13 @@ require_once __DIR__ . '/../includes/header.php';
     <button class="btn btn--ghost btn--sm" id="btnContraerTodo" title="Contraer todo">⬆ Contraer</button>
 </div>
 
+<!-- ============ PANEL: POR ADSCRIPCIÓN ============ -->
+<div class="tab-panel is-active" id="panelAdscripciones" data-panel="adscripciones">
+    <div id="listaAdscConActivos"></div>
+</div>
+
 <!-- ============ PANEL: POR ÁREA ============ -->
-<div class="tab-panel is-active" id="panelAreas" data-panel="areas">
+<div class="tab-panel" id="panelAreas" data-panel="areas">
     <div id="listaAreasConActivos"></div>
 </div>
 
@@ -66,8 +77,9 @@ require_once __DIR__ . '/../includes/header.php';
                     <th>Marca</th>
                     <th>Modelo</th>
                     <th>Costo</th>
-                    <th>Asignado a</th>
+                    <th>Adscripción</th>
                     <th>Área</th>
+                    <th>Asignado a</th>
                     <th>Foto</th>
                     <th class="no-print" style="text-align: right;">Acciones</th>
                 </tr>
@@ -138,7 +150,7 @@ require_once __DIR__ . '/../includes/header.php';
                         <select name="empleado_id" id="empleado_id" class="form-control">
                             <option value="">— Sin asignar —</option>
                         </select>
-                        <span class="form-text">Selecciona un empleado. Al elegir, el campo observaciones se rellenará automáticamente.</span>
+                        <span class="form-text" id="hintAdscActivo"></span>
                     </div>
                     <div class="form-group form-group--full">
                         <label>Observaciones</label>
@@ -181,17 +193,3 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-<script>
-// Autocompletar observaciones al elegir un resguardante
-document.getElementById('empleado_id').addEventListener('change', function() {
-    const obs = document.querySelector('textarea[name="observaciones"]');
-    if (this.value && (!obs.value || obs.value.trim() === '')) {
-        const txt = this.options[this.selectedIndex].text;
-        const match = txt.match(/\]\s+(.+?)\s+—/);
-        if (match) {
-            obs.value = 'ASIGNADO A ' + match[1];
-        }
-    }
-});
-</script>

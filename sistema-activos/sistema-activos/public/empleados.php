@@ -10,7 +10,7 @@ require_once __DIR__ . '/../includes/header.php';
 <section class="page-header">
     <div>
         <h1>🏢 Empleados y Áreas</h1>
-        <p>Administra los departamentos y su personal. Asigna empleados a cada área.</p>
+        <p>Administra los departamentos y su personal. Cada área pertenece a una adscripción.</p>
     </div>
 </section>
 
@@ -27,6 +27,9 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="tab-panel is-active" id="panelAreas" data-panel="areas">
     <div class="toolbar no-print">
         <input type="text" id="busquedaAreas" placeholder="🔎 Buscar área por clave o nombre...">
+        <select id="filtroAdscripcionAreas">
+            <option value="">🏛️ Todas las adscripciones</option>
+        </select>
         <button class="btn btn--primary" id="btnNuevaArea">➕ Nueva área</button>
     </div>
 
@@ -37,6 +40,12 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="tab-panel" id="panelEmpleados" data-panel="empleados">
     <div class="toolbar no-print">
         <input type="text" id="busquedaEmpleados" placeholder="🔎 Buscar por nómina, nombre o cargo...">
+        <select id="filtroAdscripcionEmpleados">
+            <option value="">🏛️ Todas las adscripciones</option>
+        </select>
+        <select id="filtroAreaEmpleados">
+            <option value="">🏢 Todas las áreas</option>
+        </select>
         <button class="btn btn--primary" id="btnNuevoEmpleado">➕ Nuevo empleado</button>
     </div>
 
@@ -47,6 +56,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <th>Nómina</th>
                     <th>Nombre</th>
                     <th>Cargo</th>
+                    <th>Adscripción</th>
                     <th>Área</th>
                     <th class="no-print" style="text-align: right;">Acciones</th>
                 </tr>
@@ -79,6 +89,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <button type="button" class="btn btn--ghost" id="btnNuevaAreaInline"
                                     title="Crear nueva área">➕</button>
                         </div>
+                        <span class="form-text" id="hintAdscripcionEmpleado"></span>
                     </div>
                     <div class="form-group form-group--full">
                         <label>Nombre completo <span class="req">*</span></label>
@@ -120,6 +131,11 @@ require_once __DIR__ . '/../includes/header.php';
                         <input type="text" name="nombre" class="form-control" maxlength="150" required>
                     </div>
                     <div class="form-group form-group--full">
+                        <label>Adscripción <span class="req">*</span></label>
+                        <select name="adscripcion_id" id="selectAdscripcionArea" class="form-control" required></select>
+                        <span class="form-text">¿A qué sucursal/plantel pertenece esta área?</span>
+                    </div>
+                    <div class="form-group form-group--full">
                         <label>Descripción</label>
                         <textarea name="descripcion" class="form-control" rows="2" maxlength="500"></textarea>
                     </div>
@@ -157,6 +173,10 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="form-group">
                         <label>Nombre <span class="req">*</span></label>
                         <input type="text" name="nombre" class="form-control" maxlength="150" required>
+                    </div>
+                    <div class="form-group form-group--full">
+                        <label>Adscripción <span class="req">*</span></label>
+                        <select name="adscripcion_id" id="selectAdscripcionInline" class="form-control" required></select>
                     </div>
                 </div>
                 <div class="form-error" id="formErrorAreaInline" style="display:none;"></div>

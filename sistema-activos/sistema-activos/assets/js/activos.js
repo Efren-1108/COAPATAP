@@ -1,27 +1,32 @@
 /* =====================================================
    activos.js — Gestión de activos con vistas jerárquicas
+   Jerarquía: Adscripción → Área → Empleado → Activo
    ===================================================== */
 
 // ============ REFERENCIAS ============
-const form          = document.getElementById('activoForm');
-const tablaBody     = document.querySelector('#tablaActivos tbody');
-const modalTitle    = document.getElementById('modalTitle');
-const formError     = document.getElementById('formError');
-const busqueda      = document.getElementById('busqueda');
-const filtroArea    = document.getElementById('filtroArea');
-const filtroEmpleado= document.getElementById('filtroEmpleado');
-const selectEmp     = document.getElementById('empleado_id');
-const imgInput      = document.getElementById('imagen');
-const imgPreview    = document.getElementById('imagenPreview');
-const btnNuevo      = document.getElementById('btnNuevo');
-const btnExpandir   = document.getElementById('btnExpandirTodo');
-const btnContraer   = document.getElementById('btnContraerTodo');
+const form            = document.getElementById('activoForm');
+const tablaBody       = document.querySelector('#tablaActivos tbody');
+const modalTitle      = document.getElementById('modalTitle');
+const formError       = document.getElementById('formError');
+const busqueda        = document.getElementById('busqueda');
+const filtroAdsc      = document.getElementById('filtroAdscripcion');
+const filtroArea      = document.getElementById('filtroArea');
+const filtroEmpleado  = document.getElementById('filtroEmpleado');
+const selectEmp       = document.getElementById('empleado_id');
+const hintAdscActivo  = document.getElementById('hintAdscActivo');
+const imgInput        = document.getElementById('imagen');
+const imgPreview      = document.getElementById('imagenPreview');
+const btnNuevo        = document.getElementById('btnNuevo');
+const btnExpandir     = document.getElementById('btnExpandirTodo');
+const btnContraer     = document.getElementById('btnContraerTodo');
 
+const listaAdscConActivos       = document.getElementById('listaAdscConActivos');
 const listaAreasConActivos      = document.getElementById('listaAreasConActivos');
 const listaEmpleadosConActivos  = document.getElementById('listaEmpleadosConActivos');
 const statsResumen              = document.getElementById('statsResumen');
 const statsDashboard            = document.getElementById('statsDashboard');
 
+const countAdsc      = document.getElementById('countAdsc');
 const countAreas     = document.getElementById('countAreas');
 const countEmpleados = document.getElementById('countEmpleados');
 const countTodos     = document.getElementById('countTodos');
@@ -30,8 +35,10 @@ const countTodos     = document.getElementById('countTodos');
 let activosCache    = [];
 let empleadosCache  = [];
 let areasCache      = [];
-let areasExpandidas = new Set();
-let empleadosExpandidos = new Set();
+let adscCache       = [];
+
+// Sets de expansión (clave: 'adsc-5', 'area-3', 'emp-7', o '__sin_X__')
+let expandidos = new Set();
 
 // ============ INIT ============
 document.addEventListener('DOMContentLoaded', init);
@@ -44,31 +51,29 @@ async function init() {
 
 async function cargarTodo() {
     try {
-        await Promise.all([cargarAreas(), cargarEmpleados(), cargarActivos()]);
+        const [resAdsc, resAreas, resEmp, resAct] = await Promise.all([
+            App.api('adscripciones.php'),
+            App.api('areas.php'),
+            App.api('empleados.php'),
+            App.api('activos.php'),
+        ]);
+        if (!resAdsc.ok)  throw new Error(resAdsc.error);
+        if (!resAreas.ok) throw new Error(resAreas.error);
+        if (!resEmp.ok)   throw new Error(resEmp.error);
+        if (!resAct.ok)   throw new Error(resAct.error);
+
+        adscCache      = resAdsc.data.filter(a => a.activo);
+        areasCache     = resAreas.data.filter(a => a.activo);
+        empleadosCache = resEmp.data;
+        activosCache   = resAct.data;
+
         llenarFiltros();
+        llenarSelectEmpleados();
         renderTodo();
     } catch (err) {
         App.toast(err.message, 'error');
         console.error(err);
     }
-}
-
-async function cargarAreas() {
-    const res = await App.api('areas.php');
-    if (!res.ok) throw new Error(res.error);
-    areasCache = res.data.filter(a => a.activo);
-}
-
-async function cargarEmpleados() {
-    const res = await App.api('empleados.php');
-    if (!res.ok) throw new Error(res.error);
-    empleadosCache = res.data;
-}
-
-async function cargarActivos() {
-    const res = await App.api('activos.php');
-    if (!res.ok) throw new Error(res.error);
-    activosCache = res.data;
 }
 
 // ============ TABS ============
@@ -92,24 +97,36 @@ function wireEvents() {
     btnNuevo.addEventListener('click', () => abrirModalActivo());
 
     busqueda.addEventListener('input', renderTodo);
+    filtroAdsc.addEventListener('change', renderTodo);
     filtroArea.addEventListener('change', renderTodo);
     filtroEmpleado.addEventListener('change', renderTodo);
 
     btnExpandir.addEventListener('click', () => {
-        areasCache.forEach(a => areasExpandidas.add(a.id));
-        empleadosCache.forEach(e => empleadosExpandidos.add(e.id));
+        // Expandir todo lo que tenga contenido
+        activosCache.forEach(a => {
+            const adsc = getAdscDeActivo(a);
+            if (adsc) expandidos.add('adsc-' + adsc.id);
+            else expandidos.add('adsc-__sin__');
+
+            if (a.area_id) expandidos.add('area-' + a.area_id);
+            else expandidos.add('area-__sin__');
+
+            if (a.empleado_id) expandidos.add('emp-' + a.empleado_id);
+            else expandidos.add('emp-__sin__');
+        });
+        renderAdscConActivos();
         renderAreasConActivos();
         renderEmpleadosConActivos();
     });
 
     btnContraer.addEventListener('click', () => {
-        areasExpandidas.clear();
-        empleadosExpandidos.clear();
+        expandidos.clear();
+        renderAdscConActivos();
         renderAreasConActivos();
         renderEmpleadosConActivos();
     });
 
-    // Delegación de clicks en cards de áreas
+    listaAdscConActivos.addEventListener('click', onAdscCardClick);
     listaAreasConActivos.addEventListener('click', onAreaCardClick);
     listaEmpleadosConActivos.addEventListener('click', onEmpleadoCardClick);
 
@@ -125,47 +142,113 @@ function wireEvents() {
 
     form.addEventListener('submit', onSubmitActivo);
 
+    selectEmp.addEventListener('change', actualizarHintAdscActivo);
+
     // Autocompletar observaciones
     selectEmp.addEventListener('change', function() {
         const obs = form.querySelector('textarea[name="observaciones"]');
         if (this.value && (!obs.value || obs.value.trim() === '')) {
             const txt = this.options[this.selectedIndex].text;
             const match = txt.match(/\]\s+(.+?)\s+—/);
-            if (match) {
-                obs.value = 'ASIGNADO A ' + match[1];
-            }
+            if (match) obs.value = 'ASIGNADO A ' + match[1];
         }
     });
 }
 
-// ============ FILTROS ============
-function llenarFiltros() {
-    const areasUnicas = [...new Map(areasCache.map(a => [a.id, a])).values()]
-        .sort((a, b) => a.nombre.localeCompare(b.nombre));
-    filtroArea.innerHTML = '<option value="">🏢 Todas las áreas</option>' +
-        areasUnicas.map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`).join('');
-
-    const empOrdenados = [...empleadosCache].sort((a, b) => a.nombre.localeCompare(b.nombre));
-    filtroEmpleado.innerHTML = '<option value="">👤 Todos los empleados</option>' +
-        empOrdenados.map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)}</option>`).join('');
+// ============ UTILIDADES ============
+function getAdscDeActivo(a) {
+    // Prioridad: la del área del activo
+    if (a.area_id) {
+        const area = areasCache.find(x => x.id === a.area_id);
+        if (area && area.adscripcion_id) {
+            return adscCache.find(ad => ad.id === area.adscripcion_id) || null;
+        }
+    }
+    // Fallback: la del área del empleado
+    if (a.empleado_id) {
+        const emp = empleadosCache.find(x => x.id === a.empleado_id);
+        if (emp && emp.area_id) {
+            const area = areasCache.find(x => x.id === emp.area_id);
+            if (area && area.adscripcion_id) {
+                return adscCache.find(ad => ad.id === area.adscripcion_id) || null;
+            }
+        }
+    }
+    return null;
 }
 
-// ============ FILTRADO ============
+function getAreaDeActivo(a) {
+    if (a.area_id) return areasCache.find(x => x.id === a.area_id) || null;
+    if (a.empleado_id) {
+        const emp = empleadosCache.find(x => x.id === a.empleado_id);
+        if (emp && emp.area_id) return areasCache.find(x => x.id === emp.area_id) || null;
+    }
+    return null;
+}
+
+// ============ FILTROS ============
+function llenarFiltros() {
+    const optsAdsc = ['<option value="">🏛️ Todas las adscripciones</option>']
+        .concat(adscCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`));
+    filtroAdsc.innerHTML = optsAdsc.join('');
+
+    const optsAreas = ['<option value="">🏢 Todas las áreas</option>']
+        .concat(areasCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`));
+    filtroArea.innerHTML = optsAreas.join('');
+
+    const optsEmp = ['<option value="">👤 Todos los empleados</option>']
+        .concat(empleadosCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)}</option>`));
+    filtroEmpleado.innerHTML = optsEmp.join('');
+}
+
+function llenarSelectEmpleados() {
+    const opts = ['<option value="">— Sin asignar —</option>']
+        .concat(empleadosCache
+            .sort((a, b) => a.nombre.localeCompare(b.nombre))
+            .map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)} — ${App.esc(e.cargo)}</option>`));
+    selectEmp.innerHTML = opts.join('');
+}
+
+function actualizarHintAdscActivo() {
+    const empId = parseInt(selectEmp.value, 10);
+    if (!empId) {
+        hintAdscActivo.textContent = '';
+        return;
+    }
+    const emp = empleadosCache.find(e => e.id === empId);
+    if (emp && emp.adscripcion_nombre) {
+        hintAdscActivo.textContent = `🏛️ Adscripción: ${emp.adscripcion_nombre}`;
+    } else {
+        hintAdscActivo.textContent = '⚠️ Este empleado no tiene adscripción asignada.';
+    }
+}
+
 function getActivosFiltrados() {
     const q = (busqueda.value || '').toLowerCase().trim();
+    const adscId = filtroAdsc.value ? parseInt(filtroAdsc.value, 10) : null;
     const areaId = filtroArea.value ? parseInt(filtroArea.value, 10) : null;
     const empId = filtroEmpleado.value ? parseInt(filtroEmpleado.value, 10) : null;
 
     return activosCache.filter(a => {
-        // Filtro por área
-        if (areaId !== null && a.area_id !== areaId) return false;
-        // Filtro por empleado
+        if (adscId !== null) {
+            const adsc = getAdscDeActivo(a);
+            if (!adsc || adsc.id !== adscId) return false;
+        }
+        if (areaId !== null) {
+            const ar = getAreaDeActivo(a);
+            if (!ar || ar.id !== areaId) return false;
+        }
         if (empId !== null && a.empleado_id !== empId) return false;
-        // Filtro por búsqueda
         if (q) {
             const campos = [
                 a.descripcion, a.num_inventario, a.marca, a.modelo, a.serie,
-                a.material, a.empleado_nombre, a.area_nombre
+                a.material, a.empleado_nombre, a.area_nombre, a.adscripcion_nombre,
             ].map(x => (x || '').toLowerCase());
             if (!campos.some(c => c.includes(q))) return false;
         }
@@ -176,7 +259,7 @@ function getActivosFiltrados() {
 // ============ RENDER: TODO ============
 function renderTodo() {
     const activosFiltrados = getActivosFiltrados();
-
+    renderAdscConActivos(activosFiltrados);
     renderAreasConActivos(activosFiltrados);
     renderEmpleadosConActivos(activosFiltrados);
     renderTablaTodos(activosFiltrados);
@@ -185,88 +268,224 @@ function renderTodo() {
 }
 
 function actualizarContadores(activosFiltrados = activosCache) {
-    const areasConActivos = new Set(activosFiltrados.filter(a => a.area_id).map(a => a.area_id));
-    const empConActivos = new Set(activosFiltrados.filter(a => a.empleado_id).map(a => a.empleado_id));
+    const adscConActivos = new Set();
+    const areasConActivos = new Set();
+    const empConActivos = new Set();
 
+    activosFiltrados.forEach(a => {
+        const adsc = getAdscDeActivo(a);
+        if (adsc) adscConActivos.add(adsc.id);
+        const ar = getAreaDeActivo(a);
+        if (ar) areasConActivos.add(ar.id);
+        if (a.empleado_id) empConActivos.add(a.empleado_id);
+    });
+
+    countAdsc.textContent = adscConActivos.size;
     countAreas.textContent = areasConActivos.size;
     countEmpleados.textContent = empConActivos.size;
     countTodos.textContent = activosFiltrados.length;
 }
 
-// ============ RENDER: POR ÁREA ============
-function renderAreasConActivos(activosFiltrados = null) {
+// ============ RENDER: POR ADSCRIPCIÓN ============
+function renderAdscConActivos(activosFiltrados = null) {
     if (!activosFiltrados) activosFiltrados = getActivosFiltrados();
 
-    // Agrupar por área
     const grupos = new Map();
-    areasCache.forEach(a => grupos.set(a.id, { area: a, activos: [] }));
+    adscCache.forEach(ad => grupos.set(ad.id, { adsc: ad, activos: [] }));
+    const sinAdsc = { adsc: null, activos: [] };
 
-    const sinArea = { area: null, activos: [] };
-
-    activosFiltrados.forEach(act => {
-        if (act.area_id && grupos.has(act.area_id)) {
-            grupos.get(act.area_id).activos.push(act);
+    activosFiltrados.forEach(a => {
+        const adsc = getAdscDeActivo(a);
+        if (adsc && grupos.has(adsc.id)) {
+            grupos.get(adsc.id).activos.push(a);
         } else {
-            sinArea.activos.push(act);
+            sinAdsc.activos.push(a);
         }
     });
 
-    // Ordenar áreas por nombre
-    const gruposArray = [...grupos.values()].sort((a, b) => a.area.nombre.localeCompare(b.area.nombre));
+    const conActivos = [...grupos.values()]
+        .filter(g => g.activos.length > 0)
+        .sort((a, b) => a.adsc.nombre.localeCompare(b.adsc.nombre));
 
-    // Filtrar las que tienen activos (para no mostrar vacías)
-    const conActivos = gruposArray.filter(g => g.activos.length > 0);
-
-    if (!conActivos.length && !sinArea.activos.length) {
-        listaAreasConActivos.innerHTML = `
+    if (!conActivos.length && !sinAdsc.activos.length) {
+        listaAdscConActivos.innerHTML = `
             <div class="card empty-state">
                 <div class="empty-state__icon">📦</div>
-                <p>No hay activos que coincidan con la búsqueda.</p>
+                <p>No hay activos que coincidan.</p>
             </div>
         `;
         return;
     }
 
     let html = '';
-
-    // Card de "Sin área asignada" primero
-    if (sinArea.activos.length > 0) {
-        html += renderAreaCard(sinArea.area, sinArea.activos, true);
+    if (sinAdsc.activos.length > 0) {
+        html += renderAdscCard(null, sinAdsc.activos);
     }
-
-    // Resto de áreas
-    html += conActivos.map(g => renderAreaCard(g.area, g.activos, false)).join('');
-
-    listaAreasConActivos.innerHTML = html;
+    html += conActivos.map(g => renderAdscCard(g.adsc, g.activos)).join('');
+    listaAdscConActivos.innerHTML = html;
 }
 
-function renderAreaCard(area, activos, esSinArea) {
-    const areaId = area ? area.id : '__sin_area__';
-    const isOpen = areasExpandidas.has(areaId);
+function renderAdscCard(adsc, activos) {
+    const key = adsc ? 'adsc-' + adsc.id : 'adsc-__sin__';
+    const isOpen = expandidos.has(key);
     const totalCosto = activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
     const numAct = activos.length;
 
-    const nombre = area ? area.nombre : '📭 Sin área asignada';
+    const nombre = adsc ? adsc.nombre : '📭 Sin adscripción';
+    const clave = adsc ? adsc.clave : '—';
+    const descripcion = adsc && adsc.descripcion ? adsc.descripcion : '';
+    const direccion = adsc && adsc.direccion ? adsc.direccion : '';
+
+    // Agrupar por área
+    const porArea = new Map();
+    activos.forEach(a => {
+        const ar = getAreaDeActivo(a);
+        const k = ar ? ar.id : '__sin__';
+        if (!porArea.has(k)) porArea.set(k, { area: ar, activos: [] });
+        porArea.get(k).activos.push(a);
+    });
+
+    const areasHTML = [...porArea.values()].map(g => {
+        const areaNombre = g.area ? g.area.nombre : '📭 Sin área';
+        const subtotal = g.activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
+        return `
+            <div class="empleado-grupo">
+                <div class="empleado-grupo__header">
+                    <span class="empleado-grupo__nombre">
+                        🏢 ${App.esc(areaNombre)}
+                        ${g.area ? `<code style="margin-left: 0.5rem;">${App.esc(g.area.clave)}</code>` : ''}
+                    </span>
+                    <span class="empleado-grupo__stats">${g.activos.length} · ${App.money(subtotal)}</span>
+                </div>
+                <div class="activo-lista">
+                    ${g.activos.map(a => renderActivoFila(a, true)).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const descripcionHTML = descripcion
+        ? `<div class="area-card__desc">${App.esc(descripcion)}</div>`
+        : '';
+    const direccionHTML = direccion
+        ? `<div class="adsc-card__direccion">📍 ${App.esc(direccion)}</div>`
+        : '';
+
+    return `
+        <div class="area-card ${isOpen ? 'is-open' : ''}" data-adsc-id="${adsc ? adsc.id : '__sin__'}">
+            <div class="area-card__header" data-action="toggle-adsc">
+                <div class="area-card__info">
+                    <span class="area-card__icon">${adsc ? '🏛️' : '📭'}</span>
+                    <div class="area-card__body">
+                        <h3 class="area-card__name">${App.esc(nombre)}</h3>
+                        <div class="area-card__meta">
+                            ${adsc ? `<code>${App.esc(clave)}</code>` : ''}
+                            <span class="badge">${numAct} activo${numAct === 1 ? '' : 's'}</span>
+                            <span class="badge badge--info">${App.money(totalCosto)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="area-card__actions" data-action="stop">
+                    <button class="area-card__toggle" data-action="toggle-adsc" title="Expandir/Contraer">▾</button>
+                </div>
+            </div>
+            <div class="area-card__content">
+                ${direccionHTML}
+                ${descripcionHTML}
+                ${areasHTML}
+            </div>
+        </div>
+    `;
+}
+
+function onAdscCardClick(e) {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const card = e.target.closest('.area-card');
+    const idRaw = card ? card.dataset.adscId : null;
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-adsc' && inActions) return;
+
+    switch (action) {
+        case 'toggle-adsc':
+            if (idRaw) {
+                const key = idRaw === '__sin__' ? 'adsc-__sin__' : 'adsc-' + parseInt(idRaw, 10);
+                if (expandidos.has(key)) expandidos.delete(key);
+                else expandidos.add(key);
+                renderAdscConActivos();
+            }
+            break;
+        case 'editar-activo':
+            editarActivo(parseInt(target.dataset.id, 10));
+            break;
+        case 'eliminar-activo':
+            eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
+    }
+}
+
+// ============ RENDER: POR ÁREA ============
+function renderAreasConActivos(activosFiltrados = null) {
+    if (!activosFiltrados) activosFiltrados = getActivosFiltrados();
+
+    const grupos = new Map();
+    areasCache.forEach(a => grupos.set(a.id, { area: a, activos: [] }));
+    const sinArea = { area: null, activos: [] };
+
+    activosFiltrados.forEach(act => {
+        const ar = getAreaDeActivo(act);
+        if (ar && grupos.has(ar.id)) grupos.get(ar.id).activos.push(act);
+        else sinArea.activos.push(act);
+    });
+
+    const conActivos = [...grupos.values()]
+        .filter(g => g.activos.length > 0)
+        .sort((a, b) => a.area.nombre.localeCompare(b.area.nombre));
+
+    if (!conActivos.length && !sinArea.activos.length) {
+        listaAreasConActivos.innerHTML = `
+            <div class="card empty-state">
+                <div class="empty-state__icon">📦</div>
+                <p>No hay activos que coincidan.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    if (sinArea.activos.length > 0) html += renderAreaCard(sinArea.area, sinArea.activos);
+    html += conActivos.map(g => renderAreaCard(g.area, g.activos)).join('');
+    listaAreasConActivos.innerHTML = html;
+}
+
+function renderAreaCard(area, activos) {
+    const key = area ? 'area-' + area.id : 'area-__sin__';
+    const isOpen = expandidos.has(key);
+    const totalCosto = activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
+    const numAct = activos.length;
+
+    const nombre = area ? area.nombre : '📭 Sin área';
     const clave = area ? area.clave : '—';
+    const adscNombre = area && area.adscripcion_nombre ? area.adscripcion_nombre : '';
     const descripcion = area && area.descripcion ? area.descripcion : '';
 
-    // Agrupar activos por empleado
-    const porEmpleado = new Map();
+    // Agrupar por empleado
+    const porEmp = new Map();
     activos.forEach(a => {
-        const key = a.empleado_id || '__sin_emp__';
-        if (!porEmpleado.has(key)) {
-            porEmpleado.set(key, {
-                empleado_id: a.empleado_id,
+        const k = a.empleado_id || '__sin__';
+        if (!porEmp.has(k)) {
+            porEmp.set(k, {
                 nombre: a.empleado_nombre || '📭 Sin resguardante',
                 cargo: a.cargo || '',
                 numero_nomina: a.numero_nomina || '',
                 activos: []
             });
         }
-        porEmpleado.get(key).activos.push(a);
+        porEmp.get(k).activos.push(a);
     });
 
-    const empleadosHTML = [...porEmpleado.values()].map(g => {
+    const empleadosHTML = [...porEmp.values()].map(g => {
         const subtotal = g.activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
         return `
             <div class="empleado-grupo">
@@ -279,18 +498,22 @@ function renderAreaCard(area, activos, esSinArea) {
                     <span class="empleado-grupo__stats">${g.activos.length} · ${App.money(subtotal)}</span>
                 </div>
                 <div class="activo-lista">
-                    ${g.activos.map(a => renderActivoFila(a)).join('')}
+                    ${g.activos.map(a => renderActivoFila(a, true)).join('')}
                 </div>
             </div>
         `;
     }).join('');
+
+    const adscBadge = adscNombre
+        ? `<span class="badge badge--adsc">🏛️ ${App.esc(adscNombre)}</span>`
+        : '';
 
     const descripcionHTML = descripcion
         ? `<div class="area-card__desc">${App.esc(descripcion)}</div>`
         : '';
 
     return `
-        <div class="area-card ${isOpen ? 'is-open' : ''}" data-area-id="${areaId}">
+        <div class="area-card ${isOpen ? 'is-open' : ''}" data-area-id="${area ? area.id : '__sin__'}">
             <div class="area-card__header" data-action="toggle-area">
                 <div class="area-card__info">
                     <span class="area-card__icon">${area ? '🏢' : '📭'}</span>
@@ -298,6 +521,7 @@ function renderAreaCard(area, activos, esSinArea) {
                         <h3 class="area-card__name">${App.esc(nombre)}</h3>
                         <div class="area-card__meta">
                             ${area ? `<code>${App.esc(clave)}</code>` : ''}
+                            ${adscBadge}
                             <span class="badge">${numAct} activo${numAct === 1 ? '' : 's'}</span>
                             <span class="badge badge--info">${App.money(totalCosto)}</span>
                         </div>
@@ -315,11 +539,144 @@ function renderAreaCard(area, activos, esSinArea) {
     `;
 }
 
-function renderActivoFila(a) {
-    let imgPath = a.ruta_imagen || '';
-    if (imgPath.startsWith('public/')) {
-        imgPath = imgPath.replace('public/', '');
+function onAreaCardClick(e) {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const card = e.target.closest('.area-card');
+    const idRaw = card ? card.dataset.areaId : null;
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-area' && inActions) return;
+
+    switch (action) {
+        case 'toggle-area':
+            if (idRaw) {
+                const key = idRaw === '__sin__' ? 'area-__sin__' : 'area-' + parseInt(idRaw, 10);
+                if (expandidos.has(key)) expandidos.delete(key);
+                else expandidos.add(key);
+                renderAreasConActivos();
+            }
+            break;
+        case 'editar-activo':
+            editarActivo(parseInt(target.dataset.id, 10));
+            break;
+        case 'eliminar-activo':
+            eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
     }
+}
+
+// ============ RENDER: POR EMPLEADO ============
+function renderEmpleadosConActivos(activosFiltrados = null) {
+    if (!activosFiltrados) activosFiltrados = getActivosFiltrados();
+
+    const grupos = new Map();
+    empleadosCache.forEach(e => grupos.set(e.id, { empleado: e, activos: [] }));
+    const sinEmp = { empleado: null, activos: [] };
+
+    activosFiltrados.forEach(a => {
+        if (a.empleado_id && grupos.has(a.empleado_id)) grupos.get(a.empleado_id).activos.push(a);
+        else sinEmp.activos.push(a);
+    });
+
+    const conActivos = [...grupos.values()]
+        .filter(g => g.activos.length > 0)
+        .sort((a, b) => a.empleado.nombre.localeCompare(b.empleado.nombre));
+
+    if (!conActivos.length && !sinEmp.activos.length) {
+        listaEmpleadosConActivos.innerHTML = `
+            <div class="card empty-state">
+                <div class="empty-state__icon">👥</div>
+                <p>No hay empleados con activos que coincidan.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    if (sinEmp.activos.length > 0) html += renderEmpleadoCard(null, sinEmp.activos);
+    html += conActivos.map(g => renderEmpleadoCard(g.empleado, g.activos)).join('');
+    listaEmpleadosConActivos.innerHTML = html;
+}
+
+function renderEmpleadoCard(empleado, activos) {
+    const key = empleado ? 'emp-' + empleado.id : 'emp-__sin__';
+    const isOpen = expandidos.has(key);
+    const totalCosto = activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
+
+    const nombre = empleado ? empleado.nombre : '📭 Sin resguardante';
+    const nomina = empleado ? empleado.numero_nomina : '';
+    const cargo = empleado ? empleado.cargo : '';
+    const adscNombre = empleado && empleado.adscripcion_nombre ? empleado.adscripcion_nombre : '';
+    const areaNombre = empleado && empleado.area_nombre ? empleado.area_nombre : '';
+
+    const badges = [];
+    if (adscNombre) badges.push(`<span class="badge badge--adsc">🏛️ ${App.esc(adscNombre)}</span>`);
+    if (areaNombre) badges.push(`<span class="badge">🏢 ${App.esc(areaNombre)}</span>`);
+    badges.push(`<span class="badge">${activos.length} activo${activos.length === 1 ? '' : 's'}</span>`);
+    badges.push(`<span class="badge badge--info">${App.money(totalCosto)}</span>`);
+
+    return `
+        <div class="area-card ${isOpen ? 'is-open' : ''}" data-emp-id="${empleado ? empleado.id : '__sin__'}">
+            <div class="area-card__header" data-action="toggle-emp">
+                <div class="area-card__info">
+                    <span class="area-card__icon">${empleado ? '👤' : '📭'}</span>
+                    <div class="area-card__body">
+                        <h3 class="area-card__name">
+                            ${nomina ? `<span class="employee-row__nomina">[${App.esc(nomina)}]</span>` : ''}
+                            ${App.esc(nombre)}
+                        </h3>
+                        <div class="area-card__meta">
+                            ${cargo ? `<span>${App.esc(cargo)}</span>` : ''}
+                            ${badges.join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="area-card__actions" data-action="stop">
+                    <button class="area-card__toggle" data-action="toggle-emp" title="Expandir/Contraer">▾</button>
+                </div>
+            </div>
+            <div class="area-card__content">
+                <div class="activo-lista">
+                    ${activos.map(a => renderActivoFila(a, true)).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function onEmpleadoCardClick(e) {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const card = e.target.closest('.area-card');
+    const idRaw = card ? card.dataset.empId : null;
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-emp' && inActions) return;
+
+    switch (action) {
+        case 'toggle-emp':
+            if (idRaw) {
+                const key = idRaw === '__sin__' ? 'emp-__sin__' : 'emp-' + parseInt(idRaw, 10);
+                if (expandidos.has(key)) expandidos.delete(key);
+                else expandidos.add(key);
+                renderEmpleadosConActivos();
+            }
+            break;
+        case 'editar-activo':
+            editarActivo(parseInt(target.dataset.id, 10));
+            break;
+        case 'eliminar-activo':
+            eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
+    }
+}
+
+// ============ FILA DE ACTIVO (reutilizable) ============
+function renderActivoFila(a, mostrarAdsc = false) {
+    let imgPath = a.ruta_imagen || '';
+    if (imgPath.startsWith('public/')) imgPath = imgPath.replace('public/', '');
+
     const thumb = imgPath
         ? `<img class="activo-thumb" src="${App.esc(imgPath)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(imgPath)}')" style="cursor: pointer;">`
         : `<div class="activo-noimg">S/F</div>`;
@@ -344,150 +701,10 @@ function renderActivoFila(a) {
     `;
 }
 
-function onAreaCardClick(e) {
-    const target = e.target.closest('[data-action]');
-    if (!target) return;
-
-    const action = target.dataset.action;
-    const areaCard = e.target.closest('.area-card');
-    const areaIdRaw = areaCard ? areaCard.dataset.areaId : null;
-
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-area' && inActions) return;
-
-    switch (action) {
-        case 'toggle-area':
-            if (areaIdRaw) {
-                const areaId = areaIdRaw === '__sin_area__' ? '__sin_area__' : parseInt(areaIdRaw, 10);
-                if (areasExpandidas.has(areaId)) areasExpandidas.delete(areaId);
-                else areasExpandidas.add(areaId);
-                renderAreasConActivos();
-            }
-            break;
-        case 'editar-activo':
-            editarActivo(parseInt(target.dataset.id, 10));
-            break;
-        case 'eliminar-activo':
-            eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
-            break;
-    }
-}
-
-// ============ RENDER: POR EMPLEADO ============
-function renderEmpleadosConActivos(activosFiltrados = null) {
-    if (!activosFiltrados) activosFiltrados = getActivosFiltrados();
-
-    // Agrupar por empleado
-    const grupos = new Map();
-    empleadosCache.forEach(e => grupos.set(e.id, { empleado: e, activos: [] }));
-    const sinEmp = { empleado: null, activos: [] };
-
-    activosFiltrados.forEach(a => {
-        if (a.empleado_id && grupos.has(a.empleado_id)) {
-            grupos.get(a.empleado_id).activos.push(a);
-        } else {
-            sinEmp.activos.push(a);
-        }
-    });
-
-    const conActivos = [...grupos.values()]
-        .filter(g => g.activos.length > 0)
-        .sort((a, b) => a.empleado.nombre.localeCompare(b.empleado.nombre));
-
-    if (!conActivos.length && !sinEmp.activos.length) {
-        listaEmpleadosConActivos.innerHTML = `
-            <div class="card empty-state">
-                <div class="empty-state__icon">👥</div>
-                <p>No hay empleados con activos que coincidan.</p>
-            </div>
-        `;
-        return;
-    }
-
-    let html = '';
-    if (sinEmp.activos.length > 0) {
-        html += renderEmpleadoCard(null, sinEmp.activos, true);
-    }
-    html += conActivos.map(g => renderEmpleadoCard(g.empleado, g.activos, false)).join('');
-
-    listaEmpleadosConActivos.innerHTML = html;
-}
-
-function renderEmpleadoCard(empleado, activos, esSinEmp) {
-    const empId = empleado ? empleado.id : '__sin_emp__';
-    const isOpen = empleadosExpandidos.has(empId);
-    const totalCosto = activos.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
-
-    const nombre = empleado ? empleado.nombre : '📭 Sin resguardante';
-    const nomina = empleado ? empleado.numero_nomina : '';
-    const cargo = empleado ? empleado.cargo : '';
-    const areaNombre = empleado && empleado.area_nombre ? empleado.area_nombre : '';
-
-    return `
-        <div class="area-card ${isOpen ? 'is-open' : ''}" data-emp-id="${empId}">
-            <div class="area-card__header" data-action="toggle-emp">
-                <div class="area-card__info">
-                    <span class="area-card__icon">${empleado ? '👤' : '📭'}</span>
-                    <div class="area-card__body">
-                        <h3 class="area-card__name">
-                            ${nomina ? `<span class="employee-row__nomina">[${App.esc(nomina)}]</span>` : ''}
-                            ${App.esc(nombre)}
-                        </h3>
-                        <div class="area-card__meta">
-                            ${cargo ? `<span>${App.esc(cargo)}</span>` : ''}
-                            ${areaNombre ? `<span class="badge">🏢 ${App.esc(areaNombre)}</span>` : ''}
-                            <span class="badge">${activos.length} activo${activos.length === 1 ? '' : 's'}</span>
-                            <span class="badge badge--info">${App.money(totalCosto)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="area-card__actions" data-action="stop">
-                    <button class="area-card__toggle" data-action="toggle-emp" title="Expandir/Contraer">▾</button>
-                </div>
-            </div>
-            <div class="area-card__content">
-                <div class="activo-lista">
-                    ${activos.map(a => renderActivoFila(a)).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function onEmpleadoCardClick(e) {
-    const target = e.target.closest('[data-action]');
-    if (!target) return;
-
-    const action = target.dataset.action;
-    const card = e.target.closest('.area-card');
-    const empIdRaw = card ? card.dataset.empId : null;
-
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-emp' && inActions) return;
-
-    switch (action) {
-        case 'toggle-emp':
-            if (empIdRaw) {
-                const empId = empIdRaw === '__sin_emp__' ? '__sin_emp__' : parseInt(empIdRaw, 10);
-                if (empleadosExpandidos.has(empId)) empleadosExpandidos.delete(empId);
-                else empleadosExpandidos.add(empId);
-                renderEmpleadosConActivos();
-            }
-            break;
-        case 'editar-activo':
-            editarActivo(parseInt(target.dataset.id, 10));
-            break;
-        case 'eliminar-activo':
-            eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
-            break;
-    }
-}
-
 // ============ RENDER: TABLA TODOS ============
 function renderTablaTodos(activosFiltrados = null) {
     if (!activosFiltrados) activosFiltrados = getActivosFiltrados();
 
-    // Stats resumen
     const totalCosto = activosFiltrados.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
     statsResumen.innerHTML = `
         <div class="stat">
@@ -507,7 +724,7 @@ function renderTablaTodos(activosFiltrados = null) {
     `;
 
     if (!activosFiltrados.length) {
-        tablaBody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
         return;
     }
 
@@ -518,6 +735,11 @@ function renderTablaTodos(activosFiltrados = null) {
         const empTxt = a.empleado_id
             ? `<strong>${App.esc(a.empleado_nombre || '')}</strong><br><small>${App.esc(a.cargo || '')}</small>`
             : '<span class="badge badge--warning">Sin asignar</span>';
+
+        const adsc = getAdscDeActivo(a);
+        const adscTxt = adsc
+            ? `🏛️ ${App.esc(adsc.nombre)}`
+            : '<span class="muted">—</span>';
 
         const areaTxt = a.area_nombre
             ? '🏢 ' + App.esc(a.area_nombre)
@@ -530,8 +752,9 @@ function renderTablaTodos(activosFiltrados = null) {
                 <td>${App.esc(a.marca || '—')}</td>
                 <td>${App.esc(a.modelo || '—')}</td>
                 <td>${App.money(a.costo)}</td>
-                <td>${empTxt}</td>
+                <td>${adscTxt}</td>
                 <td>${areaTxt}</td>
+                <td>${empTxt}</td>
                 <td class="col-foto">
                     ${imgPath
                         ? `<img class="table__thumb" src="${App.esc(imgPath)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(imgPath)}')" style="cursor: pointer;">`
@@ -556,7 +779,18 @@ function renderEstadisticas(activosFiltrados = null) {
     const totalCosto = activosFiltrados.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
     const asignados = activosFiltrados.filter(a => a.empleado_id).length;
     const sinAsignar = total - asignados;
-    const areasConActivos = new Set(activosFiltrados.filter(a => a.area_id).map(a => a.area_id)).size;
+
+    // Distribución por adscripción
+    const porAdsc = new Map();
+    activosFiltrados.forEach(a => {
+        const adsc = getAdscDeActivo(a);
+        const k = adsc ? adsc.id : '__sin__';
+        if (!porAdsc.has(k)) porAdsc.set(k, { nombre: adsc ? adsc.nombre : '📭 Sin adscripción', activos: 0, costo: 0 });
+        const g = porAdsc.get(k);
+        g.activos++;
+        g.costo += parseFloat(a.costo || 0);
+    });
+    const adscOrdenadas = [...porAdsc.values()].sort((a, b) => b.costo - a.costo);
 
     // Top empleados por valor
     const porEmp = new Map();
@@ -570,18 +804,6 @@ function renderEstadisticas(activosFiltrados = null) {
     });
     const topEmp = [...porEmp.values()].sort((a, b) => b.costo - a.costo).slice(0, 10);
     const maxCostoEmp = topEmp.length ? topEmp[0].costo : 1;
-
-    // Distribución por área
-    const porArea = new Map();
-    activosFiltrados.forEach(a => {
-        if (!a.area_id) return;
-        const k = a.area_id;
-        if (!porArea.has(k)) porArea.set(k, { nombre: a.area_nombre, activos: 0, costo: 0 });
-        const g = porArea.get(k);
-        g.activos++;
-        g.costo += parseFloat(a.costo || 0);
-    });
-    const areasOrdenadas = [...porArea.values()].sort((a, b) => b.costo - a.costo);
 
     const html = `
         <div class="stats">
@@ -617,7 +839,24 @@ function renderEstadisticas(activosFiltrados = null) {
 
         <div class="grid-2">
             <div class="card">
-                <h2 class="card__title">🏆 Top empleados por valor de activos</h2>
+                <h2 class="card__title">🏛️ Distribución por adscripción</h2>
+                ${adscOrdenadas.length === 0
+                    ? '<p class="muted">No hay datos suficientes.</p>'
+                    : adscOrdenadas.map(a => `
+                        <div class="rank-item">
+                            <span class="rank-item__pos">🏛️</span>
+                            <div class="rank-item__info">
+                                <div class="rank-item__name">${App.esc(a.nombre)}</div>
+                                <div class="rank-item__meta">${a.activos} activo${a.activos === 1 ? '' : 's'}</div>
+                            </div>
+                            <div class="rank-item__value">${App.money(a.costo)}</div>
+                        </div>
+                    `).join('')
+                }
+            </div>
+
+            <div class="card">
+                <h2 class="card__title">🏆 Top empleados por valor</h2>
                 ${topEmp.length === 0
                     ? '<p class="muted">No hay datos suficientes.</p>'
                     : topEmp.map((e, i) => `
@@ -635,35 +874,6 @@ function renderEstadisticas(activosFiltrados = null) {
                     `).join('')
                 }
             </div>
-
-            <div class="card">
-                <h2 class="card__title">🏢 Distribución por área</h2>
-                ${areasOrdenadas.length === 0
-                    ? '<p class="muted">No hay datos suficientes.</p>'
-                    : areasOrdenadas.map(a => `
-                        <div class="rank-item">
-                            <span class="rank-item__pos">🏢</span>
-                            <div class="rank-item__info">
-                                <div class="rank-item__name">${App.esc(a.nombre)}</div>
-                                <div class="rank-item__meta">${a.activos} activo${a.activos === 1 ? '' : 's'}</div>
-                            </div>
-                            <div class="rank-item__value">${App.money(a.costo)}</div>
-                        </div>
-                    `).join('')
-                }
-                ${sinAsignar > 0 ? `
-                    <div class="rank-item" style="margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px dashed var(--c-border);">
-                        <span class="rank-item__pos">📭</span>
-                        <div class="rank-item__info">
-                            <div class="rank-item__name">Sin área asignada</div>
-                            <div class="rank-item__meta">${sinAsignar} activo${sinAsignar === 1 ? '' : 's'}</div>
-                        </div>
-                        <div class="rank-item__value">
-                            ${App.money(activosFiltrados.filter(a => !a.area_id).reduce((s, a) => s + parseFloat(a.costo || 0), 0))}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
         </div>
     `;
 
@@ -679,6 +889,7 @@ function abrirModalActivo() {
     modalTitle.textContent = '➕ Nuevo activo';
     imgPreview.innerHTML = '<div class="image-preview__placeholder">Sin imagen</div>';
     formError.style.display = 'none';
+    hintAdscActivo.textContent = '';
     App.openModal('activoModal');
 }
 
@@ -695,6 +906,7 @@ async function editarActivo(id) {
             imgPreview.innerHTML = '<div class="image-preview__placeholder">Sin imagen</div>';
         }
         formError.style.display = 'none';
+        actualizarHintAdscActivo();
         App.openModal('activoModal');
     } catch (err) {
         App.toast(err.message, 'error');
@@ -707,8 +919,7 @@ async function eliminarActivo(id, desc) {
         const res = await App.api(`activos.php?id=${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(res.error);
         App.toast(res.message, 'success');
-        await cargarActivos();
-        renderTodo();
+        await cargarTodo();
     } catch (err) {
         App.toast(err.message, 'error');
     }
@@ -769,8 +980,7 @@ async function onSubmitActivo(e) {
         if (!res.ok) throw new Error(res.error);
         App.toast(res.message, 'success');
         App.closeModal('activoModal');
-        await cargarActivos();
-        renderTodo();
+        await cargarTodo();
     } catch (err) {
         mostrarError(err.message);
     }
@@ -780,21 +990,6 @@ function mostrarError(msg) {
     formError.textContent = msg;
     formError.style.display = 'block';
 }
-
-// ============ LLENAR SELECT DE EMPLEADOS ============
-function llenarSelectEmpleados() {
-    const opciones = ['<option value="">— Sin asignar —</option>'].concat(
-        empleadosCache.map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)} — ${App.esc(e.cargo)}</option>`)
-    );
-    selectEmp.innerHTML = opciones.join('');
-}
-
-// Llamar al llenar filtros también
-const _originalLlenarFiltros = llenarFiltros;
-llenarFiltros = function() {
-    _originalLlenarFiltros();
-    llenarSelectEmpleados();
-};
 
 // ============ EXPONER AL WINDOW ============
 window.editarActivo = editarActivo;

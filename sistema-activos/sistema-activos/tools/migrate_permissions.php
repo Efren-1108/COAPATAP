@@ -30,12 +30,13 @@ try {
 
     // 3. Insertar módulos básicos
     $modulos = [
-        ['consulta', 'Consulta de Activos', 'Ver y buscar activos'],
-        ['empleados', 'Gestión de Empleados', 'Administrar el personal'],
-        ['activos', 'Gestión de Activos', 'Administrar los bienes'],
-        ['usuarios', 'Gestión de Usuarios', 'Control de cuentas y accesos'],
-        ['areas', 'Gestión de Áreas', 'Administrar departamentos'],
-        ['roles', 'Gestión de Roles', 'Control de permisos']
+    ['consulta',      'Consulta de Activos',     'Ver y buscar activos'],
+    ['empleados',     'Gestión de Empleados',    'Administrar el personal'],
+    ['activos',       'Gestión de Activos',      'Administrar los bienes'],
+    ['usuarios',      'Gestión de Usuarios',     'Control de cuentas y accesos'],
+    ['areas',         'Gestión de Áreas',        'Administrar departamentos'],
+    ['adscripciones', 'Gestión de Adscripciones','Administrar sucursales / planteles'],
+    ['roles',         'Gestión de Roles',        'Control de permisos']
     ];
 
     $stmtMod = $pdo->prepare("INSERT INTO modulos (clave, nombre, descripcion) VALUES (?, ?, ?) ON CONFLICT (clave) DO NOTHING");

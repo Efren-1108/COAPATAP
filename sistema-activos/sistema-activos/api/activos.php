@@ -1,25 +1,10 @@
 <?php
 /**
  * API: Gestión de activos fijos (bienes)
- * Métodos: GET, POST, PUT, DELETE
- * Query: ?id=123  ?empleado_id=5  ?q=texto
+ * Jerarquía: Adscripción → Área → Empleado → Activo
  *
- * Seguridad:
- *   - Exige sesión (require_auth).
- *   - Si NO es superusuario, los SELECT/UPDATE/DELETE filtran por su área.
- *   - Cada INSERT guarda area_id (área del autor) y usuario_id (autor).
- *
- * Cambios respecto a la versión anterior:
- *   - [FIX] GET por ID: $row ya no se usa antes de definirse.
- *   - [FIX] PUT: se agregó la palabra UPDATE al SQL (antes estaba incompleto).
- *   - [FIX] PUT: el log ahora usa accion='UPDATE' (antes '' violaba el CHECK).
- *   - [FIX] JOIN empleados<->usuarios: se castea numero_nomina a texto para
- *           que la comparación sea consistente con nombre_usuario (VARCHAR).
- *   - [MEJORA] Normalización de empleado_id: se acepta 0, '', null y se
- *           guarda NULL en BD cuando no aplica.
- *   - [MEJORA] Validación de duplicado de inventario unificada.
- *   - [MEJORA] Se evita borrar la imagen antigua si el PUT falla antes.
- *   - [MEJORA] Manejo de errores más claro y logging consistente.
+ * Cambios:
+ *   - [MEJORA] GET devuelve adscripcion_id, adscripcion_nombre y adscripcion_clave.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -39,18 +24,18 @@ try {
     $pdo = db();
 
     switch ($method) {
-        // ============================================================
-        // GET — Listar / buscar / obtener por ID
-        // ============================================================
         case 'GET':
             if ($id) {
-                // ---- Obtener un activo por ID ----
                 $sql = "SELECT a.*,
                                e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
-                               ar.nombre AS area_nombre
+                               ar.nombre AS area_nombre,
+                               ad.id     AS adscripcion_id,
+                               ad.nombre AS adscripcion_nombre,
+                               ad.clave  AS adscripcion_clave
                         FROM activos a
                         LEFT JOIN empleados e ON e.id = a.empleado_id
                         LEFT JOIN areas    ar ON ar.id = a.area_id
+                        LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id
                         WHERE a.id = :id";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([':id' => $id]);
@@ -60,7 +45,6 @@ try {
                     json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
                 }
 
-                // Validar acceso: si no es super, solo puede ver activos asignados a él
                 if (!$isSuper) {
                     $myEmpId = obtenerEmpleadoIdDeUsuario($pdo, (int)$current['id']);
                     if (!$myEmpId || (int)$row['empleado_id'] !== (int)$myEmpId) {
@@ -71,13 +55,16 @@ try {
                 json_response(['ok' => true, 'data' => $row]);
             }
 
-            // ---- Listar / buscar ----
             $sql = "SELECT a.*,
                            e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
-                           ar.nombre AS area_nombre
+                           ar.nombre AS area_nombre,
+                           ad.id     AS adscripcion_id,
+                           ad.nombre AS adscripcion_nombre,
+                           ad.clave  AS adscripcion_clave
                     FROM activos a
                     LEFT JOIN empleados e ON e.id = a.empleado_id
-                    LEFT JOIN areas    ar ON ar.id = a.area_id";
+                    LEFT JOIN areas    ar ON ar.id = a.area_id
+                    LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id";
             $params = [];
             $where  = [];
 
@@ -90,18 +77,18 @@ try {
                           OR LOWER(a.num_inventario) LIKE :q
                           OR LOWER(a.marca)          LIKE :q
                           OR LOWER(a.modelo)         LIKE :q
-                          OR LOWER(a.serie)          LIKE :q)";
+                          OR LOWER(a.serie)          LIKE :q
+                          OR LOWER(COALESCE(ad.nombre,'')) LIKE :q)";
                 $params[':q'] = '%' . strtolower($q) . '%';
             }
 
             if (!$isSuper) {
-                // Usuario normal: solo ve activos asignados a él mismo
                 $myEmpId = obtenerEmpleadoIdDeUsuario($pdo, (int)$current['id']);
                 if ($myEmpId) {
                     $where[] = "a.empleado_id = :my_eid";
                     $params[':my_eid'] = $myEmpId;
                 } else {
-                    $where[] = "1 = 0"; // No es empleado → no ve nada
+                    $where[] = "1 = 0";
                 }
             }
 
@@ -115,9 +102,6 @@ try {
             json_response(['ok' => true, 'data' => $stmt->fetchAll()]);
             break;
 
-        // ============================================================
-        // POST — Crear activo
-        // ============================================================
         case 'POST':
             $input = json_input();
             $r = validarActivo($input);
@@ -125,14 +109,12 @@ try {
                 json_response(['ok' => false, 'error' => $r], 400);
             }
 
-            // Verificar num_inventario único (global)
             $chk = $pdo->prepare("SELECT id FROM activos WHERE num_inventario = :ni");
             $chk->execute([':ni' => $input['num_inventario']]);
             if ($chk->fetch()) {
                 json_response(['ok' => false, 'error' => 'Ya existe un activo con ese número de inventario'], 409);
             }
 
-            // Área del nuevo activo: la del autor (o la enviada por el super)
             $newAreaId = $isSuper
                 ? (isset($input['area_id']) && $input['area_id'] !== '' ? (int)$input['area_id'] : null)
                 : $areaId;
@@ -182,9 +164,6 @@ try {
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Activo registrado correctamente'], 201);
             break;
 
-        // ============================================================
-        // PUT — Actualizar activo
-        // ============================================================
         case 'PUT':
             if (!$id) {
                 json_response(['ok' => false, 'error' => 'ID requerido'], 400);
@@ -195,7 +174,6 @@ try {
                 json_response(['ok' => false, 'error' => $r], 400);
             }
 
-            // Permiso por área
             if (!$isSuper) {
                 $own = $pdo->prepare("SELECT id FROM activos WHERE id = :id AND area_id = :aid");
                 $own->execute([':id' => $id, ':aid' => $areaId]);
@@ -204,7 +182,6 @@ try {
                 }
             }
 
-            // Verificar que el activo exista
             $existe = $pdo->prepare("SELECT ruta_imagen FROM activos WHERE id = :id");
             $existe->execute([':id' => $id]);
             $oldImg = $existe->fetchColumn();
@@ -212,7 +189,6 @@ try {
                 json_response(['ok' => false, 'error' => 'Activo no encontrado'], 404);
             }
 
-            // Duplicado de inventario (excluyendo el mismo)
             $chk = $pdo->prepare("SELECT id FROM activos WHERE num_inventario = :ni AND id <> :id");
             $chk->execute([':ni' => $input['num_inventario'], ':id' => $id]);
             if ($chk->fetch()) {
@@ -222,7 +198,6 @@ try {
             $empleadoId = normalizarEmpleadoId($input['empleado_id'] ?? null);
             $nuevaImg   = $input['ruta_imagen'] ?? null;
 
-            // ---- UPDATE (antes faltaba la palabra UPDATE) ----
             $sql = "UPDATE activos SET
                         descripcion   = :desc,
                         num_inventario= :ni,
@@ -254,7 +229,6 @@ try {
                 ':id'   => $id,
             ]);
 
-            // Borrar imagen antigua SOLO si el UPDATE tuvo éxito y hay nueva
             if ($oldImg && $nuevaImg && $oldImg !== $nuevaImg) {
                 $fullPath = __DIR__ . '/../' . $oldImg;
                 if (file_exists($fullPath)) {
@@ -262,7 +236,6 @@ try {
                 }
             }
 
-            // ---- Log: accion debe ser 'UPDATE' (antes '' violaba el CHECK) ----
             $log = $pdo->prepare("INSERT INTO log_actividades
                                     (tabla, accion, registro_id, detalle, usuario, usuario_id, area_id)
                                   VALUES
@@ -278,15 +251,11 @@ try {
             json_response(['ok' => true, 'message' => 'Activo actualizado correctamente']);
             break;
 
-        // ============================================================
-        // DELETE — Eliminar activo
-        // ============================================================
         case 'DELETE':
             if (!$id) {
                 json_response(['ok' => false, 'error' => 'ID requerido'], 400);
             }
 
-            // Permiso por área
             if (!$isSuper) {
                 $own = $pdo->prepare("SELECT id FROM activos WHERE id = :id AND area_id = :aid");
                 $own->execute([':id' => $id, ':aid' => $areaId]);
@@ -337,11 +306,6 @@ try {
  * FUNCIONES AUXILIARES
  * ============================================================ */
 
-/**
- * Valida los campos obligatorios de un activo.
- *
- * @return true|string  true si todo OK, mensaje de error si no.
- */
 function validarActivo(array $d)
 {
     $desc  = trim($d['descripcion']    ?? '');
@@ -369,11 +333,6 @@ function validarActivo(array $d)
     return true;
 }
 
-/**
- * Normaliza el valor de empleado_id:
- *  - Devuelve int > 0 si es válido.
- *  - Devuelve null si es 0, '', null o no numérico.
- */
 function normalizarEmpleadoId($valor): ?int
 {
     if ($valor === null || $valor === '' || $valor === 0 || $valor === '0') {
@@ -386,16 +345,6 @@ function normalizarEmpleadoId($valor): ?int
     return $n > 0 ? $n : null;
 }
 
-/**
- * Devuelve el id de empleado asociado a un usuario del sistema.
- *
- * Nota: empleados.numero_nomina es INTEGER y usuarios.nombre_usuario es VARCHAR,
- * por lo que se castea numero_nomina a texto para que la comparación funcione
- * en PostgreSQL. Si en el futuro se unifican tipos, esta función puede
- * simplificarse.
- *
- * @return int|null  ID del empleado o null si no existe.
- */
 function obtenerEmpleadoIdDeUsuario(PDO $pdo, int $usuarioId): ?int
 {
     $sql = "SELECT e.id

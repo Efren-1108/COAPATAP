@@ -1514,3 +1514,346 @@ textarea.form-control { min-height: 90px; resize: vertical; }
         display: none;
     }
 }
+
+/* =====================================================
+   Módulo de Adscripciones — Tabla
+   ===================================================== */
+
+.table--adscripciones {
+    table-layout: auto;
+    min-width: 900px;
+}
+
+.table--adscripciones th:nth-child(1),
+.table--adscripciones td:nth-child(1) { width: 50px; text-align: center; }
+
+.table--adscripciones th:nth-child(2),
+.table--adscripciones td:nth-child(2) { min-width: 140px; }
+
+.table--adscripciones th:nth-child(3),
+.table--adscripciones td:nth-child(3) { min-width: 180px; }
+
+.table--adscripciones th:nth-child(4),
+.table--adscripciones td:nth-child(4) { min-width: 180px; }
+
+.table--adscripciones th:nth-child(5),
+.table--adscripciones td:nth-child(5),
+.table--adscripciones th:nth-child(6),
+.table--adscripciones td:nth-child(6) { width: 110px; text-align: center; }
+
+.table--adscripciones th:nth-child(7),
+.table--adscripciones td:nth-child(7) { width: 100px; text-align: center; }
+
+/* Columna de acciones sticky */
+.table--adscripciones .table__col-actions {
+    position: sticky;
+    right: 0;
+    background: var(--c-surface);
+    box-shadow: -4px 0 8px -4px rgba(0, 0, 0, 0.06);
+    z-index: 2;
+    text-align: right;
+    padding-right: 0.75rem;
+}
+.table--adscripciones thead .table__col-actions {
+    background: var(--c-bg);
+    z-index: 3;
+}
+.table--adscripciones tbody tr:hover .table__col-actions {
+    background: var(--c-primary-light);
+}
+.table--adscripciones .table__actions {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+}
+.table--adscripciones .table__actions .btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    min-width: 32px;
+}
+
+@media (max-width: 900px) {
+    .table--adscripciones { min-width: 100%; }
+    .table--adscripciones th:nth-child(1),
+    .table--adscripciones td:nth-child(1),
+    .table--adscripciones th:nth-child(4),
+    .table--adscripciones td:nth-child(4) {
+        display: none;
+    }
+}
+
+/* =====================================================
+   Módulo de Adscripciones — Cards expandibles
+   ===================================================== */
+
+/* ============ CARD DE ADSCRIPCIÓN ============ */
+.adsc-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: var(--transition);
+}
+.adsc-card:hover { box-shadow: var(--shadow); }
+
+.adsc-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    background: var(--c-surface);
+    gap: 1rem;
+    flex-wrap: wrap;
+    transition: var(--transition);
+}
+.adsc-card__header:hover { background: var(--c-bg); }
+
+.adsc-card__info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.adsc-card__icon {
+    font-size: 1.9rem;
+    flex-shrink: 0;
+}
+
+.adsc-card__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.adsc-card__name {
+    font-weight: 700;
+    font-size: 1.08rem;
+    color: var(--c-text);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.adsc-card__meta {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    margin: 0.25rem 0 0;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.adsc-card__meta code {
+    background: var(--c-bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.adsc-card__actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.adsc-card__toggle {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--c-muted);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: var(--transition);
+}
+.adsc-card__toggle:hover { background: var(--c-border); }
+
+.adsc-card__content {
+    display: none;
+    padding: 0 1.25rem 1.25rem;
+    border-top: 1px solid var(--c-border);
+    background: var(--c-surface);
+}
+.adsc-card.is-open .adsc-card__content { display: block; }
+.adsc-card.is-open .adsc-card__toggle { transform: rotate(180deg); }
+
+.adsc-card__content-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--c-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 1rem 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed var(--c-border);
+}
+
+.adsc-card__desc {
+    color: var(--c-muted);
+    font-size: 0.9rem;
+    margin: 0.85rem 0;
+    padding: 0.6rem 0.85rem;
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--c-primary);
+}
+
+.adsc-card__direccion {
+    color: var(--c-muted);
+    font-size: 0.88rem;
+    margin: 0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    background: var(--c-bg);
+    border-radius: var(--radius-sm);
+}
+
+.adsc-card__footer {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--c-border);
+    flex-wrap: wrap;
+}
+
+/* ============ LISTA DE ÁREAS DENTRO DE UNA ADSCRIPCIÓN ============ */
+.areas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.area-mini {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--c-bg);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+.area-mini:hover {
+    background: var(--c-primary-light);
+    border-color: var(--c-primary);
+}
+
+.area-mini__info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.area-mini__icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.area-mini__name {
+    font-weight: 600;
+    color: var(--c-text);
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.area-mini__meta {
+    font-size: 0.78rem;
+    color: var(--c-muted);
+    margin-top: 0.15rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.area-mini__meta code {
+    background: var(--c-surface);
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+
+.area-mini__actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 720px) {
+    .adsc-card__header { flex-direction: column; align-items: stretch; }
+    .adsc-card__actions { justify-content: flex-end; flex-wrap: wrap; }
+    .area-mini { flex-direction: column; align-items: stretch; }
+    .area-mini__actions { justify-content: flex-end; }
+}
+
+/* =====================================================
+   Fase 4: Adscripciones en Empleados y Áreas
+   ===================================================== */
+
+/* Badge especial para adscripciones */
+.badge--adsc {
+    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Hint de adscripción en el modal de empleado */
+#hintAdscripcionEmpleado {
+    font-size: 0.82rem;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* Ajuste para las filas de la tabla de empleados con más columnas */
+.table--empleados th:nth-child(4),
+.table--empleados td:nth-child(4),
+.table--empleados th:nth-child(5),
+.table--empleados td:nth-child(5) {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* =====================================================
+   Fase 5: Adscripciones en Activos
+   ===================================================== */
+
+/* Ajuste de la tabla de activos con más columnas */
+#tablaActivos {
+    min-width: 1100px;
+}
+
+#tablaActivos th:nth-child(1),
+#tablaActivos td:nth-child(1) { min-width: 180px; }
+
+#tablaActivos th:nth-child(6),
+#tablaActivos td:nth-child(6) { min-width: 140px; }
+#tablaActivos th:nth-child(7),
+#tablaActivos td:nth-child(7) { min-width: 140px; }
+
+/* Hint de adscripción en modal de activo */
+#hintAdscActivo {
+    font-size: 0.82rem;
+    color: var(--c-primary);
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: block;
+}

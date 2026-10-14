@@ -54,6 +54,7 @@ $esSuper = $user ? $user['es_superusuario'] : false;
                     <a class="nav__link <?= $current === 'activos.php' ? 'is-active' : '' ?>" href="activos.php">📦 Activos</a>
                 <?php endif; ?>
                 <?php if ($esSuper): ?>
+                    <a class="nav__link <?= $current === 'adscripciones.php' ? 'is-active' : '' ?>" href="adscripciones.php">🏛️ Adscripciones</a>
                     <a class="nav__link <?= $current === 'usuarios.php' ? 'is-active' : '' ?>" href="usuarios.php">🔐 Usuarios</a>
                     <a class="nav__link <?= $current === 'roles.php' ? 'is-active' : '' ?>" href="roles.php">🛡️ Roles</a>
                 <?php endif; ?>
