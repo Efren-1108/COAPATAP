@@ -1,37 +1,499 @@
 /* =====================================================
-   consulta.js — Búsqueda principal por número de nómina
+   consulta.js — Dashboard con gráficas + Búsqueda por nómina
    ===================================================== */
-document.addEventListener('DOMContentLoaded', () => {
-    const searchForm = document.getElementById('searchForm');
-    const nominaInput = document.getElementById('nomina');
-    const resultContainer = document.getElementById('resultContainer');
 
-    if (nominaInput) nominaInput.focus();
+// ============ REFERENCIAS ============
+const searchForm      = document.getElementById('searchForm');
+const nominaInput     = document.getElementById('nomina');
+const resultContainer = document.getElementById('resultContainer');
+const statsGlobales   = document.getElementById('statsGlobales');
 
-    if (searchForm) {
-        searchForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nomina = parseInt(nominaInput.value, 10);
-            if (!nomina) return;
+// Referencias a las gráficas (solo si existen)
+const filtroAdscDash  = document.getElementById('filtroAdscripcionDash');
+const btnRefrescar    = document.getElementById('btnRefrescarDash');
 
-            resultContainer.innerHTML = '<div class="card loading"><span class="spinner"></span> Buscando...</div>';
+// ============ ESTADO ============
+let charts = {
+    porAdscripcion: null,
+    valorAdscripcion: null,
+    topAreas: null,
+    topEmpleados: null,
+    porAnio: null,
+};
 
-            try {
-                const res = await App.api(`consulta.php?nomina=${nomina}`);
-                if (!res.ok) throw new Error(res.error);
-                renderResultado(res);
-            } catch (err) {
-                resultContainer.innerHTML = `
-                    <div class="card empty-state">
-                        <div class="empty-state__icon">⚠️</div>
-                        <p>${App.esc(err.message)}</p>
-                    </div>
-                `;
-                App.toast(err.message, 'error');
-            }
-        });
+// Paleta de colores para las gráficas
+const COLORES = [
+    '#2563eb', '#16a34a', '#dc2626', '#f59e0b', '#8b5cf6',
+    '#0f766e', '#db2777', '#0891b2', '#84cc16', '#f97316',
+    '#6366f1', '#14b8a6', '#eab308', '#ef4444', '#22c55e',
+];
+
+// ============ INIT ============
+document.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+    // Verificar que Chart.js esté cargado
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js no está cargado');
+        App.toast('No se pudo cargar Chart.js. Revisa tu conexión a internet.', 'error');
     }
-});
+
+    // Configurar Chart.js globalmente
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Segoe UI', system-ui, -apple-system, sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.borderColor = '#e2e8f0';
+    }
+
+    // Cargar filtro de adscripciones (solo super)
+    if (filtroAdscDash) {
+        await cargarFiltroAdscripciones();
+        filtroAdscDash.addEventListener('change', () => cargarDashboard());
+    }
+    if (btnRefrescar) {
+        btnRefrescar.addEventListener('click', () => cargarDashboard());
+    }
+
+    // Cargar dashboard
+    await cargarDashboard();
+
+    // Configurar búsqueda
+    if (nominaInput) nominaInput.focus();
+    if (searchForm) {
+        searchForm.addEventListener('submit', onBuscarNomina);
+    }
+}
+
+// ============ FILTRO DE ADSCRIPCIONES ============
+async function cargarFiltroAdscripciones() {
+    try {
+        const res = await App.api('adscripciones.php');
+        if (!res.ok) throw new Error(res.error);
+        const opciones = ['<option value="">Todas las adscripciones</option>']
+            .concat(res.data
+                .filter(a => a.activo)
+                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map(a => `<option value="${a.id}">${App.esc(a.nombre)}</option>`));
+        filtroAdscDash.innerHTML = opciones.join('');
+    } catch (err) {
+        console.error('Error cargando filtro de adscripciones:', err);
+    }
+}
+
+// ============ DASHBOARD ============
+async function cargarDashboard() {
+    // Mostrar loading
+    statsGlobales.innerHTML = '<div class="stat" style="grid-column: 1/-1;"><span class="spinner"></span> Cargando datos...</div>';
+
+    try {
+        const filtro = filtroAdscDash && filtroAdscDash.value ? `?adscripcion_id=${filtroAdscDash.value}` : '';
+        const res = await App.api(`dashboard.php${filtro}`);
+        if (!res.ok) throw new Error(res.error);
+
+        renderStats(res.data.totales);
+        renderChartPorAdscripcion(res.data.por_adscripcion);
+        renderChartValorAdscripcion(res.data.por_adscripcion);
+        renderChartTopAreas(res.data.top_areas);
+        renderChartTopEmpleados(res.data.top_empleados);
+        renderChartPorAnio(res.data.por_anio);
+    } catch (err) {
+        statsGlobales.innerHTML = `<div class="stat" style="grid-column: 1/-1; color: var(--c-danger);">⚠️ ${App.esc(err.message)}</div>`;
+        App.toast(err.message, 'error');
+    }
+}
+
+// ============ STATS ============
+function renderStats(t) {
+    statsGlobales.innerHTML = `
+        <div class="stat">
+            <span class="stat__icon">📦</span>
+            <div>
+                <div class="stat__num">${t.total_activos}</div>
+                <div class="stat__lbl">Activos totales</div>
+            </div>
+        </div>
+        <div class="stat">
+            <span class="stat__icon">💰</span>
+            <div>
+                <div class="stat__num">${App.money(t.costo_total)}</div>
+                <div class="stat__lbl">Valor total</div>
+            </div>
+        </div>
+        <div class="stat">
+            <span class="stat__icon">👤</span>
+            <div>
+                <div class="stat__num">${t.asignados}</div>
+                <div class="stat__lbl">Asignados</div>
+            </div>
+        </div>
+        <div class="stat">
+            <span class="stat__icon">⚠️</span>
+            <div>
+                <div class="stat__num">${t.sin_asignar}</div>
+                <div class="stat__lbl">Sin asignar</div>
+            </div>
+        </div>
+    `;
+}
+
+// ============ GRÁFICA 1: DONA - Activos por adscripción ============
+function renderChartPorAdscripcion(datos) {
+    const canvas = document.getElementById('chartPorAdscripcion');
+    if (!canvas) return;
+
+    if (charts.porAdscripcion) charts.porAdscripcion.destroy();
+
+    if (!datos.length) {
+        canvas.parentElement.innerHTML = '<div class="empty-state"><div class="empty-state__icon">📊</div><p>Sin datos</p></div>';
+        return;
+    }
+
+    const labels = datos.map(d => d.adscripcion_nombre || 'Sin adscripción');
+    const valores = datos.map(d => d.activos);
+    const colores = labels.map((_, i) => COLORES[i % COLORES.length]);
+
+    charts.porAdscripcion = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colores,
+                borderWidth: 2,
+                borderColor: '#fff',
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, boxWidth: 12 },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                            return ` ${ctx.label}: ${ctx.parsed} activos (${pct}%)`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ============ GRÁFICA 2: BARRAS HORIZ - Valor por adscripción ============
+function renderChartValorAdscripcion(datos) {
+    const canvas = document.getElementById('chartValorAdscripcion');
+    if (!canvas) return;
+
+    if (charts.valorAdscripcion) charts.valorAdscripcion.destroy();
+
+    if (!datos.length) {
+        canvas.parentElement.innerHTML = '<div class="empty-state"><div class="empty-state__icon">💰</div><p>Sin datos</p></div>';
+        return;
+    }
+
+    // Ordenar por costo descendente y tomar top 10
+    const ordenados = [...datos].sort((a, b) => b.costo - a.costo).slice(0, 10);
+
+    const labels = ordenados.map(d => d.adscripcion_nombre || 'Sin adscripción');
+    const valores = ordenados.map(d => d.costo);
+    const colores = labels.map((_, i) => COLORES[i % COLORES.length]);
+
+    charts.valorAdscripcion = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Valor total',
+                data: valores,
+                backgroundColor: colores,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            indexAxis: 'y', // Barras horizontales
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ` ${App.money(ctx.parsed.x)}`,
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (v) => {
+                            if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
+                            if (v >= 1000) return '$' + (v / 1000).toFixed(0) + 'k';
+                            return '$' + v;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ============ GRÁFICA 3: BARRAS VERT - Top áreas ============
+function renderChartTopAreas(datos) {
+    const canvas = document.getElementById('chartTopAreas');
+    if (!canvas) return;
+
+    if (charts.topAreas) charts.topAreas.destroy();
+
+    if (!datos.length) {
+        canvas.parentElement.innerHTML = '<div class="empty-state"><div class="empty-state__icon">🏢</div><p>Sin datos</p></div>';
+        return;
+    }
+
+    const labels = datos.map(d => d.area_nombre || 'Sin área');
+    const valores = datos.map(d => d.activos);
+    const colores = labels.map((_, i) => COLORES[(i + 3) % COLORES.length]);
+
+    charts.topAreas = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Activos',
+                data: valores,
+                backgroundColor: colores,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.parsed.y} activos`,
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 },
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        autoSkip: false,
+                        callback: function(val) {
+                            const label = this.getLabelForValue(val);
+                            return label.length > 15 ? label.substring(0, 15) + '…' : label;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ============ GRÁFICA 4: BARRAS HORIZ - Top empleados ============
+function renderChartTopEmpleados(datos) {
+    const canvas = document.getElementById('chartTopEmpleados');
+    if (!canvas) return;
+
+    if (charts.topEmpleados) charts.topEmpleados.destroy();
+
+    if (!datos.length) {
+        canvas.parentElement.innerHTML = '<div class="empty-state"><div class="empty-state__icon">🏆</div><p>Sin datos</p></div>';
+        return;
+    }
+
+    const labels = datos.map(d => d.empleado_nombre || 'Sin nombre');
+    const valores = datos.map(d => d.costo);
+    const colores = labels.map((_, i) => COLORES[(i + 5) % COLORES.length]);
+
+    charts.topEmpleados = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Valor asignado',
+                data: valores,
+                backgroundColor: colores,
+                borderRadius: 6,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const item = datos[ctx.dataIndex];
+                            return [
+                                ` ${App.money(ctx.parsed.x)}`,
+                                ` ${item.activos} activo${item.activos === 1 ? '' : 's'}`,
+                            ];
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (v) => {
+                            if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
+                            if (v >= 1000) return '$' + (v / 1000).toFixed(0) + 'k';
+                            return '$' + v;
+                        },
+                    },
+                },
+                y: {
+                    ticks: {
+                        callback: function(val) {
+                            const label = this.getLabelForValue(val);
+                            return label.length > 22 ? label.substring(0, 22) + '…' : label;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ============ GRÁFICA 5: LÍNEA - Valor por año ============
+function renderChartPorAnio(datos) {
+    const canvas = document.getElementById('chartPorAnio');
+    if (!canvas) return;
+
+    if (charts.porAnio) charts.porAnio.destroy();
+
+    if (!datos.length) {
+        canvas.parentElement.innerHTML = '<div class="empty-state"><div class="empty-state__icon">📈</div><p>Sin datos de años disponibles</p></div>';
+        return;
+    }
+
+    const labels = datos.map(d => String(d.anio));
+    const valoresCosto = datos.map(d => d.costo);
+    const valoresActivos = datos.map(d => d.activos);
+
+    charts.porAnio = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Valor total (MXN)',
+                    data: valoresCosto,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#2563eb',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Cantidad de activos',
+                    data: valoresActivos,
+                    borderColor: '#16a34a',
+                    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                    fill: false,
+                    tension: 0.35,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#16a34a',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    yAxisID: 'y1',
+                    borderDash: [5, 5],
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { padding: 12, boxWidth: 12 },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            if (ctx.datasetIndex === 0) return ` 💰 ${App.money(ctx.parsed.y)}`;
+                            return ` 📦 ${ctx.parsed.y} activos`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (v) => {
+                            if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
+                            if (v >= 1000) return '$' + (v / 1000).toFixed(0) + 'k';
+                            return '$' + v;
+                        },
+                    },
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false },
+                    ticks: { precision: 0 },
+                },
+            },
+        },
+    });
+}
+
+// ============ BÚSQUEDA POR NÓMINA ============
+async function onBuscarNomina(e) {
+    e.preventDefault();
+    const nomina = parseInt(nominaInput.value, 10);
+    if (!nomina) return;
+
+    resultContainer.innerHTML = '<div class="card loading"><span class="spinner"></span> Buscando...</div>';
+
+    try {
+        const res = await App.api(`consulta.php?nomina=${nomina}`);
+        if (!res.ok) throw new Error(res.error);
+        renderResultado(res);
+
+        // Scroll suave al resultado
+        resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (err) {
+        resultContainer.innerHTML = `
+            <div class="card empty-state">
+                <div class="empty-state__icon">⚠️</div>
+                <p>${App.esc(err.message)}</p>
+            </div>
+        `;
+        App.toast(err.message, 'error');
+    }
+}
 
 function renderResultado(res) {
     const e = res.empleado;
@@ -128,6 +590,7 @@ function renderResultado(res) {
     `;
 }
 
+// ============ IMPRIMIR RESGUARDO ============
 async function imprimirResguardo() {
     const nomina = parseInt(document.getElementById('nomina').value, 10);
     if (!nomina) return;

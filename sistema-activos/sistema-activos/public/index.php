@@ -10,15 +10,71 @@ require_once __DIR__ . '/../includes/header.php';
 <section class="page-header">
     <div>
         <h1>🔍 Consulta de Resguardo</h1>
-        <p>Captura el número de nómina del resguardante para ver sus bienes asignados.</p>
+        <p>Dashboard con estadísticas en tiempo real y búsqueda por nómina.</p>
         <?php if (!$user['es_superusuario']): ?>
-            <p class="badge badge--info">📌 Solo verás registros de tu área: <strong><?= e($user['area_nombre']) ?></strong></p>
+            <p class="badge badge--info">📌 Solo verás datos de tu adscripción: <strong><?= e($user['area_nombre']) ?></strong></p>
         <?php endif; ?>
     </div>
 </section>
 
-<div class="card search-card">
-    <h2>Búsqueda por Nómina</h2>
+<!-- ============ FILTRO (solo super) ============ -->
+<?php if ($user['es_superusuario']): ?>
+<div class="toolbar no-print" id="filtroDashboard">
+    <label style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
+        <span style="font-weight: 600; white-space: nowrap;">🏛️ Filtrar por adscripción:</span>
+        <select id="filtroAdscripcionDash" style="flex: 1; max-width: 320px;">
+            <option value="">Todas las adscripciones</option>
+        </select>
+    </label>
+    <button class="btn btn--ghost btn--sm" id="btnRefrescarDash" title="Refrescar datos">🔄 Refrescar</button>
+</div>
+<?php endif; ?>
+
+<!-- ============ STATS GLOBALES ============ -->
+<div id="statsGlobales" class="stats"></div>
+
+<!-- ============ GRÁFICAS ============ -->
+<div class="grid-2">
+    <div class="card">
+        <h2 class="card__title">📊 Activos por adscripción</h2>
+        <div class="chart-wrapper">
+            <canvas id="chartPorAdscripcion"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card__title">💰 Valor por adscripción</h2>
+        <div class="chart-wrapper">
+            <canvas id="chartValorAdscripcion"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card__title">🏢 Top 10 áreas con más activos</h2>
+        <div class="chart-wrapper">
+            <canvas id="chartTopAreas"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card__title">🏆 Top 10 empleados por valor</h2>
+        <div class="chart-wrapper">
+            <canvas id="chartTopEmpleados"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ============ GRÁFICA DE LÍNEA (ancho completo) ============ -->
+<div class="card">
+    <h2 class="card__title">📈 Valor de adquisiciones por año</h2>
+    <div class="chart-wrapper chart-wrapper--wide">
+        <canvas id="chartPorAnio"></canvas>
+    </div>
+</div>
+
+<!-- ============ BUSCADOR POR NÓMINA ============ -->
+<div class="card search-card" style="margin-top: 2rem;">
+    <h2>🔍 Búsqueda por Nómina</h2>
     <p>Ingresa el número de nómina del empleado y pulsa <strong>Buscar</strong>.</p>
     <form id="searchForm" class="search-form" autocomplete="off">
         <input type="number" id="nomina" name="nomina" min="1" placeholder="Ej. 1001" required>

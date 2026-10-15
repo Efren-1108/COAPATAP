@@ -1857,3 +1857,72 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     margin-top: 0.25rem;
     display: block;
 }
+
+/* =====================================================
+   Dashboard de Consulta — Gráficas con Chart.js
+   ===================================================== */
+
+/* ============ CONTENEDOR DE GRÁFICAS ============ */
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+
+.chart-wrapper--wide {
+    height: 380px;
+}
+
+.chart-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* ============ TOOLBAR DEL DASHBOARD ============ */
+#filtroDashboard {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+#filtroDashboard select {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.92rem;
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius-sm);
+    background: var(--c-input-bg);
+    color: var(--c-text);
+    font-family: inherit;
+}
+
+#filtroDashboard select:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px var(--c-primary-light);
+}
+
+/* ============ TÍTULOS DE GRÁFICAS ============ */
+.card__title + .chart-wrapper {
+    margin-top: 1rem;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 760px) {
+    .chart-wrapper { height: 280px; }
+    .chart-wrapper--wide { height: 320px; }
+
+    #filtroDashboard {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #filtroDashboard label {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    #filtroDashboard select {
+        max-width: 100% !important;
+    }
+}

@@ -33,6 +33,8 @@ $esSuper = $user ? $user['es_superusuario'] : false;
         window.API_BASE = <?= json_encode($apiBaseUrl) ?>;
         window.CSRF_TOKEN = <?= json_encode(csrf_token()) ?>;
     </script>
+    <!-- Chart.js para gráficas del dashboard (local) -->
+    <script src="<?= e($assetsBase) ?>js/vendor/chart.umd.min.js?v=<?= e(APP_VERSION) ?>"></script>
 </head>
 <body>
     <header class="topbar">
