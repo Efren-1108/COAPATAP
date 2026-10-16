@@ -43,7 +43,7 @@ $esSuper = $user ? $user['es_superusuario'] : false;
                 <span class="brand__icon">🏫</span>
                 <span class="brand__text">
                     <strong><?= e(APP_NAME) ?></strong>
-                    <small>Control de Activos Fijos</small>
+                    <small>C</small>
                 </span>
             </a>
             <?php if ($user): ?>
