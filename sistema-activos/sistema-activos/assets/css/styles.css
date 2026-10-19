@@ -1926,3 +1926,370 @@ textarea.form-control { min-height: 90px; resize: vertical; }
         max-width: 100% !important;
     }
 }
+
+
+/* ============================================
+   MEJORA DEL ENCABEZADO PRINCIPAL
+   SISTEMA DE CONTROL DE ACTIVOS FIJOS
+   ============================================ */
+
+/* Distribución del encabezado en dos filas */
+
+.topbar__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "marca usuario"
+        "menu menu";
+
+    align-items: center;
+    column-gap: 20px;
+    row-gap: 12px;
+
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+/* ============================================
+   LOGOTIPO Y NOMBRE DEL SISTEMA
+   ============================================ */
+
+.topbar .brand {
+    grid-area: marca;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    min-width: 0;
+    width: fit-content;
+
+    text-decoration: none;
+}
+
+.topbar .brand__icon {
+    flex-shrink: 0;
+    font-size: 30px;
+}
+
+.topbar .brand__text {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.topbar .brand__text strong {
+    font-size: 16px;
+    font-weight: 700;
+    white-space: normal;
+}
+
+.topbar .brand__text small {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+/* ============================================
+   MENÚ DE NAVEGACIÓN
+   ============================================ */
+
+.topbar .nav {
+    grid-area: menu;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+
+    width: 100%;
+    min-width: 0;
+
+    gap: 6px;
+
+    padding-top: 10px;
+
+    border-top: 1px solid rgba(255,255,255,0.20);
+}
+
+.topbar .nav__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    padding: 9px 12px;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+    font-weight: 500;
+
+    color: #ffffff;
+    text-decoration: none;
+
+    white-space: nowrap;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.topbar .nav__link:hover {
+    background: rgba(255,255,255,0.16);
+    text-decoration: none;
+}
+
+.topbar .nav__link.is-active {
+    background: rgba(255,255,255,0.24);
+    font-weight: 600;
+}
+
+/* ============================================
+   USUARIO EN ESQUINA SUPERIOR DERECHA
+   ============================================ */
+
+.topbar .user-menu {
+    grid-area: usuario;
+
+    position: relative;
+    justify-self: end;
+
+    min-width: 0;
+    max-width: 100%;
+}
+
+.topbar .user-chip {
+    display: flex;
+    align-items: center;
+
+    max-width: 100%;
+    min-width: 0;
+
+    gap: 9px;
+
+    padding: 7px 12px 7px 7px;
+
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 30px;
+
+    background: rgba(255,255,255,0.12);
+    color: #ffffff;
+
+    cursor: pointer;
+}
+
+.topbar .user-chip__avatar {
+    flex-shrink: 0;
+}
+
+.topbar .user-chip__body {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+    max-width: 180px;
+
+    text-align: left;
+}
+
+.topbar .user-chip__name {
+    display: block;
+
+    max-width: 100%;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topbar .user-chip__meta {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.topbar .user-chip__caret {
+    flex-shrink: 0;
+}
+
+/* Menú desplegable de usuario */
+
+.topbar .user-menu__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: auto;
+
+    min-width: 240px;
+    max-width: min(300px, 90vw);
+
+    z-index: 200;
+}
+
+/* ============================================
+   MENÚ RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    .topbar__inner {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas:
+            "marca usuario toggle"
+            "menu menu menu";
+
+        column-gap: 8px;
+        row-gap: 8px;
+    }
+
+    .topbar .brand__icon {
+        font-size: 23px;
+    }
+
+    .topbar .brand__text strong {
+        font-size: 13px;
+    }
+
+    .topbar .brand__text small {
+        display: none;
+    }
+
+    .topbar .user-chip__body {
+        display: none;
+    }
+
+    .topbar .user-chip {
+        padding: 5px;
+    }
+
+    .topbar .user-chip__caret {
+        display: none;
+    }
+
+    .topbar .nav__toggle {
+        grid-area: toggle;
+        display: inline-block;
+    }
+
+    .topbar .nav {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 4px;
+        padding-top: 10px;
+    }
+
+    .topbar .nav.is-open {
+        display: flex;
+    }
+
+    .topbar .nav__link {
+        width: 100%;
+        justify-content: flex-start;
+
+        padding: 11px 14px;
+    }
+}
+
+/* ============================================
+   PANTALLAS MUY PEQUEÑAS
+   ============================================ */
+
+@media (max-width: 400px) {
+
+    .topbar .brand__text strong {
+        font-size: 11px;
+    }
+
+    .topbar .brand {
+        gap: 6px;
+    }
+
+    .topbar .brand__icon {
+        font-size: 20px;
+    }
+
+    .topbar__inner {
+        column-gap: 5px;
+    }
+}
+
+
+/* ==========================================
+   ENCABEZADO SIN NOMBRE DEL SISTEMA
+   ========================================== */
+
+/* Primera fila: usuario
+   Segunda fila: menú de navegación */
+
+.topbar__inner {
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    grid-template-areas:
+        "usuario usuario"
+        "menu menu";
+
+    align-items: center;
+    gap: 12px;
+
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+/* Usuario a la derecha */
+
+.topbar .user-menu {
+    grid-area: usuario;
+    justify-self: end;
+}
+
+/* Opciones del sistema */
+
+.topbar .nav {
+    grid-area: menu;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+
+    width: 100%;
+    gap: 8px;
+}
+
+/* Pantallas pequeñas */
+
+@media (max-width: 768px) {
+
+    .topbar__inner {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+
+        grid-template-areas:
+            "usuario usuario toggle"
+            "menu menu menu";
+    }
+
+    .topbar .nav__toggle {
+        grid-area: toggle;
+    }
+
+    .topbar .nav {
+        display: none;
+    }
+
+    .topbar .nav.is-open {
+        display: flex;
+    }
+}

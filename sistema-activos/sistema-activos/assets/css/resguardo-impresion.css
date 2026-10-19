@@ -1,0 +1,768 @@
+
+/* ==========================================
+   MÓDULO DE IMPRESIÓN DE RESGUARDOS
+   Sistema de Control de Activos Fijos
+   ========================================== */
+
+/* ==========================================
+   1. PANTALLA DEL MÓDULO
+   ========================================== */
+
+.modulo-impresion {
+    margin: 25px 0;
+    padding: 24px;
+
+    background: #ffffff;
+    border-radius: 12px;
+
+    box-shadow: 0 4px 18px #0b245015;
+    color: #142237;
+}
+
+.modulo-impresion h1 {
+    margin: 0 0 5px;
+    font-size: 23px;
+}
+
+.modulo-impresion p {
+    margin: 0 0 18px;
+}
+
+/* ==========================================
+   2. FORMULARIO DE BÚSQUEDA
+   ========================================== */
+
+.impresion-formulario {
+    display: grid;
+
+    grid-template-columns: 1fr 1.4fr auto;
+
+    align-items: end;
+    gap: 14px;
+}
+
+.impresion-formulario label {
+    display: grid;
+    gap: 6px;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.impresion-formulario select {
+    min-width: 0;
+    width: 100%;
+    min-height: 42px;
+
+    border: 1px solid #cbd5e1;
+    padding: 9px;
+
+    border-radius: 7px;
+
+    font-size: 14px;
+    color: #0f172a;
+    background: #fff;
+}
+
+/* ==========================================
+   3. BOTONES
+   ========================================== */
+
+.imp-btn {
+    border: 0;
+    border-radius: 7px;
+
+    padding: 12px 17px;
+
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.imp-btn-primario {
+    color: #ffffff;
+    background: #2056d9;
+}
+
+.imp-btn-primario:hover {
+    background: #1748bb;
+}
+
+/* ==========================================
+   4. RESUMEN DEL RESGUARDANTE
+   ========================================== */
+
+.imp-resumen {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.imp-resumen > div {
+    background: #eef4ff;
+    border-radius: 7px;
+
+    padding: 12px;
+
+    display: grid;
+    gap: 3px;
+
+    min-width: 0;
+}
+
+.imp-resumen small {
+    color: #53627b;
+}
+
+.imp-resumen strong {
+    overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   5. ACCIONES Y MENSAJES
+   ========================================== */
+
+.imp-acciones {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.imp-aviso {
+    padding: 13px;
+    margin-top: 15px !important;
+
+    background: #eff6ff;
+    border-radius: 7px;
+}
+
+.imp-error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ==========================================
+   6. DOCUMENTOS DE IMPRESIÓN
+   ========================================== */
+
+.imp-documentos {
+    overflow-x: auto;
+    margin-bottom: 30px;
+}
+
+.resguardo-hoja {
+    box-sizing: border-box;
+
+    width: 287mm;
+    min-height: 198mm;
+
+    margin: 18px auto;
+    padding: 5mm 6mm;
+
+    background: #ffffff;
+    color: #151515;
+
+    font-family: Arial, sans-serif;
+
+    box-shadow: 0 3px 16px #0b245027;
+
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==========================================
+   7. ENCABEZADO INSTITUCIONAL
+   ========================================== */
+
+.imp-encabezado {
+    display: grid;
+
+    grid-template-columns: 74% 26%;
+
+    color: #14376d;
+
+    font-size: 8pt;
+    line-height: 1.4;
+}
+
+.imp-encabezado strong {
+    font-weight: 800;
+}
+
+.imp-identificador {
+    text-align: center;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 1mm;
+    font-weight: 700;
+}
+
+.imp-numero {
+    font-size: 13pt;
+    color: #e3222a;
+
+    border-top: 1px solid #777;
+}
+
+.imp-fecha {
+    margin-top: 3mm;
+}
+
+/* ==========================================
+   8. TÍTULO Y DATOS DEL ÁREA
+   ========================================== */
+
+.imp-titulo {
+    margin-top: 5mm;
+
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    color: #14376d;
+    font-size: 9pt;
+}
+
+.imp-titulo span {
+    color: #e3222a;
+    font-size: 8pt;
+}
+
+.imp-area {
+    display: grid;
+
+    grid-template-columns:
+        25% 32% 20% 23%;
+
+    align-items: center;
+
+    margin: 4mm 0 2mm;
+
+    color: #14376d;
+    font-size: 7.9pt;
+}
+
+.imp-area strong {
+    padding: 0 2mm;
+}
+
+.imp-resguardante {
+    color: #14376d;
+
+    font-size: 8pt;
+    margin-bottom: 2mm;
+}
+
+/* ==========================================
+   9. TABLA DE ACTIVOS
+   ========================================== */
+
+.imp-tabla {
+    border-collapse: collapse;
+    table-layout: fixed;
+
+    width: 100%;
+
+    font-size: 7.1pt;
+    line-height: 1.14;
+}
+
+.imp-tabla th,
+.imp-tabla td {
+    border: 1px solid #555;
+
+    padding: 1.15mm 0.5mm;
+
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.imp-tabla th {
+    background: #8a190f;
+    color: #ffffff;
+
+    font-size: 6.6pt;
+
+    text-align: center;
+    font-weight: bold;
+}
+
+.imp-tabla td:not(:first-child) {
+    text-align: center;
+}
+
+.imp-tabla td:nth-child(10) {
+    white-space: nowrap;
+    font-size: 6.7pt;
+}
+
+/* ==========================================
+   10. PIE DEL RESGUARDO
+   ========================================== */
+
+.imp-pie {
+    margin-top: auto;
+    padding-top: 5mm;
+}
+
+/* ==========================================
+   11. LEYENDA DE RESPONSABILIDAD
+   ========================================== */
+
+.imp-leyenda {
+    font-size: 7.4pt;
+
+    line-height: 1.22;
+    text-align: justify;
+
+    margin: 0 0 8mm;
+}
+
+/* ==========================================
+   12. FIRMAS
+   ========================================== */
+
+.imp-firmas {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 10mm;
+
+    text-align: center;
+    font-size: 8pt;
+}
+
+.imp-firmas > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    min-width: 0;
+}
+
+.imp-firmas strong {
+    font-weight: 700;
+}
+
+.imp-firmas b,
+.imp-firmas small {
+    font-size: 7.6pt;
+    line-height: 1.25;
+}
+
+.imp-linea {
+    display: block;
+
+    height: 15mm;
+    width: 90%;
+
+    border-bottom: 1px solid #444;
+    margin-bottom: 1mm;
+}
+
+/* ==========================================
+   13. PANTALLAS PEQUEÑAS
+   ========================================== */
+
+@media (max-width: 900px) {
+
+    .impresion-formulario {
+        grid-template-columns: 1fr;
+    }
+
+    .imp-resumen {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+
+    .imp-acciones {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+}
+
+/* ==========================================
+   14. CONFIGURACIÓN DE IMPRESIÓN
+   ========================================== */
+
+@page {
+    size: A4 landscape;
+    margin: 5mm;
+}
+
+@media print {
+
+    html,
+    body {
+        background: #ffffff !important;
+    }
+
+    /* Ocultar el menú y los controles */
+
+    .topbar,
+    .modulo-impresion,
+    .footer,
+    .nav,
+    #toast {
+        display: none !important;
+    }
+
+    /* Ampliar el contenedor principal */
+
+    body > main.container {
+        max-width: none !important;
+
+        width: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .imp-documentos {
+        overflow: visible;
+        margin: 0;
+    }
+
+    /* Una hoja de resguardo por página */
+
+    .resguardo-hoja {
+        width: 100%;
+
+        height: 198mm;
+        min-height: 198mm;
+
+        margin: 0;
+        padding: 4mm 5mm;
+
+        box-shadow: none;
+
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .resguardo-hoja:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    /* Mantener elementos unidos */
+
+    .imp-tabla tr,
+    .imp-pie,
+    .imp-firmas {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    /* Conservar el fondo de la tabla */
+
+    .imp-tabla th {
+        background: #8a190f !important;
+        color: #ffffff !important;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+}
+
+
+/* ==========================================
+   CAMPOS EDITABLES DE RESPONSABLES
+   ========================================== */
+
+.imp-firmantes {
+    grid-column: 1 / -1;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 15px;
+
+    margin-top: 10px;
+    padding: 15px;
+
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+
+    background: #f8fafc;
+}
+
+/* Campos de entrada */
+
+.imp-firmantes label {
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #14376d;
+}
+
+.imp-firmantes input {
+    width: 100%;
+    min-width: 0;
+
+    padding: 11px 12px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #172033;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+/* Campo seleccionado */
+
+.imp-firmantes input:focus {
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* ==========================================
+   NOMBRES DE LAS FIRMAS
+   ========================================== */
+
+.imp-nombre-firma {
+    display: block;
+
+    min-height: 15px;
+
+    font-size: 8pt;
+    font-weight: 700;
+
+    text-align: center;
+    text-transform: uppercase;
+
+    overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   ADAPTACIÓN A PANTALLAS PEQUEÑAS
+   ========================================== */
+
+@media (max-width: 768px) {
+
+    .imp-firmantes {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+/* ==========================================
+   IMPRESIÓN
+   ========================================== */
+
+@media print {
+
+    /* Nunca imprimir los campos editables */
+
+    .imp-firmantes {
+        display: none !important;
+    }
+
+    /* Conservar los nombres de las firmas */
+
+    .imp-nombre-firma {
+        display: block !important;
+        color: #000000 !important;
+    }
+
+}
+
+
+/* ==========================================
+   SELECTOR DE EMPLEADOS PARA FIRMAS
+   ========================================== */
+
+/* Cada responsable */
+
+.imp-firmantes .imp-firmante-control {
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+
+    min-width: 0;
+}
+
+/* Títulos de los campos */
+
+.imp-firmantes .imp-firmante-control label {
+    font-size: 13px;
+    font-weight: 700;
+
+    color: #14376d;
+}
+
+/* Campo de búsqueda y captura manual */
+
+.imp-firmantes .imp-firmante-control
+input[type="text"] {
+    width: 100%;
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #172033;
+
+    font-size: 14px;
+
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+}
+
+/* Resaltar al escribir */
+
+.imp-firmantes .imp-firmante-control
+input[type="text"]:focus {
+    outline: none;
+
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Texto informativo */
+
+.imp-firmante-ayuda {
+    display: block;
+
+    font-size: 11px;
+    font-weight: 400;
+
+    color: #64748b;
+
+    line-height: 1.4;
+}
+
+/* Adaptación para móvil */
+
+@media (max-width: 768px) {
+
+    .imp-firmantes {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* ==========================================
+   FILTROS DE ADSCRIPCIÓN, ÁREA Y EMPLEADO
+   ========================================== */
+
+.impresion-formulario {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 15px;
+
+    align-items: end;
+}
+
+/* Desplegables */
+
+.impresion-formulario > label {
+    display: flex;
+    flex-direction: column;
+
+    gap: 7px;
+
+    min-width: 0;
+
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.impresion-formulario > label select {
+    width: 100%;
+    min-width: 0;
+
+    min-height: 43px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #172033;
+
+    font-size: 14px;
+}
+
+/* Resaltar desplegable seleccionado */
+
+.impresion-formulario > label select:focus {
+    outline: none;
+
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Botón de consulta */
+
+.impresion-formulario > button[type="submit"] {
+    grid-column: 1 / -1;
+
+    justify-self: end;
+}
+
+/* Los responsables ocupan todo el ancho */
+
+.impresion-formulario .imp-firmantes {
+    grid-column: 1 / -1;
+}
+
+/* ==========================================
+   PANTALLAS PEQUEÑAS
+   ========================================== */
+
+@media (max-width: 900px) {
+
+    .impresion-formulario {
+        grid-template-columns: 1fr;
+    }
+
+    .impresion-formulario > button[type="submit"] {
+        width: 100%;
+    }
+
+}
+
