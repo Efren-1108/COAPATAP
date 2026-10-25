@@ -2,18 +2,30 @@
 <?php
 /**
  * Encabezado principal del sistema
- * de control de activos fijos.
+ * de control de activos fijos COAPATAP.
  *
- * Incluye el acceso al módulo de impresión.
+ * Menú:
+ * - Consulta
+ * - Empleados y Áreas
+ * - Activos
+ * - Adscripciones (superusuario)
+ * - Impresión de resguardos
+ * - Importar Excel (superusuario)
+ * - Usuarios (superusuario)
+ * - Roles (superusuario)
  */
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 $page_title = $page_title ?? 'Inicio';
+
 $current = basename($_SERVER['PHP_SELF']);
 
-// Dirección de las API
+// ==========================================
+// DIRECCIÓN DE LAS API
+// ==========================================
+
 $apiBaseUrl = rtrim(
     (
         (isset($_SERVER['HTTPS']) &&
@@ -24,22 +36,32 @@ $apiBaseUrl = rtrim(
     '/'
 ) . '/api/';
 
-// Carpeta de recursos
+// ==========================================
+// CARPETA DE RECURSOS
+// ==========================================
+
 $assetsBase = base_url() . '/assets/';
 
-// Obtener usuario actual
+// ==========================================
+// OBTENER USUARIO ACTUAL
+// ==========================================
+
 if (!isset($user)) {
     $user = current_user();
 }
 
+// Identificar superusuario
+
 $esSuper = $user
-    ? $user['es_superusuario']
+    ? !empty($user['es_superusuario'])
     : false;
 
-// Permiso para consultar activos e imprimir
+// Permiso para acceder a impresión
+
 $puedeImprimir = $user
     ? has_permission('activos')
     : false;
+
 ?>
 
 <!DOCTYPE html>
@@ -58,35 +80,54 @@ $puedeImprimir = $user
         <?= e($page_title) ?> · <?= e(APP_NAME) ?>
     </title>
 
+    <!-- =====================================
+         ESTILOS PRINCIPALES
+    ====================================== -->
+
     <link
         rel="stylesheet"
         href="<?= e($assetsBase) ?>css/styles.css"
     >
- 
+
+    <!-- =====================================
+         ESTILOS ADICIONALES POR MÓDULO
+    ====================================== -->
+
     <?php if (!empty($page_css)): ?>
 
-    <link
-        rel="stylesheet"
-        href="<?= e($assetsBase) ?>css/<?= e(basename($page_css)) ?>"
-    >
+        <link
+            rel="stylesheet"
+            href="<?= e($assetsBase) ?>css/<?= e(basename($page_css)) ?>"
+        >
 
     <?php endif; ?>
 
+    <!-- =====================================
+         ICONO DEL SISTEMA
+    ====================================== -->
 
     <link
         rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>"
     >
 
+    <!-- =====================================
+         CONFIGURACIÓN JAVASCRIPT
+    ====================================== -->
+
     <script>
+
         window.API_BASE =
             <?= json_encode($apiBaseUrl) ?>;
 
         window.CSRF_TOKEN =
             <?= json_encode(csrf_token()) ?>;
+
     </script>
 
-    <!-- Gráficas del sistema -->
+    <!-- =====================================
+         GRÁFICAS DEL SISTEMA
+    ====================================== -->
 
     <script
         src="<?= e($assetsBase) ?>js/vendor/chart.umd.min.js?v=<?= e(APP_VERSION) ?>"
@@ -96,34 +137,52 @@ $puedeImprimir = $user
 
 <body>
 
+    <!-- =====================================
+         ENCABEZADO DEL SISTEMA
+    ====================================== -->
+
     <header class="topbar">
 
         <div class="container topbar__inner">
 
             <?php if ($user): ?>
 
-                <!-- MENÚ PRINCIPAL -->
+                <!-- =================================
+                     MENÚ PRINCIPAL
+                ================================== -->
 
                 <nav
                     class="nav"
                     aria-label="Navegación principal"
                 >
 
-                    <!-- CONSULTA -->
+                    <!-- =============================
+                         CONSULTA
+                    ============================== -->
 
                     <a
-                        class="nav__link <?= $current === 'index.php' ? 'is-active' : '' ?>"
+                        class="nav__link <?= $current === 'index.php'
+                            ? 'is-active'
+                            : '' ?>"
                         href="index.php"
                     >
                         🔍 Consulta
                     </a>
 
-                    <!-- EMPLEADOS Y ÁREAS -->
+                    <!-- =============================
+                         EMPLEADOS Y ÁREAS
+                    ============================== -->
 
                     <?php if (has_permission('empleados')): ?>
 
                         <a
-                            class="nav__link <?= in_array($current, ['empleados.php', 'areas.php']) ? 'is-active' : '' ?>"
+                            class="nav__link <?= in_array(
+                                $current,
+                                ['empleados.php', 'areas.php'],
+                                true
+                            )
+                                ? 'is-active'
+                                : '' ?>"
                             href="empleados.php"
                         >
                             👥 Empleados y Áreas
@@ -131,12 +190,16 @@ $puedeImprimir = $user
 
                     <?php endif; ?>
 
-                    <!-- ACTIVOS -->
+                    <!-- =============================
+                         ACTIVOS
+                    ============================== -->
 
                     <?php if (has_permission('activos')): ?>
 
                         <a
-                            class="nav__link <?= $current === 'activos.php' ? 'is-active' : '' ?>"
+                            class="nav__link <?= $current === 'activos.php'
+                                ? 'is-active'
+                                : '' ?>"
                             href="activos.php"
                         >
                             📦 Activos
@@ -144,15 +207,34 @@ $puedeImprimir = $user
 
                     <?php endif; ?>
 
+                    <!-- =============================
+                         ADSCRIPCIONES
+                         SOLO SUPERUSUARIO
+                    ============================== -->
 
-                    <!-- ==========================
-                         NUEVO MÓDULO DE IMPRESIÓN
-                    =========================== -->
+                    <?php if ($esSuper): ?>
+
+                        <a
+                            class="nav__link <?= $current === 'adscripciones.php'
+                                ? 'is-active'
+                                : '' ?>"
+                            href="adscripciones.php"
+                        >
+                            🏛️ Adscripciones
+                        </a>
+
+                    <?php endif; ?>
+
+                    <!-- =============================
+                         IMPRESIÓN DE RESGUARDOS
+                    ============================== -->
 
                     <?php if ($puedeImprimir): ?>
 
                         <a
-                            class="nav__link <?= $current === 'vista_previa_resguardo.php' ? 'is-active' : '' ?>"
+                            class="nav__link <?= $current === 'vista_previa_resguardo.php'
+                                ? 'is-active'
+                                : '' ?>"
                             href="vista_previa_resguardo.php"
                             title="Imprimir y guardar resguardos"
                         >
@@ -161,27 +243,47 @@ $puedeImprimir = $user
 
                     <?php endif; ?>
 
-
-                    <!-- OPCIONES DE SUPERUSUARIO -->
+                    <!-- =============================
+                         OPCIONES DE SUPERUSUARIO
+                    ============================== -->
 
                     <?php if ($esSuper): ?>
 
-                        <a
-                            class="nav__link <?= $current === 'adscripciones.php' ? 'is-active' : '' ?>"
-                            href="adscripciones.php"
-                        >
-                            🏛️ Adscripciones
-                        </a>
+                        <!-- =========================
+                             IMPORTAR EXCEL
+                        ========================== -->
 
                         <a
-                            class="nav__link <?= $current === 'usuarios.php' ? 'is-active' : '' ?>"
+                            class="nav__link <?= $current === 'importar_activos.php'
+                                ? 'is-active'
+                                : '' ?>"
+                            href="importar_activos.php"
+                            title="Importar empleados y activos desde Excel"
+                        >
+                            📥 Importar Excel
+                        </a>
+
+                        <!-- =========================
+                             USUARIOS
+                        ========================== -->
+
+                        <a
+                            class="nav__link <?= $current === 'usuarios.php'
+                                ? 'is-active'
+                                : '' ?>"
                             href="usuarios.php"
                         >
                             🔐 Usuarios
                         </a>
 
+                        <!-- =========================
+                             ROLES
+                        ========================== -->
+
                         <a
-                            class="nav__link <?= $current === 'roles.php' ? 'is-active' : '' ?>"
+                            class="nav__link <?= $current === 'roles.php'
+                                ? 'is-active'
+                                : '' ?>"
                             href="roles.php"
                         >
                             🛡️ Roles
@@ -191,7 +293,9 @@ $puedeImprimir = $user
 
                 </nav>
 
-                <!-- MENÚ DE USUARIO -->
+                <!-- =================================
+                     MENÚ DEL USUARIO
+                ================================== -->
 
                 <div class="user-menu">
 
@@ -203,7 +307,10 @@ $puedeImprimir = $user
                         aria-expanded="false"
                     >
 
+                        <!-- AVATAR -->
+
                         <span class="user-chip__avatar">
+
                             <?= e(
                                 strtoupper(
                                     substr(
@@ -213,27 +320,48 @@ $puedeImprimir = $user
                                     )
                                 )
                             ) ?>
+
                         </span>
+
+                        <!-- INFORMACIÓN DEL USUARIO -->
 
                         <span class="user-chip__body">
 
                             <span class="user-chip__name">
-                                <?= e($user['nombre_completo']) ?>
+
+                                <?= e(
+                                    $user['nombre_completo']
+                                ) ?>
+
                             </span>
 
                             <span class="user-chip__meta">
 
-                                <span class="badge <?= $esSuper ? 'badge--super' : 'badge--usuario' ?>">
+                                <!-- ROL -->
 
-                                    <?= e($user['rol_nombre']) ?>
+                                <span
+                                    class="badge <?= $esSuper
+                                        ? 'badge--super'
+                                        : 'badge--usuario' ?>"
+                                >
+
+                                    <?= e(
+                                        $user['rol_nombre']
+                                    ) ?>
 
                                 </span>
 
-                                <?php if (!empty($user['area_nombre'])): ?>
+                                <!-- ÁREA -->
+
+                                <?php if (!empty(
+                                    $user['area_nombre']
+                                )): ?>
 
                                     <span class="badge badge--area">
 
-                                        🏢 <?= e($user['area_nombre']) ?>
+                                        🏢 <?= e(
+                                            $user['area_nombre']
+                                        ) ?>
 
                                     </span>
 
@@ -243,13 +371,17 @@ $puedeImprimir = $user
 
                         </span>
 
+                        <!-- FLECHA -->
+
                         <span class="user-chip__caret">
                             ▾
                         </span>
 
                     </button>
 
-                    <!-- PANEL DESPLEGABLE -->
+                    <!-- =============================
+                         PANEL DESPLEGABLE
+                    ============================== -->
 
                     <div
                         class="user-menu__panel"
@@ -258,17 +390,29 @@ $puedeImprimir = $user
                         hidden
                     >
 
+                        <!-- DATOS DEL USUARIO -->
+
                         <div class="user-menu__head">
 
                             <strong>
-                                <?= e($user['nombre_completo']) ?>
+
+                                <?= e(
+                                    $user['nombre_completo']
+                                ) ?>
+
                             </strong>
 
                             <small>
-                                @<?= e($user['nombre_usuario']) ?>
+
+                                @<?= e(
+                                    $user['nombre_usuario']
+                                ) ?>
+
                             </small>
 
                         </div>
+
+                        <!-- MI PERFIL -->
 
                         <a
                             class="user-menu__item"
@@ -276,6 +420,8 @@ $puedeImprimir = $user
                         >
                             👤 Mi perfil
                         </a>
+
+                        <!-- CERRAR SESIÓN -->
 
                         <a
                             class="user-menu__item user-menu__item--danger"
@@ -288,7 +434,9 @@ $puedeImprimir = $user
 
                 </div>
 
-                <!-- MENÚ RESPONSIVO -->
+                <!-- =================================
+                     MENÚ RESPONSIVO
+                ================================== -->
 
                 <button
                     class="nav__toggle"
@@ -305,6 +453,8 @@ $puedeImprimir = $user
 
     </header>
 
-    <!-- CONTENIDO PRINCIPAL -->
+    <!-- =====================================
+         CONTENIDO PRINCIPAL
+    ====================================== -->
 
     <main class="container">

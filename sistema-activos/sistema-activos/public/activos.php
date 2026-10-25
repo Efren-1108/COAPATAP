@@ -76,6 +76,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <th>Inventario</th>
                     <th>Marca</th>
                     <th>Modelo</th>
+                    <th>Estado Fisico</th>
                     <th>Costo</th>
                     <th>Adscripción</th>
                     <th>Área</th>
@@ -133,10 +134,70 @@ require_once __DIR__ . '/../includes/header.php';
                         <label>Material</label>
                         <input type="text" name="material" class="form-control" maxlength="100">
                     </div>
+                    
+                    <!-- ==========================================
+                        ESTADO FÍSICO DEL ACTIVO
+                    ========================================== -->
+
                     <div class="form-group">
-                        <label>Fecha de adquisición</label>
-                        <input type="date" name="fecha_adq" class="form-control" max="<?= date('Y-m-d') ?>">
+
+                        <label for="estado_fisico">
+                            Estado físico
+                            <span class="req">*</span>
+                        </label>
+
+                        <select
+                            name="estado_fisico"
+                            id="estado_fisico"
+                            class="form-control"
+                            required
+                        >
+                            <option value="">
+                                — Selecciona el estado físico —
+                            </option>
+
+                            <option value="BUENO">
+                                BUENO
+                            </option>
+
+                            <option value="NUEVO">
+                                NUEVO
+                            </option>
+
+                            <option value="REGULAR">
+                                REGULAR
+                            </option>
+
+                            <option value="INSERVIBLE">
+                                INSERVIBLE
+                            </option>
+                        </select>
+
+                        <span class="form-text">
+                            Selecciona la condición física actual del bien.
+                        </span>
+
                     </div>
+
+                    
+                    <!-- ==========================================
+                        FECHA DE ADQUISICIÓN DEL ACTIVO
+                    ========================================== -->
+
+                    <div class="form-group">
+                        <label for="fecha_adq">
+                            Fecha de adquisición
+                        </label>
+
+                        <input
+                            type="date"
+                            name="fecha_adq"
+                            id="fecha_adq"
+                            class="form-control"
+                        >
+                    </div>
+
+
                     <div class="form-group">
                         <label>Número de factura</label>
                         <input type="text" name="factura" class="form-control" maxlength="100">

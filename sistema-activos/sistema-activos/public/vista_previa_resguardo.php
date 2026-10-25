@@ -1,18 +1,18 @@
 
 <?php
 /**
- * SISTEMA DE CONTROL DE ACTIVOS FIJOS
- * MÓDULO DE IMPRESIÓN DE RESGUARDOS
+ * SISTEMA DE CONTROL DE ACTIVOS FIJOS - COAPATAP
  *
- * Funciones:
- * - Seleccionar adscripción.
- * - Filtrar áreas por adscripción.
- * - Filtrar empleados por área.
- * - Consultar activos en PostgreSQL.
- * - Seleccionar responsables de firma.
- * - Permitir nombres manuales.
- * - Recordar los últimos firmantes.
- * - Imprimir resguardos horizontales.
+ * IMPRESIÓN DE RESGUARDOS
+ *
+ * Incluye:
+ * - Filtros de adscripción, área y empleado.
+ * - Consulta de activos desde PostgreSQL.
+ * - Firmantes seleccionables o manuales.
+ * - Memoria de los últimos firmantes.
+ * - Logotipos institucionales automáticos.
+ * - Marca de agua con número de página.
+ * - Impresión horizontal.
  */
 
 // ==========================================
@@ -33,7 +33,7 @@ if (!has_permission('activos')) {
 // 2. FUNCIONES AUXILIARES
 // ==========================================
 
-function resguardoEsc($valor): string
+function resguardoEsc(mixed $valor): string
 {
     return htmlspecialchars(
         (string) ($valor ?? ''),
@@ -42,7 +42,7 @@ function resguardoEsc($valor): string
     );
 }
 
-function resguardoFecha($fecha): string
+function resguardoFecha(mixed $fecha): string
 {
     if (!$fecha) {
         return '—';
@@ -56,7 +56,7 @@ function resguardoFecha($fecha): string
     return $d ? $d->format('d/m/Y') : '—';
 }
 
-function resguardoPesos($valor): string
+function resguardoPesos(mixed $valor): string
 {
     return $valor === null
         ? '—'
@@ -66,6 +66,39 @@ function resguardoPesos($valor): string
             '.',
             ','
         );
+}
+
+/**
+ * Generar una URL únicamente para imágenes
+ * guardadas por Configuración de impresión.
+ *
+ * Si la ruta no es válida o el archivo
+ * ya no existe, devolver una cadena vacía.
+ */
+function resguardoUrlImagen(mixed $ruta): string
+{
+    $ruta = (string) ($ruta ?? '');
+
+    $patron = '~\Aassets/img/resguardos/historial/'
+        . '[a-f0-9]{32}\.(?:png|jpg|webp)\z~';
+
+    if (!preg_match($patron, $ruta)) {
+        return '';
+    }
+
+    $archivoFisico = dirname(__DIR__)
+        . DIRECTORY_SEPARATOR
+        . str_replace(
+            '/',
+            DIRECTORY_SEPARATOR,
+            $ruta
+        );
+
+    if (!is_file($archivoFisico)) {
+        return '';
+    }
+
+    return rtrim(base_url(), '/') . '/' . $ruta;
 }
 
 // ==========================================
@@ -78,7 +111,7 @@ $areaUsuario = isset($user['area_id'])
     ? (int) $user['area_id']
     : 0;
 
-// NUEVO: ADSCRIPCIÓN SELECCIONADA
+// Adscripción seleccionada
 
 $adscripcionElegida = filter_input(
     INPUT_GET,
@@ -87,7 +120,7 @@ $adscripcionElegida = filter_input(
     ['options' => ['min_range' => 1]]
 );
 
-// ÁREA SELECCIONADA
+// Área seleccionada
 
 $areaElegida = filter_input(
     INPUT_GET,
@@ -96,7 +129,7 @@ $areaElegida = filter_input(
     ['options' => ['min_range' => 1]]
 );
 
-// EMPLEADO SELECCIONADO
+// Número de nómina del resguardante
 
 $nomina = filter_input(
     INPUT_GET,
@@ -119,14 +152,26 @@ $nombreAutoriza = trim(
     (string) ($_GET['nombre_autoriza'] ?? '')
 );
 
-$nombreEntrega = substr($nombreEntrega, 0, 150);
-$nombreAutoriza = substr($nombreAutoriza, 0, 150);
+$nombreEntrega = mb_substr(
+    $nombreEntrega,
+    0,
+    150,
+    'UTF-8'
+);
+
+$nombreAutoriza = mb_substr(
+    $nombreAutoriza,
+    0,
+    150,
+    'UTF-8'
+);
 
 // ==========================================
 // 5. VARIABLES GENERALES
 // ==========================================
 
 $error = '';
+
 $empleado = null;
 
 $adscripciones = [];
@@ -135,7 +180,7 @@ $empleados = [];
 $bienes = [];
 
 // ==========================================
-// 6. CONSULTAR POSTGRESQL
+// 6. CONSULTAR ACTIVOS EN POSTGRESQL
 // ==========================================
 
 try {
@@ -143,11 +188,8 @@ try {
     $pdo = db();
 
     // ======================================
-    // 6.1 OBTENER ADSCRIPCIONES
+    // 6.1 CONSULTAR ADSCRIPCIONES
     // ======================================
-
-    // Solo mostrar adscripciones con áreas
-    // que tengan empleados registrados.
 
     $sqlAdscripciones = "
         SELECT DISTINCT
@@ -162,8 +204,6 @@ try {
     ";
 
     $paramsAdscripciones = [];
-
-    // Respetar el área del usuario normal.
 
     if (!$esSuper) {
 
@@ -183,10 +223,12 @@ try {
 
     $stmt->execute($paramsAdscripciones);
 
-    $adscripciones = $stmt->fetchAll();
+    $adscripciones = $stmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
 
     // ======================================
-    // 6.2 OBTENER ÁREAS
+    // 6.2 CONSULTAR ÁREAS
     // ======================================
 
     $sqlAreas = "
@@ -222,14 +264,13 @@ try {
 
     $stmt->execute($paramsAreas);
 
-    $areas = $stmt->fetchAll();
+    $areas = $stmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
 
     // ======================================
-    // 6.3 OBTENER EMPLEADOS
+    // 6.3 CONSULTAR EMPLEADOS
     // ======================================
-
-    // Se recupera también su adscripción,
-    // para filtrar en los desplegables.
 
     $sqlEmpleados = "
         SELECT
@@ -263,7 +304,9 @@ try {
 
     $stmt->execute($paramsEmpleados);
 
-    $empleados = $stmt->fetchAll();
+    $empleados = $stmt->fetchAll(
+        PDO::FETCH_ASSOC
+    );
 
     // ======================================
     // 6.4 CONSULTAR RESGUARDANTE
@@ -273,7 +316,8 @@ try {
 
         if (!$nomina) {
 
-            $error = 'Selecciona un número de nómina válido.';
+            $error =
+                'Selecciona un número de nómina válido.';
 
         } else {
 
@@ -299,7 +343,7 @@ try {
                 ':nomina' => $nomina
             ];
 
-            // Seguridad: área del usuario.
+            // Respetar restricciones por área
 
             if (!$esSuper) {
 
@@ -311,7 +355,7 @@ try {
                     $areaUsuario;
             }
 
-            // NUEVO: verificar la adscripción.
+            // Verificar adscripción seleccionada
 
             if ($adscripcionElegida) {
 
@@ -324,7 +368,7 @@ try {
                     $adscripcionElegida;
             }
 
-            // Verificar el área seleccionada.
+            // Verificar área seleccionada
 
             if ($areaElegida) {
 
@@ -340,14 +384,16 @@ try {
 
             $stmt->execute($params);
 
-            $empleado = $stmt->fetch();
+            $empleado = $stmt->fetch(
+                PDO::FETCH_ASSOC
+            );
 
             if (!$empleado) {
 
                 $error =
                     'No se encontró el resguardante '
-                    . 'dentro de la adscripción y '
-                    . 'el área seleccionadas o permitidas.';
+                    . 'en la adscripción y el área '
+                    . 'seleccionadas o permitidas.';
 
             } else {
 
@@ -363,6 +409,7 @@ try {
                         a.modelo,
                         a.serie,
                         a.material,
+                        a.estado_fisico,
                         a.fecha_adq,
                         a.factura,
                         a.costo,
@@ -390,11 +437,15 @@ try {
                     ORDER BY a.num_inventario, a.id
                 ";
 
-                $stmt = $pdo->prepare($sqlBienes);
+                $stmt = $pdo->prepare(
+                    $sqlBienes
+                );
 
                 $stmt->execute($paramsBienes);
 
-                $bienes = $stmt->fetchAll();
+                $bienes = $stmt->fetchAll(
+                    PDO::FETCH_ASSOC
+                );
             }
         }
     }
@@ -402,7 +453,7 @@ try {
 } catch (Throwable $ex) {
 
     logger(
-        'Error al consultar resguardo: '
+        'Error al consultar impresión de resguardos: '
         . $ex->getMessage(),
         'ERROR'
     );
@@ -414,7 +465,102 @@ try {
 }
 
 // ==========================================
-// 7. ORGANIZAR PÁGINAS
+// 7. CARGAR IMÁGENES INSTITUCIONALES
+// ==========================================
+
+/**
+ * Este bloque es la nueva integración.
+ *
+ * Busca las imágenes activas en PostgreSQL.
+ * No utiliza nombres fijos como image1.png.
+ *
+ * Si una imagen falta, no detiene
+ * el funcionamiento del resguardo.
+ */
+
+$imagenesResguardo = [
+    'coapatap' => '',
+    'tapachula' => '',
+    'inferior' => ''
+];
+
+$errorImagenes = '';
+
+try {
+
+    $sqlImagenes = "
+        SELECT
+            tipo,
+            ruta_relativa
+        FROM public.imagenes_resguardo
+        WHERE activa = TRUE
+          AND tipo IN (
+              'coapatap',
+              'tapachula',
+              'inferior'
+          )
+    ";
+
+    $stmtImagenes = db()->query($sqlImagenes);
+
+    $registrosImagenes = $stmtImagenes->fetchAll(
+        PDO::FETCH_ASSOC
+    );
+
+    foreach ($registrosImagenes as $registro) {
+
+        $tipo = (string) $registro['tipo'];
+
+        if (!array_key_exists(
+            $tipo,
+            $imagenesResguardo
+        )) {
+            continue;
+        }
+
+        // Validar la ruta y comprobar que
+        // el archivo exista en XAMPP.
+
+        $imagenesResguardo[$tipo] =
+            resguardoUrlImagen(
+                $registro['ruta_relativa']
+            );
+    }
+
+} catch (Throwable $ex) {
+
+    logger(
+        'Error al cargar imágenes de resguardo: '
+        . $ex->getMessage(),
+        'ERROR'
+    );
+
+    $errorImagenes =
+        'No fue posible consultar las imágenes '
+        . 'institucionales activas.';
+}
+
+// Identificar imágenes que faltan
+
+$etiquetasImagenes = [
+    'coapatap' => 'COAPATAP',
+    'tapachula' => 'Tapachula',
+    'inferior' => 'Imagen inferior'
+];
+
+$imagenesFaltantes = [];
+
+foreach ($imagenesResguardo as $tipo => $url) {
+
+    if ($url === '') {
+
+        $imagenesFaltantes[] =
+            $etiquetasImagenes[$tipo];
+    }
+}
+
+// ==========================================
+// 8. ORGANIZAR PÁGINAS
 // ==========================================
 
 $paginas = array_chunk($bienes, 8);
@@ -433,7 +579,7 @@ $totalCosto = array_sum(
 $fechaEmision = date('d/m/Y');
 
 // ==========================================
-// 8. LEYENDA DE RESPONSABILIDAD
+// 9. LEYENDA DEL RESGUARDO
 // ==========================================
 
 $leyenda = 'BIENES CON LOS QUE PARTICIPO EN MI TRABAJO, '
@@ -459,7 +605,7 @@ $leyenda = 'BIENES CON LOS QUE PARTICIPO EN MI TRABAJO, '
     . 'ADMINISTRATIVAS PARA EL ESTADO DE CHIAPAS).';
 
 // ==========================================
-// 9. CARGAR ENCABEZADO DEL SISTEMA
+// 10. ENCABEZADO DEL SISTEMA
 // ==========================================
 
 $page_title = 'Impresión de resguardos';
@@ -471,17 +617,88 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <!-- ========================================
-     10. MÓDULO DE IMPRESIÓN
+     11. FORMULARIO DE IMPRESIÓN
+========================================= -->
+
+
+<!-- ========================================
+     MÓDULO DE IMPRESIÓN
 ========================================= -->
 
 <section class="modulo-impresion no-print">
 
-    <h1>🖨️ Impresión de resguardos</h1>
+    <!-- ENCABEZADO DEL MÓDULO -->
+
+    <div class="imp-encabezado-modulo">
+
+        <h1>
+            🖨️ Impresión de resguardos
+        </h1>
+
+        <!-- =================================
+             BOTÓN DE CONFIGURACIÓN
+             SOLO SUPERUSUARIO
+        ================================== -->
+
+        <?php if ($esSuper): ?>
+
+            <a
+                href="configuracion_impresion.php"
+                class="imp-btn-configuracion"
+                title="Administrar los logotipos institucionales"
+            >
+                ⚙️ Configurar impresión
+            </a>
+
+        <?php endif; ?>
+
+    </div>
+
+    <!-- DESCRIPCIÓN -->
 
     <p>
-        Selecciona la adscripción, el área y
-        el resguardante para generar el documento.
+        Selecciona la adscripción, el área y el
+        resguardante para generar el documento.
     </p>
+
+
+    <!-- Aviso si alguna imagen no está lista -->
+
+    <?php if (
+        $errorImagenes !== '' ||
+        count($imagenesFaltantes) > 0
+    ): ?>
+
+        <div class="imp-aviso">
+
+            <strong>
+                Imágenes institucionales:
+            </strong>
+
+            <?php if ($errorImagenes !== ''): ?>
+
+                <?= resguardoEsc($errorImagenes) ?>
+
+            <?php else: ?>
+
+                Faltan imágenes activas o disponibles:
+                <?= resguardoEsc(
+                    implode(', ', $imagenesFaltantes)
+                ) ?>.
+
+            <?php endif; ?>
+
+            <?php if ($esSuper): ?>
+
+                <a href="configuracion_impresion.php">
+                    Ir a Configuración de impresión
+                </a>
+
+            <?php endif; ?>
+
+        </div>
+
+    <?php endif; ?>
 
     <form
         method="get"
@@ -489,9 +706,7 @@ require_once __DIR__ . '/../includes/header.php';
         class="impresion-formulario"
     >
 
-        <!-- ================================
-             ADSCRIPCIÓN
-        ================================= -->
+        <!-- ADSCRIPCIÓN -->
 
         <label>
             1. Adscripción
@@ -505,7 +720,9 @@ require_once __DIR__ . '/../includes/header.php';
                     Todas las adscripciones permitidas
                 </option>
 
-                <?php foreach ($adscripciones as $ads): ?>
+                <?php foreach (
+                    $adscripciones as $ads
+                ): ?>
 
                     <option
                         value="<?= (int) $ads['id'] ?>"
@@ -514,7 +731,9 @@ require_once __DIR__ . '/../includes/header.php';
                             ? 'selected'
                             : '' ?>
                     >
-                        <?= resguardoEsc($ads['nombre']) ?>
+                        <?= resguardoEsc(
+                            $ads['nombre']
+                        ) ?>
                     </option>
 
                 <?php endforeach; ?>
@@ -522,9 +741,7 @@ require_once __DIR__ . '/../includes/header.php';
             </select>
         </label>
 
-        <!-- ================================
-             ÁREA
-        ================================= -->
+        <!-- ÁREA -->
 
         <label>
             2. Área
@@ -550,7 +767,9 @@ require_once __DIR__ . '/../includes/header.php';
                             ? 'selected'
                             : '' ?>
                     >
-                        <?= resguardoEsc($area['nombre']) ?>
+                        <?= resguardoEsc(
+                            $area['nombre']
+                        ) ?>
                     </option>
 
                 <?php endforeach; ?>
@@ -558,9 +777,7 @@ require_once __DIR__ . '/../includes/header.php';
             </select>
         </label>
 
-        <!-- ================================
-             EMPLEADO
-        ================================= -->
+        <!-- EMPLEADO -->
 
         <label>
             3. Empleado (número de nómina)
@@ -575,7 +792,9 @@ require_once __DIR__ . '/../includes/header.php';
                     Selecciona un resguardante
                 </option>
 
-                <?php foreach ($empleados as $opcion): ?>
+                <?php foreach (
+                    $empleados as $opcion
+                ): ?>
 
                     <option
                         value="<?= (int) $opcion['numero_nomina'] ?>"
@@ -602,7 +821,7 @@ require_once __DIR__ . '/../includes/header.php';
             </select>
         </label>
 
-        <!-- BOTÓN DE CONSULTA -->
+        <!-- CONSULTAR -->
 
         <button
             type="submit"
@@ -611,13 +830,13 @@ require_once __DIR__ . '/../includes/header.php';
             🔍 Consultar resguardo
         </button>
 
-        <!-- ================================
+        <!-- ===================================
              RESPONSABLES DE FIRMA
-        ================================= -->
+        ==================================== -->
 
         <div class="imp-firmantes">
 
-            <!-- PERSONA QUE ENTREGA -->
+            <!-- ENTREGA -->
 
             <div class="imp-firmante-control">
 
@@ -638,7 +857,9 @@ require_once __DIR__ . '/../includes/header.php';
                     type="hidden"
                     id="impNombreEntrega"
                     name="nombre_entrega"
-                    value="<?= resguardoEsc($nombreEntrega) ?>"
+                    value="<?= resguardoEsc(
+                        $nombreEntrega
+                    ) ?>"
                 >
 
                 <small class="imp-firmante-ayuda">
@@ -648,7 +869,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             </div>
 
-            <!-- PERSONA QUE AUTORIZA -->
+            <!-- AUTORIZA -->
 
             <div class="imp-firmante-control">
 
@@ -669,7 +890,9 @@ require_once __DIR__ . '/../includes/header.php';
                     type="hidden"
                     id="impNombreAutoriza"
                     name="nombre_autoriza"
-                    value="<?= resguardoEsc($nombreAutoriza) ?>"
+                    value="<?= resguardoEsc(
+                        $nombreAutoriza
+                    ) ?>"
                 >
 
                 <small class="imp-firmante-ayuda">
@@ -679,11 +902,15 @@ require_once __DIR__ . '/../includes/header.php';
 
             </div>
 
-            <!-- SUGERENCIAS DE EMPLEADOS -->
+            <!-- LISTA DE EMPLEADOS PARA FIRMAS -->
 
-            <datalist id="impListaEmpleadosFirmantes">
+            <datalist
+                id="impListaEmpleadosFirmantes"
+            >
 
-                <?php foreach ($empleados as $persona): ?>
+                <?php foreach (
+                    $empleados as $persona
+                ): ?>
 
                     <option
                         value="<?= resguardoEsc(
@@ -707,21 +934,20 @@ require_once __DIR__ . '/../includes/header.php';
 
     </form>
 
-    <!-- ===================================
-         ERRORES
-    ==================================== -->
+    <!-- ERRORES -->
 
     <?php if ($error): ?>
 
-        <p class="imp-aviso imp-error" role="alert">
+        <p
+            class="imp-aviso imp-error"
+            role="alert"
+        >
             <?= resguardoEsc($error) ?>
         </p>
 
     <?php endif; ?>
 
-    <!-- ===================================
-         RESUMEN DEL RESGUARDANTE
-    ==================================== -->
+    <!-- RESUMEN -->
 
     <?php if ($empleado): ?>
 
@@ -730,7 +956,9 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <small>Resguardante</small>
                 <strong>
-                    <?= resguardoEsc($empleado['nombre']) ?>
+                    <?= resguardoEsc(
+                        $empleado['nombre']
+                    ) ?>
                 </strong>
             </div>
 
@@ -753,7 +981,9 @@ require_once __DIR__ . '/../includes/header.php';
             <div>
                 <small>Valor registrado</small>
                 <strong>
-                    <?= resguardoPesos($totalCosto) ?>
+                    <?= resguardoPesos(
+                        $totalCosto
+                    ) ?>
                 </strong>
             </div>
 
@@ -794,18 +1024,71 @@ require_once __DIR__ . '/../includes/header.php';
 </section>
 
 <!-- ========================================
-     11. DOCUMENTOS DE IMPRESIÓN
+     12. DOCUMENTOS DE IMPRESIÓN
 ========================================= -->
 
 <?php if ($empleado && $bienes): ?>
 
 <section class="imp-documentos">
 
-    <?php foreach ($paginas as $indice => $paginaBienes): ?>
+    <?php foreach (
+        $paginas as $indice => $paginaBienes
+    ): ?>
 
         <article class="resguardo-hoja">
 
-            <!-- ENCABEZADO INSTITUCIONAL -->
+            <!-- =================================
+                 DECORACIÓN INSTITUCIONAL
+            ================================== -->
+
+            <div
+                class="resguardo-graficos"
+                aria-hidden="true"
+            >
+
+                <!-- LOGO SUPERIOR IZQUIERDO -->
+
+                <?php if (
+                    $imagenesResguardo['coapatap'] !== ''
+                ): ?>
+
+                    <img
+                        src="<?= resguardoEsc(
+                            $imagenesResguardo['coapatap']
+                        ) ?>"
+                        alt=""
+                        class="resguardo-logo resguardo-logo--izquierda"
+                    >
+
+                <?php endif; ?>
+
+                <!-- LOGO SUPERIOR DERECHO -->
+
+                <?php if (
+                    $imagenesResguardo['tapachula'] !== ''
+                ): ?>
+
+                    <img
+                        src="<?= resguardoEsc(
+                            $imagenesResguardo['tapachula']
+                        ) ?>"
+                        alt=""
+                        class="resguardo-logo resguardo-logo--derecha"
+                    >
+
+                <?php endif; ?>
+
+                <!-- MARCA DE AGUA DE PÁGINA -->
+
+                <div class="resguardo-marca-pagina">
+                    <?= $indice + 1 ?>
+                </div>
+
+            </div>
+
+            <!-- =================================
+                 ENCABEZADO INSTITUCIONAL
+            ================================== -->
 
             <header class="imp-encabezado">
 
@@ -848,7 +1131,9 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <span class="imp-fecha">
                         FECHA DE EMISIÓN:
-                        <?= resguardoEsc($fechaEmision) ?>
+                        <?= resguardoEsc(
+                            $fechaEmision
+                        ) ?>
                     </span>
 
                 </div>
@@ -870,7 +1155,7 @@ require_once __DIR__ . '/../includes/header.php';
 
             </div>
 
-            <!-- ÁREA Y ADSCRIPCIÓN REALES -->
+            <!-- ÁREA Y ADSCRIPCIÓN -->
 
             <div class="imp-area">
 
@@ -880,7 +1165,8 @@ require_once __DIR__ . '/../includes/header.php';
 
                 <strong>
                     <?= resguardoEsc(
-                        $empleado['area_nombre'] ?: 'SIN ÁREA'
+                        $empleado['area_nombre']
+                        ?: 'SIN ÁREA'
                     ) ?>
                 </strong>
 
@@ -904,30 +1190,37 @@ require_once __DIR__ . '/../includes/header.php';
                 RESGUARDANTE:
 
                 <strong>
-                    <?= resguardoEsc($empleado['nombre']) ?>
+                    <?= resguardoEsc(
+                        $empleado['nombre']
+                    ) ?>
                 </strong>
 
             </div>
 
-            <!-- TABLA DE BIENES -->
+            <!-- =================================
+                 TABLA DE ACTIVOS
+            ================================== -->
 
             <table class="imp-tabla">
 
+                
                 <colgroup>
-                    <col style="width:21%">
+                    <col style="width:19%">
                     <col style="width:7%">
                     <col style="width:7%">
                     <col style="width:7%">
                     <col style="width:9%">
                     <col style="width:10%">
-                    <col style="width:5%">
+                    <col style="width:8%">
                     <col style="width:7%">
                     <col style="width:8%">
                     <col style="width:7%">
-                    <col style="width:12%">
+                    <col style="width:11%">
                 </colgroup>
 
+
                 <thead>
+
                     <tr>
                         <th>DESCRIPCIÓN</th>
                         <th>ECO. O INVENT.</th>
@@ -941,11 +1234,14 @@ require_once __DIR__ . '/../includes/header.php';
                         <th>COSTO ADQUIS.</th>
                         <th>OBSERVACIONES</th>
                     </tr>
+
                 </thead>
 
                 <tbody>
 
-                    <?php foreach ($paginaBienes as $bien): ?>
+                    <?php foreach (
+                        $paginaBienes as $bien
+                    ): ?>
 
                         <tr>
 
@@ -985,7 +1281,44 @@ require_once __DIR__ . '/../includes/header.php';
                                 ) ?>
                             </td>
 
-                            <td>—</td>
+                            
+                            <!-- ======================================
+                                ESTADO FÍSICO DEL ACTIVO
+                            ======================================= -->
+
+                            <td>
+
+                                <?php
+
+                                $estadoActual = strtoupper(
+                                    trim(
+                                        (string) (
+                                            $bien['estado_fisico'] ?? ''
+                                        )
+                                    )
+                                );
+
+                                $estadosPermitidos = [
+                                    'BUENO',
+                                    'NUEVO',
+                                    'REGULAR',
+                                    'INSERVIBLE'
+                                ];
+
+                                $estadoImpreso = in_array(
+                                    $estadoActual,
+                                    $estadosPermitidos,
+                                    true
+                                )
+                                    ? $estadoActual
+                                    : '—';
+
+                                ?>
+
+                                <?= resguardoEsc($estadoImpreso) ?>
+
+                            </td>
+
 
                             <td>
                                 <?= resguardoFecha(
@@ -1007,7 +1340,8 @@ require_once __DIR__ . '/../includes/header.php';
 
                             <td>
                                 <?= resguardoEsc(
-                                    $bien['observaciones'] ?: '—'
+                                    $bien['observaciones']
+                                    ?: '—'
                                 ) ?>
                             </td>
 
@@ -1019,12 +1353,16 @@ require_once __DIR__ . '/../includes/header.php';
 
             </table>
 
-            <!-- LEYENDA Y FIRMAS -->
+            <!-- =================================
+                 LEYENDA Y FIRMAS
+            ================================== -->
 
             <footer class="imp-pie">
 
                 <p class="imp-leyenda">
-                    <?= resguardoEsc($leyenda) ?>
+                    <?= resguardoEsc(
+                        $leyenda
+                    ) ?>
                 </p>
 
                 <div class="imp-firmas">
@@ -1033,7 +1371,9 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div>
 
-                        <strong>ENTREGÓ</strong>
+                        <strong>
+                            ENTREGÓ
+                        </strong>
 
                         <span class="imp-linea"></span>
 
@@ -1042,7 +1382,9 @@ require_once __DIR__ . '/../includes/header.php';
                             data-firma-entrega
                         >
                             <?= $nombreEntrega !== ''
-                                ? resguardoEsc($nombreEntrega)
+                                ? resguardoEsc(
+                                    $nombreEntrega
+                                )
                                 : '&nbsp;' ?>
                         </b>
 
@@ -1080,7 +1422,9 @@ require_once __DIR__ . '/../includes/header.php';
 
                     <div>
 
-                        <strong>AUTORIZÓ</strong>
+                        <strong>
+                            AUTORIZÓ
+                        </strong>
 
                         <span class="imp-linea"></span>
 
@@ -1089,7 +1433,9 @@ require_once __DIR__ . '/../includes/header.php';
                             data-firma-autoriza
                         >
                             <?= $nombreAutoriza !== ''
-                                ? resguardoEsc($nombreAutoriza)
+                                ? resguardoEsc(
+                                    $nombreAutoriza
+                                )
                                 : '&nbsp;' ?>
                         </b>
 
@@ -1103,6 +1449,30 @@ require_once __DIR__ . '/../includes/header.php';
 
             </footer>
 
+            <!-- =================================
+                 IMAGEN INFERIOR
+            ================================== -->
+
+            <?php if (
+                $imagenesResguardo['inferior'] !== ''
+            ): ?>
+
+                <div
+                    class="resguardo-imagen-inferior"
+                    aria-hidden="true"
+                >
+
+                    <img
+                        src="<?= resguardoEsc(
+                            $imagenesResguardo['inferior']
+                        ) ?>"
+                        alt=""
+                    >
+
+                </div>
+
+            <?php endif; ?>
+
         </article>
 
     <?php endforeach; ?>
@@ -1112,7 +1482,7 @@ require_once __DIR__ . '/../includes/header.php';
 <?php endif; ?>
 
 <!-- ========================================
-     12. FILTROS DEPENDIENTES
+     13. FILTRAR ADSCRIPCIÓN, ÁREA Y EMPLEADO
 ========================================= -->
 
 <script>
@@ -1133,18 +1503,12 @@ require_once __DIR__ . '/../includes/header.php';
         return;
     }
 
-    // ======================================
-    // FILTRAR ÁREAS Y EMPLEADOS
-    // ======================================
-
     function filtrar() {
 
         const adscripcionSeleccionada =
             adscripcion.value;
 
-        // ----------------------------------
-        // FILTRAR ÁREAS POR ADSCRIPCIÓN
-        // ----------------------------------
+        // Filtrar las áreas.
 
         Array.from(area.options).forEach(
             function (opcion) {
@@ -1161,9 +1525,6 @@ require_once __DIR__ . '/../includes/header.php';
                 opcion.hidden = !visible;
                 opcion.disabled = !visible;
 
-                // Evitar que permanezca un área
-                // de otra adscripción.
-
                 if (!visible && opcion.selected) {
                     area.value = '';
                 }
@@ -1172,9 +1533,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         const areaSeleccionada = area.value;
 
-        // ----------------------------------
-        // FILTRAR EMPLEADOS
-        // ----------------------------------
+        // Filtrar los empleados.
 
         Array.from(nomina.options).forEach(
             function (opcion) {
@@ -1217,15 +1576,13 @@ require_once __DIR__ . '/../includes/header.php';
         filtrar
     );
 
-    // Aplicar filtros al abrir la página.
-
     filtrar();
 
 })();
 </script>
 
 <!-- ========================================
-     13. RESPONSABLES DE FIRMA
+     14. RESPONSABLES DE FIRMA
 ========================================= -->
 
 <script>
@@ -1233,9 +1590,7 @@ require_once __DIR__ . '/../includes/header.php';
 
     "use strict";
 
-    // ======================================
-    // OBTENER CAMPOS
-    // ======================================
+    // Campos de búsqueda.
 
     const buscarEntrega =
         document.getElementById('impBuscarEntrega');
@@ -1243,11 +1598,15 @@ require_once __DIR__ . '/../includes/header.php';
     const buscarAutoriza =
         document.getElementById('impBuscarAutoriza');
 
+    // Campos que se envían a PHP.
+
     const nombreEntrega =
         document.getElementById('impNombreEntrega');
 
     const nombreAutoriza =
         document.getElementById('impNombreAutoriza');
+
+    // Lista de sugerencias.
 
     const listaEmpleados =
         document.getElementById(
@@ -1265,7 +1624,7 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     // ======================================
-    // LISTA DE EMPLEADOS
+    // OBTENER EMPLEADOS
     // ======================================
 
     const empleados = Array.from(
@@ -1317,11 +1676,13 @@ require_once __DIR__ . '/../includes/header.php';
 
         const empleado = buscarEmpleado(texto);
 
-        return empleado ? empleado.nombre : texto;
+        return empleado
+            ? empleado.nombre
+            : texto;
     }
 
     // ======================================
-    // PREFERENCIAS DEL USUARIO
+    // PREFERENCIAS POR USUARIO
     // ======================================
 
     const usuarioSistema =
@@ -1340,10 +1701,6 @@ require_once __DIR__ . '/../includes/header.php';
     const claveStorage =
         'coapatap_firmantes_v1_' + usuarioSistema;
 
-    // ======================================
-    // LEER PREFERENCIAS
-    // ======================================
-
     function leerPreferencias() {
 
         try {
@@ -1351,7 +1708,9 @@ require_once __DIR__ . '/../includes/header.php';
             const datos =
                 localStorage.getItem(claveStorage);
 
-            return datos ? JSON.parse(datos) : {};
+            return datos
+                ? JSON.parse(datos)
+                : {};
 
         } catch (error) {
 
@@ -1386,6 +1745,7 @@ require_once __DIR__ . '/../includes/header.php';
                     ? empleadoAutoriza.nomina
                     : null
             }
+
         };
 
         try {
@@ -1397,17 +1757,20 @@ require_once __DIR__ . '/../includes/header.php';
 
         } catch (error) {
 
-            // El módulo puede funcionar
-            // aunque no haya almacenamiento.
-
+            // Si el navegador bloquea el
+            // almacenamiento, el módulo
+            // puede seguir imprimiendo.
         }
     }
 
     // ======================================
-    // RECUPERAR SELECCIÓN
+    // RECUPERAR UNA SELECCIÓN
     // ======================================
 
-    function recuperarSeleccion(preferencia, respaldo) {
+    function recuperarSeleccion(
+        preferencia,
+        respaldo
+    ) {
 
         if (
             !preferencia ||
@@ -1427,7 +1790,9 @@ require_once __DIR__ . '/../includes/header.php';
             }
         }
 
-        if (typeof preferencia.texto === 'string') {
+        if (
+            typeof preferencia.texto === 'string'
+        ) {
             return preferencia.texto;
         }
 
@@ -1454,7 +1819,7 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     // ======================================
-    // ACTUALIZAR FIRMAS EN TODAS LAS PÁGINAS
+    // ACTUALIZAR FIRMAS
     // ======================================
 
     function actualizarFirmas() {
@@ -1486,7 +1851,7 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     // ======================================
-    // PROCESAR CAMBIOS
+    // CAMBIOS EN LOS CAMPOS
     // ======================================
 
     function procesarCambio() {
@@ -1516,7 +1881,7 @@ require_once __DIR__ . '/../includes/header.php';
     );
 
     // ======================================
-    // CONSERVAR FIRMANTES AL CONSULTAR
+    // CONSERVAR AL CONSULTAR RESGUARDO
     // ======================================
 
     const formulario =
@@ -1535,7 +1900,7 @@ require_once __DIR__ . '/../includes/header.php';
     }
 
     // ======================================
-    // INICIALIZAR
+    // INICIAR
     // ======================================
 
     restaurarPreferencias();
@@ -1547,7 +1912,7 @@ require_once __DIR__ . '/../includes/header.php';
 <?php
 
 // ==========================================
-// 14. PIE DE PÁGINA DEL SISTEMA
+// 15. PIE DE PÁGINA DEL SISTEMA
 // ==========================================
 
 require_once __DIR__ . '/../includes/footer.php';

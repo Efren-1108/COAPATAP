@@ -724,7 +724,7 @@ function renderTablaTodos(activosFiltrados = null) {
     `;
 
     if (!activosFiltrados.length) {
-        tablaBody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="11><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
         return;
     }
 
@@ -751,6 +751,7 @@ function renderTablaTodos(activosFiltrados = null) {
                 <td>${App.esc(a.num_inventario)}</td>
                 <td>${App.esc(a.marca || '—')}</td>
                 <td>${App.esc(a.modelo || '—')}</td>
+                <td>${App.esc(a.estado_fisico || 'SIN REGISTRAR')}</td>
                 <td>${App.money(a.costo)}</td>
                 <td>${adscTxt}</td>
                 <td>${areaTxt}</td>
@@ -937,6 +938,29 @@ async function onSubmitActivo(e) {
     if (!ni)                     return mostrarError('El número de inventario es obligatorio');
     if (!costo || costo < 0)     return mostrarError('El costo es obligatorio y no puede ser negativo');
 
+    
+    // ==========================================
+    // VALIDAR ESTADO FÍSICO
+    // ==========================================
+
+    const estadoFisico =
+        form.elements['estado_fisico'].value;
+
+    const estadosPermitidos = [
+        'BUENO',
+        'NUEVO',
+        'REGULAR',
+        'INSERVIBLE'
+    ];
+
+    if (!estadosPermitidos.includes(estadoFisico)) {
+
+        return mostrarError(
+            'Selecciona un estado físico válido.'
+        );
+    }
+
+
     let rutaImagen = form.elements['ruta_imagen'].value || null;
 
     if (imgInput.files && imgInput.files[0]) {
@@ -964,6 +988,7 @@ async function onSubmitActivo(e) {
         modelo:         form.modelo.value.trim(),
         serie:          form.serie.value.trim() || 'S/S',
         material:       form.material.value.trim(),
+        estado_fisico:  estadoFisico,
         fecha_adq:      form.fecha_adq.value,
         factura:        form.factura.value.trim(),
         costo:          parseFloat(costo),

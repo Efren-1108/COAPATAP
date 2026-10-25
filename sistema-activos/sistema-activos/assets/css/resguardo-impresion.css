@@ -766,3 +766,726 @@ input[type="text"]:focus {
 
 }
 
+
+/* ==========================================
+   IMÁGENES AUTOMÁTICAS DE RESGUARDOS
+   COAPATAP
+   ========================================== */
+
+/* Hoja de impresión */
+
+.resguardo-hoja {
+    position: relative;
+    isolation: isolate;
+}
+
+/* Capa de elementos decorativos */
+
+.resguardo-graficos {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Contenido principal por encima */
+
+.resguardo-hoja > .imp-encabezado,
+.resguardo-hoja > .imp-titulo,
+.resguardo-hoja > .imp-area,
+.resguardo-hoja > .imp-resguardante,
+.resguardo-hoja > .imp-tabla,
+.resguardo-hoja > .imp-pie {
+    position: relative;
+    z-index: 1;
+}
+
+/* ==========================================
+   LOGOS SUPERIORES
+   ========================================== */
+
+.resguardo-logo {
+    position: absolute;
+    display: block;
+
+    height: auto;
+    object-fit: contain;
+}
+
+/* COAPATAP: superior izquierdo */
+
+.resguardo-logo--izquierda {
+    top: 4mm;
+    left: 4mm;
+
+    width: 32mm;
+    max-height: 15mm;
+}
+
+/* Tapachula: superior derecho */
+
+.resguardo-logo--derecha {
+    top: 4mm;
+    right: 4mm;
+
+    width: 27mm;
+    max-height: 15mm;
+}
+
+/* Reservar espacio para ambos logos */
+
+.resguardo-hoja > .imp-encabezado {
+    padding-left: 35mm;
+    padding-right: 30mm;
+
+    min-height: 18mm;
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   MARCA DE AGUA DE NÚMERO DE PÁGINA
+   ========================================== */
+
+.resguardo-marca-pagina {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+    text-align: center;
+
+    font-family: Arial, sans-serif;
+    font-size: 95mm;
+    font-weight: 800;
+    line-height: 1;
+
+    color: #64748b;
+    opacity: 0.055;
+
+    white-space: nowrap;
+    user-select: none;
+}
+
+/* ==========================================
+   IMAGEN INFERIOR
+   ========================================== */
+
+.resguardo-imagen-inferior {
+    position: absolute;
+
+    left: 50%;
+    bottom: 1.5mm;
+
+    transform: translateX(-50%);
+
+    width: 43mm;
+    height: 12mm;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 2;
+    pointer-events: none;
+}
+
+.resguardo-imagen-inferior img {
+    display: block;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    width: auto;
+    height: auto;
+
+    object-fit: contain;
+}
+
+/* Reservar espacio bajo las firmas */
+
+.resguardo-hoja > .imp-pie {
+    padding-bottom: 15mm;
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   IMPRESIÓN
+   ========================================== */
+
+@media print {
+
+    .resguardo-graficos,
+    .resguardo-imagen-inferior {
+        visibility: visible !important;
+    }
+
+    .resguardo-logo,
+    .resguardo-imagen-inferior img,
+    .resguardo-marca-pagina {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .resguardo-imagen-inferior {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+}
+
+
+/* ==================================================
+   COAPATAP - AJUSTES FINALES DEL RESGUARDO
+   Diseño inspirado en Excel original
+   ================================================== */
+
+/* --------------------------------------------------
+   1. CONFIGURACIÓN GENERAL DE LA HOJA
+   -------------------------------------------------- */
+
+.resguardo-hoja {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    --resguardo-vino: #8a190f;
+    --resguardo-azul: #14376d;
+}
+
+/* Mantener los elementos por encima
+   de la marca de agua */
+
+.resguardo-hoja > .imp-encabezado,
+.resguardo-hoja > .imp-titulo,
+.resguardo-hoja > .imp-area,
+.resguardo-hoja > .imp-resguardante,
+.resguardo-hoja > .imp-tabla,
+.resguardo-hoja > .imp-pie {
+    position: relative;
+    z-index: 1;
+}
+
+/* --------------------------------------------------
+   2. LOGOTIPO SUPERIOR IZQUIERDO
+   COAPATAP
+   -------------------------------------------------- */
+
+.resguardo-hoja .resguardo-logo--izquierda {
+    position: absolute;
+
+    top: 3mm;
+    left: 7mm;
+
+    width: 37mm;
+    max-height: 16mm;
+
+    height: auto;
+    object-fit: contain;
+}
+
+/* --------------------------------------------------
+   3. LOGOTIPO SUPERIOR DERECHO
+   TAPACHULA
+   -------------------------------------------------- */
+
+.resguardo-hoja .resguardo-logo--derecha {
+    position: absolute;
+
+    top: 3mm;
+    right: 7mm;
+
+    width: 34mm;
+    max-height: 16mm;
+
+    height: auto;
+    object-fit: contain;
+}
+
+/* --------------------------------------------------
+   4. ENCABEZADO INSTITUCIONAL
+   -------------------------------------------------- */
+
+.resguardo-hoja > .imp-encabezado {
+    padding-left: 44mm;
+    padding-right: 37mm;
+
+    min-height: 18mm;
+
+    box-sizing: border-box;
+}
+
+.resguardo-hoja .imp-encabezado {
+    color: var(--resguardo-azul);
+}
+
+.resguardo-hoja .imp-encabezado strong {
+    font-weight: 800;
+}
+
+/* --------------------------------------------------
+   5. TÍTULO DEL DOCUMENTO
+   -------------------------------------------------- */
+
+.resguardo-hoja .imp-titulo {
+    color: var(--resguardo-azul);
+
+    font-weight: 700;
+
+    margin-top: 1mm;
+    margin-bottom: 2mm;
+}
+
+.resguardo-hoja .imp-titulo span {
+    color: #d72228;
+}
+
+/* --------------------------------------------------
+   6. ÁREA, ADSCRIPCIÓN Y RESGUARDANTE
+   -------------------------------------------------- */
+
+.resguardo-hoja .imp-area,
+.resguardo-hoja .imp-resguardante {
+    color: var(--resguardo-azul);
+}
+
+.resguardo-hoja .imp-area {
+    margin-bottom: 2mm;
+}
+
+.resguardo-hoja .imp-resguardante {
+    margin-bottom: 2mm;
+}
+
+/* --------------------------------------------------
+   7. TABLA DE ACTIVOS
+   -------------------------------------------------- */
+
+.resguardo-hoja .imp-tabla {
+    width: 100%;
+
+    border-collapse: collapse;
+    table-layout: fixed;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 6.6pt;
+}
+
+/* Encabezados color vino */
+
+.resguardo-hoja .imp-tabla thead th {
+    background-color: var(--resguardo-vino);
+    color: #ffffff;
+
+    border: 0.35pt solid #4b4b4b;
+
+    text-align: center;
+    vertical-align: middle;
+
+    font-size: 6.1pt;
+    font-weight: 800;
+
+    line-height: 1.12;
+
+    padding: 1.1mm 0.5mm;
+
+    overflow-wrap: anywhere;
+}
+
+/* Contenido de las celdas */
+
+.resguardo-hoja .imp-tabla tbody td {
+    border: 0.35pt solid #595959;
+
+    padding: 0.9mm 0.5mm;
+
+    line-height: 1.14;
+
+    vertical-align: middle;
+
+    font-size: 6.6pt;
+
+    overflow-wrap: anywhere;
+}
+
+/* Primera columna alineada a la izquierda */
+
+.resguardo-hoja .imp-tabla td:first-child {
+    text-align: left;
+}
+
+/* Las demás columnas centradas */
+
+.resguardo-hoja .imp-tabla td:not(:first-child) {
+    text-align: center;
+}
+
+/* --------------------------------------------------
+   8. LEYENDA LEGAL Y PIE DEL RESGUARDO
+   -------------------------------------------------- */
+
+.resguardo-hoja > .imp-pie {
+    margin-top: auto;
+    margin-bottom: 13mm;
+
+    padding-bottom: 0;
+
+    box-sizing: border-box;
+}
+
+/* Texto de responsabilidad */
+
+.resguardo-hoja .imp-leyenda {
+    font-size: 6.7pt;
+
+    line-height: 1.18;
+
+    text-align: justify;
+
+    margin-bottom: 5mm;
+
+    overflow-wrap: break-word;
+}
+
+/* --------------------------------------------------
+   9. DISTRIBUCIÓN DE LAS TRES FIRMAS
+   -------------------------------------------------- */
+
+.resguardo-hoja .imp-firmas {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    column-gap: 7mm;
+
+    align-items: end;
+
+    text-align: center;
+}
+
+.resguardo-hoja .imp-firmas > div {
+    min-width: 0;
+
+    text-align: center;
+}
+
+/* Encabezados ENTREGÓ, RECIBÍ, AUTORIZÓ */
+
+.resguardo-hoja .imp-firmas strong {
+    font-size: 7pt;
+    font-weight: 800;
+
+    color: #111111;
+}
+
+/* Línea de firma */
+
+.resguardo-hoja .imp-linea {
+    border-bottom: 0.5pt solid #222222;
+}
+
+/* Nombre de quien firma */
+
+.resguardo-hoja .imp-nombre-firma {
+    display: block;
+
+    font-size: 8pt;
+    font-weight: 800;
+
+    line-height: 1.16;
+
+    text-align: center;
+
+    overflow-wrap: anywhere;
+}
+
+/* Cargo de quien firma */
+
+.resguardo-hoja .imp-firmas small {
+    display: block;
+
+    font-size: 6.5pt;
+    line-height: 1.15;
+
+    text-align: center;
+
+    color: #181818;
+}
+
+/* --------------------------------------------------
+   10. LOGOTIPO INFERIOR
+   CONCIENCIA SOBRE EL AGUA
+   -------------------------------------------------- */
+
+.resguardo-hoja .resguardo-imagen-inferior {
+    position: absolute;
+
+    left: 50%;
+    right: auto;
+    bottom: 8mm;
+
+    transform: translateX(-50%);
+
+    width: 56mm;
+    height: 22mm;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    z-index: 2;
+
+    pointer-events: none;
+}
+
+.resguardo-hoja .resguardo-imagen-inferior img {
+    width: auto;
+    height: auto;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    object-fit: contain;
+}
+
+/* --------------------------------------------------
+   11. NÚMERO DE PÁGINA COMO MARCA DE AGUA
+   -------------------------------------------------- */
+
+.resguardo-hoja .resguardo-marca-pagina {
+    position: absolute;
+
+    top: 48%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: 100%;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    font-size: 95mm;
+    font-weight: 800;
+    line-height: 1;
+
+    text-align: center;
+
+    color: #64748b;
+    opacity: 0.045;
+
+    white-space: nowrap;
+
+    pointer-events: none;
+    user-select: none;
+}
+
+/* --------------------------------------------------
+   12. AJUSTES ESPECIALES PARA IMPRESIÓN
+   -------------------------------------------------- */
+
+@media print {
+
+    @page {
+        size: A4 landscape;
+        margin: 5mm;
+    }
+
+    .resguardo-hoja .imp-tabla thead {
+        display: table-header-group;
+    }
+
+    .resguardo-hoja .imp-tabla tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .resguardo-hoja .imp-tabla thead th {
+        background-color: #8a190f !important;
+        color: #ffffff !important;
+    }
+
+    .resguardo-hoja .resguardo-logo,
+    .resguardo-hoja .resguardo-imagen-inferior img {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .resguardo-hoja .resguardo-marca-pagina {
+        opacity: 0.045;
+    }
+
+    .resguardo-hoja .imp-firmas {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+}
+
+
+/* ==========================================
+   CORRECCIÓN: IMAGEN INFERIOR Y FIRMAS
+   COAPATAP
+   ========================================== */
+
+/* Reservar espacio al pie para la imagen */
+
+.resguardo-hoja > .imp-pie {
+    margin-bottom: 0;
+    padding-bottom: 15mm;
+    box-sizing: border-box;
+}
+
+/* Colocar el logotipo debajo de las firmas */
+
+.resguardo-hoja .resguardo-imagen-inferior {
+    position: absolute;
+
+    left: 50%;
+    right: auto;
+    bottom: 1.5mm;
+
+    transform: translateX(-50%);
+
+    width: 43mm;
+    height: 12mm;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Mantener proporción original */
+
+.resguardo-hoja .resguardo-imagen-inferior img {
+    width: auto;
+    height: auto;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    object-fit: contain;
+}
+
+/* Firmas por encima y sin superposiciones */
+
+.resguardo-hoja .imp-firmas {
+    position: relative;
+    z-index: 3;
+}
+
+
+/* ==========================================
+   BOTÓN DE CONFIGURACIÓN DE IMPRESIÓN
+   COAPATAP
+   ========================================== */
+
+/* Encabezado del módulo */
+
+.imp-encabezado-modulo {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 15px;
+
+    margin-bottom: 12px;
+}
+
+/* Título */
+
+.imp-encabezado-modulo h1 {
+    margin: 0;
+}
+
+/* Botón de configuración */
+
+.imp-btn-configuracion {
+    display: inline-flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 11px 16px;
+
+    background: #334155;
+    color: #ffffff;
+
+    border: 1px solid #334155;
+    border-radius: 8px;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    text-decoration: none;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s,
+        transform 0.2s;
+}
+
+/* Efecto al colocar el cursor */
+
+.imp-btn-configuracion:hover {
+    background: #1e293b;
+    color: #ffffff;
+
+    transform: translateY(-1px);
+
+    text-decoration: none;
+}
+
+/* Accesibilidad con teclado */
+
+.imp-btn-configuracion:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 3px;
+}
+
+/* Pantallas pequeñas */
+
+@media (max-width: 768px) {
+
+    .imp-encabezado-modulo {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .imp-btn-configuracion {
+        width: 100%;
+    }
+
+}
+
+/* Nunca imprimir este botón */
+
+@media print {
+
+    .imp-encabezado-modulo {
+        display: none !important;
+    }
+
+    .imp-btn-configuracion {
+        display: none !important;
+    }
+
+}
+
