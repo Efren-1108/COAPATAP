@@ -186,7 +186,7 @@ function renderAreaCard(area) {
             ${empleadosArea.map(e => `
                 <div class="employee-row">
                     <div class="employee-row__info">
-                        <span class="employee-row__nomina">[${App.esc(e.numero_nomina)}]</span>
+                        <span class="employee-row__nomina">[${e.numero_nomina == null ? 'Sin nómina' : App.esc(e.numero_nomina)}]</span>
                         <span class="employee-row__name">${App.esc(e.nombre)}</span>
                         <span class="employee-row__cargo">${App.esc(e.cargo)}</span>
                     </div>
@@ -292,7 +292,7 @@ function renderEmpleados() {
     }
     if (q) {
         filtrados = filtrados.filter(e =>
-            String(e.numero_nomina).includes(q) ||
+            (e.numero_nomina == null ? 'sin nómina' : String(e.numero_nomina)).includes(q) ||
             e.nombre.toLowerCase().includes(q) ||
             e.cargo.toLowerCase().includes(q) ||
             (e.area_nombre || '').toLowerCase().includes(q) ||
@@ -322,7 +322,7 @@ function renderEmpleados() {
 
         return `
             <tr>
-                <td><strong>${App.esc(e.numero_nomina)}</strong></td>
+                <td><strong>${e.numero_nomina == null ? 'Sin nómina' : App.esc(e.numero_nomina)}</strong></td>
                 <td>${App.esc(e.nombre)}</td>
                 <td>${App.esc(e.cargo)}</td>
                 <td>${adscTxt}</td>
@@ -395,7 +395,7 @@ async function cargarEmpleadoEnForm(id) {
         const e = res.data;
 
         empleadoForm.elements['id'].value = e.id;
-        empleadoForm.elements['numero_nomina'].value = e.numero_nomina;
+        empleadoForm.elements['numero_nomina'].value = e.numero_nomina ?? '';
         empleadoForm.elements['nombre'].value = e.nombre;
         empleadoForm.elements['cargo'].value = e.cargo;
 
@@ -423,13 +423,19 @@ async function onSubmitEmpleado(e) {
     e.preventDefault();
     const id = empleadoForm.elements['id'].value;
     const data = {
-        numero_nomina: parseInt(empleadoForm.elements['numero_nomina'].value, 10),
+        numero_nomina: empleadoForm.elements['numero_nomina'].value.trim() === ''
+            ? null
+            : Number(empleadoForm.elements['numero_nomina'].value),
         nombre:        empleadoForm.elements['nombre'].value.trim(),
         cargo:         empleadoForm.elements['cargo'].value.trim(),
         area_id:       empleadoForm.elements['area_id'].value || null,
     };
 
-    if (!data.numero_nomina || data.numero_nomina <= 0) return mostrarErrorEmpleado('La nómina debe ser positiva');
+    if (data.numero_nomina !== null && (
+        !Number.isInteger(data.numero_nomina) ||
+        data.numero_nomina < 1 ||
+        data.numero_nomina > 2147483647
+    )) return mostrarErrorEmpleado('La nómina debe ser un número entero positivo o dejarse vacía');
     if (data.nombre.length < 3) return mostrarErrorEmpleado('El nombre es obligatorio (mín. 3 caracteres)');
     if (data.cargo.length < 2)  return mostrarErrorEmpleado('El cargo es obligatorio');
     if (!data.area_id)          return mostrarErrorEmpleado('Selecciona un área');

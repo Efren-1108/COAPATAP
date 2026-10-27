@@ -7,6 +7,8 @@
  *
  * Cambios respecto a la versión anterior:
  *   - [MEJORA] GET devuelve adscripcion_id y adscripcion_nombre (a través del área).
+ *   - [MEJORA] Empleados sin número de nómina (NULL).
+ *   - [PROTECCIÓN] No desvincular accidentalmente cuentas de usuario por cambio de nómina.
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -123,7 +125,7 @@ try {
             if ($where) {
                 $sql .= " WHERE " . implode(' AND ', $where);
             }
-            $sql .= " ORDER BY e.numero_nomina ASC";
+            $sql .= " ORDER BY e.numero_nomina ASC NULLS LAST, e.nombre ASC, e.id ASC";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
@@ -143,7 +145,7 @@ try {
         case 'POST':
             $input = json_input();
 
-            $numero_nomina = isset($input['numero_nomina']) ? (int)$input['numero_nomina'] : 0;
+            $numero_nomina = normalizarNomina($input['numero_nomina'] ?? null);
             $nombre        = trim((string)($input['nombre'] ?? ''));
             $cargo         = trim((string)($input['cargo']  ?? ''));
 
@@ -152,10 +154,13 @@ try {
                 json_response(['ok' => false, 'error' => $err], 400);
             }
 
-            $chk = $pdo->prepare("SELECT id FROM empleados WHERE numero_nomina = :n");
-            $chk->execute([':n' => $numero_nomina]);
-            if ($chk->fetch()) {
-                json_response(['ok' => false, 'error' => 'Ya existe un empleado con ese número de nómina'], 409);
+            // La nómina es única cuando existe; varios NULL son válidos.
+            if ($numero_nomina !== null) {
+                $chk = $pdo->prepare("SELECT id FROM empleados WHERE numero_nomina = :n");
+                $chk->execute([':n' => $numero_nomina]);
+                if ($chk->fetch()) {
+                    json_response(['ok' => false, 'error' => 'Ya existe un empleado con ese número de nómina'], 409);
+                }
             }
 
             if ($isSuper) {
@@ -187,12 +192,12 @@ try {
                                     ('empleados', 'INSERT', :id, :det, :usr, :uid, :aid)");
             $log->execute([
                 ':id'  => $newId,
-                ':det' => "Empleado creado: {$nombre} (nómina {$numero_nomina})",
+                ':det' => "Empleado creado: {$nombre} (nómina " . etiquetaNomina($numero_nomina) . ")",
                 ':usr' => $current['nombre_usuario'],
                 ':uid' => $current['id'],
                 ':aid' => $newAreaId,
             ]);
-            logger("Empleado creado: id={$newId} nomina={$numero_nomina} por usuario_id={$current['id']}");
+            logger("Empleado creado: id={$newId} nomina=" . etiquetaNomina($numero_nomina) . " por usuario_id={$current['id']}");
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Empleado registrado correctamente'], 201);
             break;
 
@@ -205,7 +210,7 @@ try {
             }
             $input = json_input();
 
-            $numero_nomina = isset($input['numero_nomina']) ? (int)$input['numero_nomina'] : 0;
+            $numero_nomina = normalizarNomina($input['numero_nomina'] ?? null);
             $nombre        = trim((string)($input['nombre'] ?? ''));
             $cargo         = trim((string)($input['cargo']  ?? ''));
 
@@ -214,7 +219,7 @@ try {
                 json_response(['ok' => false, 'error' => $err], 400);
             }
 
-            $check = $pdo->prepare("SELECT area_id FROM empleados WHERE id = :id");
+            $check = $pdo->prepare("SELECT area_id, numero_nomina FROM empleados WHERE id = :id");
             $check->execute([':id' => $id]);
             $empActual = $check->fetch();
             if (!$empActual) {
@@ -224,10 +229,27 @@ try {
                 json_response(['ok' => false, 'error' => 'No tienes permisos para editar este empleado (pertenece a otra área).'], 403);
             }
 
-            $chk = $pdo->prepare("SELECT id FROM empleados WHERE numero_nomina = :n AND id <> :id");
-            $chk->execute([':n' => $numero_nomina, ':id' => $id]);
-            if ($chk->fetch()) {
-                json_response(['ok' => false, 'error' => 'Otro empleado ya tiene ese número de nómina'], 409);
+            if ($numero_nomina !== null) {
+                $chk = $pdo->prepare("SELECT id FROM empleados WHERE numero_nomina = :n AND id <> :id");
+                $chk->execute([':n' => $numero_nomina, ':id' => $id]);
+                if ($chk->fetch()) {
+                    json_response(['ok' => false, 'error' => 'Otro empleado ya tiene ese número de nómina'], 409);
+                }
+            }
+
+            // El sistema relaciona algunas cuentas mediante el texto de la nómina.
+            // Evitar perder esa vinculación al cambiar o borrar el número.
+            $nominaAnterior = $empActual['numero_nomina'] === null
+                ? null : (int)$empActual['numero_nomina'];
+            if ($nominaAnterior !== null && $nominaAnterior !== $numero_nomina) {
+                $cuenta = $pdo->prepare("SELECT 1 FROM usuarios WHERE nombre_usuario = CAST(:n AS VARCHAR) LIMIT 1");
+                $cuenta->execute([':n' => $nominaAnterior]);
+                if ($cuenta->fetchColumn()) {
+                    json_response([
+                        'ok' => false,
+                        'error' => 'Este empleado tiene una cuenta de usuario vinculada a su nómina actual. Revisa primero la vinculación en Usuarios.'
+                    ], 409);
+                }
             }
 
             $nuevoAreaId = $empActual['area_id'];
@@ -258,12 +280,12 @@ try {
                                     ('empleados', 'UPDATE', :id, :det, :usr, :uid, :aid)");
             $log->execute([
                 ':id'  => $id,
-                ':det' => "Empleado actualizado: {$nombre} (nómina {$numero_nomina})",
+                ':det' => "Empleado actualizado: {$nombre} (nómina " . etiquetaNomina($numero_nomina) . ")",
                 ':usr' => $current['nombre_usuario'],
                 ':uid' => $current['id'],
                 ':aid' => $nuevoAreaId,
             ]);
-            logger("Empleado actualizado: id={$id} nomina={$numero_nomina} por usuario_id={$current['id']}");
+            logger("Empleado actualizado: id={$id} nomina=" . etiquetaNomina($numero_nomina) . " por usuario_id={$current['id']}");
             json_response(['ok' => true, 'message' => 'Empleado actualizado correctamente']);
             break;
 
@@ -330,10 +352,47 @@ try {
  * FUNCIONES AUXILIARES
  * ============================================================ */
 
-function validarEmpleado(int $numero_nomina, string $nombre, string $cargo)
+/**
+ * Devuelve NULL si la nómina se deja vacía y un entero positivo válido
+ * si se proporciona. No inventar números de nómina.
+ */
+function normalizarNomina(mixed $valor): ?int
 {
-    if ($numero_nomina <= 0) {
-        return 'Número de nómina obligatorio y positivo';
+    if ($valor === null || $valor === '') {
+        return null;
+    }
+
+    if (!is_string($valor) && !is_int($valor)) {
+        json_response(['ok' => false, 'error' => 'La nómina debe ser un entero positivo o dejarse vacía'], 400);
+    }
+
+    $s = trim((string)$valor);
+    if ($s === '') {
+        return null;
+    }
+
+    if (!preg_match('/^[0-9]+$/', $s)) {
+        json_response(['ok' => false, 'error' => 'La nómina debe contener únicamente números enteros positivos'], 400);
+    }
+
+    $numero = filter_var($s, FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1, 'max_range' => 2147483647]
+    ]);
+    if ($numero === false) {
+        json_response(['ok' => false, 'error' => 'La nómina debe estar entre 1 y 2147483647 o dejarse vacía'], 400);
+    }
+    return $numero;
+}
+
+function etiquetaNomina(?int $numero): string
+{
+    return $numero === null ? 'sin asignar' : (string)$numero;
+}
+
+function validarEmpleado(?int $numero_nomina, string $nombre, string $cargo)
+{
+    if ($numero_nomina !== null && $numero_nomina <= 0) {
+        return 'El número de nómina debe ser positivo';
     }
     if (strlen($nombre) < 3) {
         return 'El nombre es obligatorio (mín. 3 caracteres)';
@@ -350,7 +409,7 @@ function validarEmpleado(int $numero_nomina, string $nombre, string $cargo)
     return true;
 }
 
-function normalizarAreaId($valor): ?int
+function normalizarAreaId(mixed $valor): ?int
 {
     if ($valor === null || $valor === '' || $valor === 0 || $valor === '0') {
         return null;

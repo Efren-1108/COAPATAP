@@ -53,7 +53,7 @@ require_once __DIR__ . '/../includes/header.php';
         <table class="table" id="tablaEmpleados">
             <thead>
                 <tr>
-                    <th>Nómina</th>
+                    <th>Nómina (si tiene)</th>
                     <th>Nombre</th>
                     <th>Cargo</th>
                     <th>Adscripción</th>
@@ -78,9 +78,12 @@ require_once __DIR__ . '/../includes/header.php';
                 <input type="hidden" name="id" value="">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Número de Nómina <span class="req">*</span></label>
-                        <input type="number" name="numero_nomina" class="form-control" min="1" required>
-                        <span class="form-text">Identificador único del empleado.</span>
+                        <label for="numeroNominaEmpleado">Número de Nómina (opcional)</label>
+                        <input type="number" id="numeroNominaEmpleado" name="numero_nomina"
+                               class="form-control" min="1" max="2147483647" step="1"
+                               placeholder="Vacío si todavía no tiene nómina">
+                        <span class="form-text">Deja el campo vacío si aún no tiene nómina.
+                            Podrás asignársela más adelante; sus activos seguirán asociados a su ID.</span>
                     </div>
                     <div class="form-group">
                         <label>Área <span class="req">*</span></label>
