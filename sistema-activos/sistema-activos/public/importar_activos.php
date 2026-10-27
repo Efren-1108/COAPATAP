@@ -505,39 +505,43 @@ function impDerecha(
 // IDENTIFICAR NÚMERO DE NÓMINA
 // ==========================================
 
-function impNominaFila(
-    array $filas,
-    int $i
-): ?string {
-    foreach (
-        $filas[$i] ?? [] as $col => $txt
-    ) {
-        if (!str_contains(
-            impN($txt),
-            'NUMERO DE NOMINA'
-        )) {
+function impNominaFila(array $filas, int $i): ?string
+{
+    foreach ($filas[$i] ?? [] as $col => $txt) {
+        if (!str_contains(impN($txt), 'NUMERO DE NOMINA')) {
             continue;
         }
 
-        foreach (
-            [$i - 1, $i + 1, $i - 2, $i + 2]
-            as $j
-        ) {
-            $s = trim(
-                (string) (
-                    $filas[$j][$col] ?? ''
-                )
-            );
+        // En algunos formatos el valor está en K y la etiqueta en J.
+        // Solo consultar la misma columna y la inmediata a la derecha.
+        $numero = impNumeroColumna((string) $col);
+        if ($numero < 1 || $numero >= 18278) {
+            continue;
+        }
+        $columnas = [(string) $col, impLetrasColumna($numero + 1)];
 
-            if (preg_match(
-                '/^[1-9][0-9]{0,8}$/',
-                $s
-            )) {
-                return $s;
+        // Normalmente la nómina está justo ENCIMA del encabezado.
+        // Mantener los desplazamientos anteriores como compatibilidad.
+        foreach ([$i - 1, $i + 1, $i - 2, $i + 2] as $j) {
+            if ($j < 1) {
+                continue;
+            }
+            $halladas = [];
+            foreach ($columnas as $c) {
+                $v = trim((string) ($filas[$j][$c] ?? ''));
+                if (preg_match('/^[1-9][0-9]{0,8}$/', $v)) {
+                    $halladas[$v] = true;
+                }
+            }
+            // Dos números distintos en la misma fila: no adivinar.
+            if (count($halladas) > 1) {
+                return null;
+            }
+            if ($halladas) {
+                return (string) array_key_first($halladas);
             }
         }
     }
-
     return null;
 }
 
@@ -593,48 +597,34 @@ function impCosto(string $s): ?string
 function impFecha(string $s): ?string
 {
     $s = trim($s);
-
-    if (
-        $s === '' ||
-        impN($s) === 'S F'
-    ) {
+    if ($s === '' || impN($s) === 'S F') {
         return null;
     }
 
-    // Fechas numéricas de Excel.
-
-    if (
-        is_numeric($s) &&
-        (float) $s >= 1 &&
-        (float) $s < 100000
-    ) {
-        return (
-            new DateTimeImmutable(
-                '1899-12-30',
-                new DateTimeZone('UTC')
-            )
-        )->modify(
-            '+' . (int) floor((float) $s)
-            . ' days'
-        )->format('Y-m-d');
+    // Conservar fechas seriales de Excel y su comportamiento anterior.
+    if (is_numeric($s) && (float) $s >= 1 && (float) $s < 100000) {
+        return (new DateTimeImmutable('1899-12-30', new DateTimeZone('UTC')))
+            ->modify('+' . (int) floor((float) $s) . ' days')
+            ->format('Y-m-d');
     }
 
-    // Fechas escritas como texto.
+    // Formatos reconocibles sin adivinar día/mes/año:
+    // 19/07/2024, 19/6/2025, 19/072024, 19/62025 y 1606/2026.
+    // Solo se acepta el año de 4 dígitos y una fecha real.
+    $dia = $mes = $anio = null;
+    if (preg_match('~^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$~', $s, $m)) {
+        [$dia, $mes, $anio] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+    } elseif (preg_match('~^(\d{1,2})/(\d{1,2})(\d{4})$~', $s, $m)) {
+        [$dia, $mes, $anio] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+    } elseif (preg_match('~^(\d{2})(\d{2})/(\d{4})$~', $s, $m)) {
+        [$dia, $mes, $anio] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+    } elseif (preg_match('~^(\d{4})-(\d{1,2})-(\d{1,2})$~', $s, $m)) {
+        [$anio, $mes, $dia] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+    }
 
-    foreach (
-        ['!d/m/Y', '!Y-m-d'] as $fmt
-    ) {
-        $d = DateTimeImmutable::createFromFormat(
-            $fmt,
-            $s
-        );
-
-        if (
-            $d &&
-            $d->format(substr($fmt, 1)) === $s
-        ) {
-            return $d->format('Y-m-d');
-        }
+    if ($dia !== null && $anio >= 1900 && $anio <= 9999 &&
+        checkdate($mes, $dia, $anio)) {
+        return sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
     }
 
     return 'INVALIDA: ' . $s;
@@ -644,52 +634,51 @@ function impFecha(string $s): ?string
 // EXTRAER NOMBRE Y CARGO DEL RESGUARDANTE
 // ==========================================
 
-function impFirma(
-    array $filas,
-    int $fila,
-    string $col
-): array {
+function impFirma(array $filas, int $fila, string $col): array
+{
+    // La etiqueta «RECIBÍ (RESGUARDANTE)» suele estar en E,
+    // pero el nombre puede estar en D y el cargo en E.
+    $colNumero = impNumeroColumna($col);
+    $columnas = [];
+    foreach ([$colNumero - 1, $colNumero, $colNumero + 1] as $num) {
+        if ($num >= 1 && $num <= 18278) {
+            $columnas[] = impLetrasColumna($num);
+        }
+    }
+
     $datos = [];
+    for ($j = $fila + 1; $j <= $fila + 10; $j++) {
+        $valoresFila = [];
+        foreach ($columnas as $c) {
+            $s = trim((string) ($filas[$j][$c] ?? ''));
+            if ($s === '' || preg_match('/^[-_.\s]+$/', $s)) {
+                continue;
+            }
 
-    for (
-        $j = $fila + 1;
-        $j <= $fila + 10;
-        $j++
-    ) {
-        $s = trim(
-            (string) (
-                $filas[$j][$col] ?? ''
-            )
-        );
-
-        if (
-            $s === '' ||
-            preg_match('/^[-_.\s]+$/', $s)
-        ) {
-            continue;
+            $t = impN($s);
+            if (str_contains($t, 'COMITE DE AGUA') ||
+                str_contains($t, 'DESCRIPCION') ||
+                str_contains($t, 'AUTORIZO') ||
+                str_contains($t, 'ENTREGO') ||
+                str_contains($t, 'RECIBI')) {
+                continue;
+            }
+            $valoresFila[$t] = $s;
         }
 
-        $t = impN($s);
-
-        if (
-            str_contains($t, 'COMITE DE AGUA') ||
-            str_contains($t, 'DESCRIPCION') ||
-            str_contains($t, 'AUTORIZO')
-        ) {
-            break;
+        if (count($valoresFila) > 1) {
+            // No elegir automáticamente entre dos firmas diferentes.
+            return ['', ''];
         }
-
-        $datos[] = $s;
-
+        if ($valoresFila) {
+            $datos[] = reset($valoresFila);
+        }
         if (count($datos) === 2) {
             break;
         }
     }
 
-    return [
-        $datos[0] ?? '',
-        $datos[1] ?? ''
-    ];
+    return [$datos[0] ?? '', $datos[1] ?? ''];
 }
 
 // ==========================================
