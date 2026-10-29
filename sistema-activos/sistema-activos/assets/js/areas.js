@@ -14,7 +14,7 @@ const statsBox   = document.getElementById('stats');
 let areasCache = [];
 
 document.addEventListener('DOMContentLoaded', cargar);
-
+ 
 async function cargar() {
     tablaBody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
     try {

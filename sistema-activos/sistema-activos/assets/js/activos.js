@@ -1,3 +1,32 @@
+
+/* Ventanas personalizadas COAPATAP: no usan alert, prompt ni confirm del navegador. */
+function ventanaStock({titulo,descripcion='',tipo='texto',valor='',opciones=[],filas=[]}) {
+    return new Promise(resolve=>{
+        const overlay=document.createElement('div');
+        overlay.className='coapatap-dialog-overlay';
+        const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const campo=tipo==='seleccion'
+          ? `<label class="coapatap-dialog-label" for="coapatap-dialog-input">Empleado responsable</label><select id="coapatap-dialog-input" class="coapatap-dialog-input"><option value="">— Selecciona un empleado —</option>${opciones.map(x=>`<option value="${escape(x.id)}">${escape(x.nombre)}${x.numero_nomina?' · Nómina '+escape(x.numero_nomina):''}</option>`).join('')}</select>`
+          : tipo==='texto' ? `<label class="coapatap-dialog-label" for="coapatap-dialog-input">Motivo del movimiento</label><textarea id="coapatap-dialog-input" class="coapatap-dialog-input" rows="3" maxlength="500" placeholder="Escribe el motivo..." required>${escape(valor)}</textarea>`
+          : tipo==='historial' ? `<div class="coapatap-dialog-history">${filas.length?filas.map(m=>`<div class="coapatap-dialog-history-row"><strong>${escape(m.tipo)}</strong><small>${escape(m.fecha)}</small><p>${escape(m.motivo||'Sin motivo')} · ${escape(m.usuario_nombre||'Sistema')}</p></div>`).join(''):'<p>No hay movimientos registrados.</p>'}</div>` : '';
+        overlay.innerHTML=`<div class="coapatap-dialog" role="dialog" aria-modal="true" aria-labelledby="coapatap-dialog-title"><div class="coapatap-dialog-header"><h2 id="coapatap-dialog-title">${escape(titulo)}</h2><button type="button" class="coapatap-dialog-x" aria-label="Cerrar">×</button></div><div class="coapatap-dialog-body">${descripcion?`<p>${escape(descripcion)}</p>`:''}${campo}</div><div class="coapatap-dialog-footer">${tipo!=='historial'?'<button type="button" class="btn btn--ghost coapatap-dialog-cancel">Cancelar</button>':''}<button type="button" class="btn btn--primary coapatap-dialog-ok">${tipo==='historial'?'Cerrar':'Aceptar'}</button></div></div>`;
+        document.body.appendChild(overlay);
+        const input=overlay.querySelector('#coapatap-dialog-input');
+        const cerrar=v=>{document.removeEventListener('keydown',tecla);overlay.remove();resolve(v)};
+        const tecla=e=>{if(e.key==='Escape'){e.preventDefault();cerrar(null)}};
+        document.addEventListener('keydown',tecla);
+        overlay.querySelector('.coapatap-dialog-x').onclick=()=>cerrar(null);
+        const cancelar=overlay.querySelector('.coapatap-dialog-cancel');
+        if(cancelar)cancelar.onclick=()=>cerrar(null);
+        overlay.querySelector('.coapatap-dialog-ok').onclick=()=>{
+            if(tipo==='historial'||tipo==='confirmar')return cerrar(true);
+            if(!input.value.trim()){input.focus();input.classList.add('coapatap-dialog-invalid');return}
+            cerrar(input.value.trim());
+        };
+        if(input)input.focus();else overlay.querySelector('.coapatap-dialog-ok').focus();
+    });
+}
+
 /* =====================================================
    activos.js — Gestión de activos con vistas jerárquicas
    Jerarquía: Adscripción → Área → Empleado → Activo
@@ -214,8 +243,9 @@ function botonStock(a) {
 }
 
 async function enviarActivoAStock(id) {
-    if (!confirm('¿Enviar este activo al almacén general? Se quitarán su empleado y área actuales.')) return;
-    const motivo = prompt('Indica el motivo de entrada al almacén:');
+    const ok = await ventanaStock({titulo:'📦 Enviar a stock',tipo:'confirmar',descripcion:'¿Enviar este activo al almacén general? Se retirarán su empleado y área actuales, pero el bien no se eliminará.'});
+    if (!ok) return;
+    const motivo = await ventanaStock({titulo:'📝 Motivo de entrada',descripcion:'Indica el motivo por el que se envía el activo al almacén.',tipo:'texto'});
     if (motivo === null) return;
     try {
         const res = await App.api('stock.php', {method:'POST', body:{accion:'entrada',activo_id:id,motivo:motivo.trim()}});
