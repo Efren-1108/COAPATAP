@@ -22,7 +22,7 @@ if (!isset($assetsBase)) {
     <?php $assetVer = defined('APP_VERSION') ? APP_VERSION : '1'; ?>
     <script src="<?= e($assetsBase) ?>js/app.js?v=<?= e($assetVer) ?>"></script>
     <?php if (isset($page_js)): ?>
-    <script src="<?= e($assetsBase) ?>js/<?= e($page_js) ?>?v=<?= e($assetVer) ?>"></script>
+    <script src="<?= e($assetsBase) ?>js/<?= e($page_js) ?>?v=<?= e($page_js_version ?? $assetVer) ?>"></script>
 <?php endif; ?>
 </body>
 </html>

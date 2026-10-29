@@ -1,6 +1,7 @@
 <?php
 $page_title = 'Gestión de Activos Fijos';
 $page_js    = 'activos.js';
+$page_js_version = 'acciones-20261029-2';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_auth();
@@ -70,6 +71,26 @@ require_once __DIR__ . '/../includes/header.php';
     <div id="listaEmpleadosConActivos"></div>
 </div>
 
+<style>
+/* Tabla Todos: un único botón visible por activo; acciones completas al desplegar. */
+#tablaActivos { min-width: 0; width: 100%; }
+#tablaActivos th:last-child, #tablaActivos td:last-child { width: 190px; min-width: 190px; text-align: center; }
+#tablaActivos .acciones-celda { overflow: visible; }
+#tablaActivos .acciones-menu { position: relative; display: inline-block; vertical-align: top; }
+#tablaActivos .acciones-menu > summary { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; list-style: none; white-space: nowrap; min-width: 105px; }
+#tablaActivos .acciones-menu > summary::-webkit-details-marker { display: none; }
+#tablaActivos .acciones-menu__opciones {
+    display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+    position: static; z-index: auto; margin-top: 8px;
+    min-width: 170px; padding: 10px; background: var(--surface, #fff);
+    color: #222; border: 1px solid #cbd5e1; border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.18);
+}
+#tablaActivos .acciones-menu:not([open]) .acciones-menu__opciones { display: none; }
+#tablaActivos .acciones-menu__opciones > button { width: 100%; min-width: 0; white-space: nowrap; text-align: center; justify-content: center; }
+#panelTodos .table-wrap { overflow-x: auto; }
+</style>
+
 <!-- ============ PANEL: TODOS ============ -->
 <div class="tab-panel" id="panelTodos" data-panel="todos">
     <div id="statsResumen" class="stats"></div>
@@ -78,12 +99,7 @@ require_once __DIR__ . '/../includes/header.php';
             <thead>
                 <tr>
                     <th>Descripción</th>
-                    <th>Inventario</th>
-                    <th>Marca</th>
-                    <th>Modelo</th>
                     <th>Estado físico</th>
-                    <th>Situación</th>
-                    <th>Costo</th>
                     <th>Adscripción</th>
                     <th>Área</th>
                     <th>Asignado a</th>

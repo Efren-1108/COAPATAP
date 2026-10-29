@@ -825,7 +825,7 @@ function renderTablaTodos(activosFiltrados = null) {
     `;
 
     if (!activosFiltrados.length) {
-        tablaBody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
         return;
     }
 
@@ -849,12 +849,7 @@ function renderTablaTodos(activosFiltrados = null) {
         return `
             <tr ${esSuspendido(a) ? 'style="background:rgba(217,119,6,0.07)"' : ''}>
                 <td><strong>${App.esc(a.descripcion)}</strong></td>
-                <td>${App.esc(a.num_inventario)}</td>
-                <td>${App.esc(a.marca || '—')}</td>
-                <td>${App.esc(a.modelo || '—')}</td>
                 <td>${App.esc(a.estado_fisico || '—')}</td>
-                <td>${etiquetaSituacion(a)}</td>
-                <td>${App.money(a.costo)}</td>
                 <td>${adscTxt}</td>
                 <td>${areaTxt}</td>
                 <td>${empTxt}</td>
@@ -863,13 +858,16 @@ function renderTablaTodos(activosFiltrados = null) {
                         ? `<img class="table__thumb" src="${App.esc(imgPath)}" alt="Foto" loading="lazy" onclick="viewImage('${App.esc(imgPath)}')" style="cursor: pointer;">`
                         : `<div class="table__noimg">S/F</div>`}
                 </td>
-                <td>
-                    <div class="table__actions">
-                        ${botonSituacion(a)}
-                        ${botonStock(a)}
-                        <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar activo">✏️</button>
-                        <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️</button>
-                    </div>
+                <td class="acciones-celda">
+                    <details class="acciones-menu">
+                        <summary class="btn btn--ghost btn--sm" title="Mostrar todas las acciones">⚙️ Acciones ▾</summary>
+                        <div class="acciones-menu__opciones">
+                            ${botonSituacion(a)}
+                            ${botonStock(a)}
+                            <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar activo">✏️ Editar</button>
+                            <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️ Eliminar</button>
+                        </div>
+                    </details>
                 </td>
             </tr>
         `;

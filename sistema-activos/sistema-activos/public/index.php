@@ -87,6 +87,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+
 <!-- Modal de vista de resguardo para impresión -->
 <div class="modal-backdrop" id="resguardoModal">
     <div class="modal" style="max-width: 1000px;">

@@ -239,7 +239,7 @@ try {
                         observaciones = :obs,
                         empleado_id   = :eid,
                         area_id       = :aid,
-                        situacion_inventario = CASE WHEN situacion_inventario = 'STOCK' THEN 'STOCK' WHEN :eid_sit IS NOT NULL THEN 'ASIGNADO' ELSE 'SIN_ASIGNAR' END,
+                        situacion_inventario = CASE WHEN situacion_inventario = 'STOCK' THEN 'STOCK' WHEN CAST(:eid_sit AS INTEGER) IS NOT NULL THEN 'ASIGNADO' ELSE 'SIN_ASIGNAR' END,
                         ruta_imagen   = :img
                     WHERE id = :id";
             $stmt = $pdo->prepare($sql);
