@@ -293,45 +293,77 @@ try {
         // DELETE — Eliminar empleado
         // ============================================================
         case 'DELETE':
-            if (!$id) {
-                json_response(['ok' => false, 'error' => 'ID requerido'], 400);
+            if (!$id || $id < 1) {
+                json_response(['ok' => false, 'error' => 'ID de empleado requerido'], 400);
             }
 
-            $check = $pdo->prepare("SELECT area_id, nombre FROM empleados WHERE id = :id");
+            // La eliminación y la desasignación deben ser atómicas.
+            // Si PostgreSQL rechaza la eliminación, ningún bien queda modificado.
+            $pdo->beginTransaction();
+            $check = $pdo->prepare(
+                'SELECT id, area_id, nombre, numero_nomina
+                 FROM empleados WHERE id = :id FOR UPDATE'
+            );
             $check->execute([':id' => $id]);
-            $emp = $check->fetch();
+            $emp = $check->fetch(PDO::FETCH_ASSOC);
             if (!$emp) {
+                $pdo->rollBack();
                 json_response(['ok' => false, 'error' => 'Empleado no encontrado'], 404);
             }
             if (!$isSuper && (int)$emp['area_id'] !== (int)$areaId) {
+                $pdo->rollBack();
                 json_response(['ok' => false, 'error' => 'No tienes permisos para eliminar este empleado.'], 403);
             }
 
-            $cnt = $pdo->prepare("SELECT COUNT(*) FROM activos WHERE empleado_id = :id");
-            $cnt->execute([':id' => $id]);
-            $numActivos = (int)$cnt->fetchColumn();
+            // Proteger cuentas que utilizan la nómina como nombre de usuario.
+            if ($emp['numero_nomina'] !== null) {
+                $vinculo = $pdo->prepare(
+                    'SELECT 1 FROM usuarios WHERE nombre_usuario = :nomina LIMIT 1'
+                );
+                $vinculo->execute([':nomina' => (string)$emp['numero_nomina']]);
+                if ($vinculo->fetchColumn()) {
+                    $pdo->rollBack();
+                    json_response([
+                        'ok' => false,
+                        'error' => 'Este empleado tiene una cuenta de usuario vinculada a su nómina. Revisa esa cuenta antes de eliminarlo.'
+                    ], 409);
+                }
+            }
 
-            $stmt = $pdo->prepare("DELETE FROM empleados WHERE id = :id");
+            // Se conserva cada activo, su número de inventario y su área.
+            // La columna empleado_id queda NULL ("No asignado").
+            $desasignar = $pdo->prepare(
+                'UPDATE activos SET empleado_id = NULL WHERE empleado_id = :id'
+            );
+            $desasignar->execute([':id' => $id]);
+            $numActivos = $desasignar->rowCount();
+
+            $stmt = $pdo->prepare('DELETE FROM empleados WHERE id = :id');
             $stmt->execute([':id' => $id]);
+            if ($stmt->rowCount() !== 1) {
+                throw new RuntimeException('No se pudo eliminar el empleado');
+            }
 
             $detalle = "Empleado eliminado: {$emp['nombre']}";
             if ($numActivos > 0) {
                 $detalle .= " — {$numActivos} activo(s) quedaron sin resguardante";
             }
-
-            $log = $pdo->prepare("INSERT INTO log_actividades
-                                    (tabla, accion, registro_id, detalle, usuario, usuario_id, area_id)
-                                  VALUES
-                                    ('empleados', 'DELETE', :id, :det, :usr, :uid, :aid)");
+            $log = $pdo->prepare(
+                "INSERT INTO log_actividades
+                    (tabla, accion, registro_id, detalle, usuario, usuario_id, area_id)
+                 VALUES
+                    ('empleados', 'DELETE', :id, :det, :usr, :uid, :aid)"
+            );
             $log->execute([
-                ':id'  => $id,
+                ':id' => $id,
                 ':det' => $detalle,
                 ':usr' => $current['nombre_usuario'],
                 ':uid' => $current['id'],
                 ':aid' => $emp['area_id'],
             ]);
-            logger("Empleado eliminado: id={$id} por usuario_id={$current['id']} (activos desasignados: {$numActivos})");
+            $pdo->commit();
 
+            logger("Empleado eliminado: id={$id} por usuario_id={$current['id']} (activos desasignados: {$numActivos})");
             $msg = 'Empleado eliminado';
             if ($numActivos > 0) {
                 $msg .= " — {$numActivos} activo(s) quedaron sin resguardante";
@@ -344,6 +376,9 @@ try {
     }
 
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     logger("Error en empleados: " . $e->getMessage(), 'ERROR');
     json_response(['ok' => false, 'error' => 'Error: ' . $e->getMessage()], 500);
 }

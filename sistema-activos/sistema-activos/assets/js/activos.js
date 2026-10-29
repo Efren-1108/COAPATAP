@@ -12,6 +12,7 @@ const busqueda        = document.getElementById('busqueda');
 const filtroAdsc      = document.getElementById('filtroAdscripcion');
 const filtroArea      = document.getElementById('filtroArea');
 const filtroEmpleado  = document.getElementById('filtroEmpleado');
+const filtroSituacion = document.getElementById('filtroSituacion');
 const selectEmp       = document.getElementById('empleado_id');
 const hintAdscActivo  = document.getElementById('hintAdscActivo');
 const imgInput        = document.getElementById('imagen');
@@ -100,6 +101,7 @@ function wireEvents() {
     filtroAdsc.addEventListener('change', renderTodo);
     filtroArea.addEventListener('change', renderTodo);
     filtroEmpleado.addEventListener('change', renderTodo);
+    filtroSituacion.addEventListener('change', renderTodo);
 
     btnExpandir.addEventListener('click', () => {
         // Expandir todo lo que tenga contenido
@@ -129,6 +131,8 @@ function wireEvents() {
     listaAdscConActivos.addEventListener('click', onAdscCardClick);
     listaAreasConActivos.addEventListener('click', onAreaCardClick);
     listaEmpleadosConActivos.addEventListener('click', onEmpleadoCardClick);
+    // Botones de la tabla de todos los activos (sin onclick incrustado).
+    tablaBody.addEventListener('click', onTablaActivoClick);
 
     imgInput.addEventListener('change', () => {
         const f = imgInput.files[0];
@@ -143,6 +147,11 @@ function wireEvents() {
     form.addEventListener('submit', onSubmitActivo);
 
     selectEmp.addEventListener('change', actualizarHintAdscActivo);
+    document.getElementById('crear_en_stock').addEventListener('change', function() {
+        if (this.checked) selectEmp.value = '';
+        selectEmp.disabled = this.checked;
+        actualizarHintAdscActivo();
+    });
 
     // Autocompletar observaciones
     selectEmp.addEventListener('change', function() {
@@ -184,6 +193,42 @@ function getAreaDeActivo(a) {
         if (emp && emp.area_id) return areasCache.find(x => x.id === emp.area_id) || null;
     }
     return null;
+}
+
+// Situación administrativa: no confundir con estado_fisico.
+function esSuspendido(a) {
+    return a.suspendido === true || a.suspendido === 't' || a.suspendido === 1 || a.suspendido === '1';
+}
+
+function botonSituacion(a) {
+    const susp = esSuspendido(a);
+    const accion = susp ? 'reactivar-activo' : 'suspender-activo';
+    const rotulo = susp ? '▶️ Reactivar' : '⏸️ Suspender';
+    return `<button type="button" class="btn btn--ghost btn--sm" data-action="${accion}"
+        data-id="${Number(a.id)}" title="${susp ? 'Reactivar este activo' : 'Suspender sin eliminar este activo'}">${rotulo}</button>`;
+}
+
+function botonStock(a) {
+    if (a.situacion_inventario === 'STOCK') return '<span class="badge">📦 En stock</span>';
+    return `<button type="button" class="btn btn--ghost btn--sm" data-action="enviar-stock" data-id="${Number(a.id)}">📦 Enviar a stock</button>`;
+}
+
+async function enviarActivoAStock(id) {
+    if (!confirm('¿Enviar este activo al almacén general? Se quitarán su empleado y área actuales.')) return;
+    const motivo = prompt('Indica el motivo de entrada al almacén:');
+    if (motivo === null) return;
+    try {
+        const res = await App.api('stock.php', {method:'POST', body:{accion:'entrada',activo_id:id,motivo:motivo.trim()}});
+        if (!res.ok) throw new Error(res.error);
+        App.toast(res.message, 'success');
+        await cargarTodo();
+    } catch(err) { App.toast(err.message, 'error'); }
+}
+
+function etiquetaSituacion(a) {
+    if (!esSuspendido(a)) return '<span class="badge">Vigente</span>';
+    const motivo = a.motivo_suspension ? ` · Motivo: ${App.esc(a.motivo_suspension)}` : '';
+    return `<span class="badge badge--warning" title="Suspendido${motivo}">⏸ Suspendido</span>`;
 }
 
 // ============ FILTROS ============
@@ -234,6 +279,7 @@ function getActivosFiltrados() {
     const adscId = filtroAdsc.value ? parseInt(filtroAdsc.value, 10) : null;
     const areaId = filtroArea.value ? parseInt(filtroArea.value, 10) : null;
     const empId = filtroEmpleado.value ? parseInt(filtroEmpleado.value, 10) : null;
+    const situacion = filtroSituacion.value;
 
     return activosCache.filter(a => {
         if (adscId !== null) {
@@ -245,6 +291,8 @@ function getActivosFiltrados() {
             if (!ar || ar.id !== areaId) return false;
         }
         if (empId !== null && a.empleado_id !== empId) return false;
+        if (situacion === 'suspendidos' && !esSuspendido(a)) return false;
+        if (situacion === 'vigentes' && esSuspendido(a)) return false;
         if (q) {
             const campos = [
                 a.descripcion, a.num_inventario, a.marca, a.modelo, a.serie,
@@ -416,11 +464,20 @@ function onAdscCardClick(e) {
                 renderAdscConActivos();
             }
             break;
+        case 'enviar-stock':
+            enviarActivoAStock(parseInt(target.dataset.id, 10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
         case 'eliminar-activo':
             eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
+        case 'suspender-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), false);
+            break;
+        case 'reactivar-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), true);
             break;
     }
 }
@@ -557,11 +614,20 @@ function onAreaCardClick(e) {
                 renderAreasConActivos();
             }
             break;
+        case 'enviar-stock':
+            enviarActivoAStock(parseInt(target.dataset.id, 10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
         case 'eliminar-activo':
             eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
+        case 'suspender-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), false);
+            break;
+        case 'reactivar-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), true);
             break;
     }
 }
@@ -663,11 +729,20 @@ function onEmpleadoCardClick(e) {
                 renderEmpleadosConActivos();
             }
             break;
+        case 'enviar-stock':
+            enviarActivoAStock(parseInt(target.dataset.id, 10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
         case 'eliminar-activo':
             eliminarActivo(parseInt(target.dataset.id, 10), target.dataset.desc);
+            break;
+        case 'suspender-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), false);
+            break;
+        case 'reactivar-activo':
+            cambiarSituacionActivo(parseInt(target.dataset.id, 10), true);
             break;
     }
 }
@@ -682,10 +757,10 @@ function renderActivoFila(a, mostrarAdsc = false) {
         : `<div class="activo-noimg">S/F</div>`;
 
     return `
-        <div class="activo-fila">
+        <div class="activo-fila" ${esSuspendido(a) ? 'style="background:rgba(217,119,6,0.07)"' : ''}>
             <div class="activo-fila__thumb">${thumb}</div>
             <div class="activo-fila__info">
-                <div class="activo-fila__desc">${App.esc(a.descripcion)}</div>
+                <div class="activo-fila__desc">${App.esc(a.descripcion)} ${esSuspendido(a) ? etiquetaSituacion(a) : ''}</div>
                 <div class="activo-fila__meta">
                     <code>${App.esc(a.num_inventario)}</code>
                     ${a.marca ? ` · ${App.esc(a.marca)}` : ''}
@@ -694,11 +769,30 @@ function renderActivoFila(a, mostrarAdsc = false) {
             </div>
             <div class="activo-fila__costo">${App.money(a.costo)}</div>
             <div class="activo-fila__acciones">
+                ${botonSituacion(a)}
+                ${botonStock(a)}
                 <button class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar">✏️</button>
                 <button class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar">🗑️</button>
             </div>
         </div>
     `;
+}
+
+function onTablaActivoClick(evento) {
+    const boton = evento.target.closest('button[data-action]');
+    if (!boton || !tablaBody.contains(boton)) return;
+    const id = Number(boton.dataset.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+        App.toast('Identificador del activo inválido', 'error');
+        return;
+    }
+    if (boton.dataset.action === 'enviar-stock') enviarActivoAStock(id);
+    if (boton.dataset.action === 'editar-activo') editarActivo(id);
+    if (boton.dataset.action === 'suspender-activo') cambiarSituacionActivo(id, false);
+    if (boton.dataset.action === 'reactivar-activo') cambiarSituacionActivo(id, true);
+    if (boton.dataset.action === 'eliminar-activo') {
+        eliminarActivo(id, boton.dataset.desc || 'este activo');
+    }
 }
 
 // ============ RENDER: TABLA TODOS ============
@@ -715,6 +809,13 @@ function renderTablaTodos(activosFiltrados = null) {
             </div>
         </div>
         <div class="stat">
+            <span class="stat__icon">⏸️</span>
+            <div>
+                <div class="stat__num">${activosFiltrados.filter(esSuspendido).length}</div>
+                <div class="stat__lbl">Suspendidos</div>
+            </div>
+        </div>
+        <div class="stat">
             <span class="stat__icon">💰</span>
             <div>
                 <div class="stat__num">${App.money(totalCosto)}</div>
@@ -724,7 +825,7 @@ function renderTablaTodos(activosFiltrados = null) {
     `;
 
     if (!activosFiltrados.length) {
-        tablaBody.innerHTML = '<tr><td colspan="11><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
+        tablaBody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><div class="empty-state__icon">📦</div>No hay activos que coincidan.</div></td></tr>';
         return;
     }
 
@@ -734,7 +835,7 @@ function renderTablaTodos(activosFiltrados = null) {
 
         const empTxt = a.empleado_id
             ? `<strong>${App.esc(a.empleado_nombre || '')}</strong><br><small>${App.esc(a.cargo || '')}</small>`
-            : '<span class="badge badge--warning">Sin asignar</span>';
+            : a.situacion_inventario === 'STOCK' ? '<span class="badge">📦 En stock</span>' : '<span class="badge badge--warning">Sin asignar</span>';
 
         const adsc = getAdscDeActivo(a);
         const adscTxt = adsc
@@ -746,12 +847,13 @@ function renderTablaTodos(activosFiltrados = null) {
             : '<span class="muted">—</span>';
 
         return `
-            <tr>
+            <tr ${esSuspendido(a) ? 'style="background:rgba(217,119,6,0.07)"' : ''}>
                 <td><strong>${App.esc(a.descripcion)}</strong></td>
                 <td>${App.esc(a.num_inventario)}</td>
                 <td>${App.esc(a.marca || '—')}</td>
                 <td>${App.esc(a.modelo || '—')}</td>
-                <td>${App.esc(a.estado_fisico || 'SIN REGISTRAR')}</td>
+                <td>${App.esc(a.estado_fisico || '—')}</td>
+                <td>${etiquetaSituacion(a)}</td>
                 <td>${App.money(a.costo)}</td>
                 <td>${adscTxt}</td>
                 <td>${areaTxt}</td>
@@ -763,8 +865,10 @@ function renderTablaTodos(activosFiltrados = null) {
                 </td>
                 <td>
                     <div class="table__actions">
-                        <button class="btn btn--ghost btn--sm" onclick="editarActivo(${a.id})">✏️</button>
-                        <button class="btn btn--danger btn--sm" onclick="eliminarActivo(${a.id}, '${App.esc(a.descripcion).replace(/'/g, "\\'")}')">🗑️</button>
+                        ${botonSituacion(a)}
+                        ${botonStock(a)}
+                        <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar activo">✏️</button>
+                        <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -780,6 +884,7 @@ function renderEstadisticas(activosFiltrados = null) {
     const totalCosto = activosFiltrados.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
     const asignados = activosFiltrados.filter(a => a.empleado_id).length;
     const sinAsignar = total - asignados;
+    const suspendidos = activosFiltrados.filter(esSuspendido).length;
 
     // Distribución por adscripción
     const porAdsc = new Map();
@@ -812,7 +917,7 @@ function renderEstadisticas(activosFiltrados = null) {
                 <span class="stat__icon">📦</span>
                 <div>
                     <div class="stat__num">${total}</div>
-                    <div class="stat__lbl">Activos totales</div>
+                    <div class="stat__lbl">Activos en inventario (incluye suspendidos)</div>
                 </div>
             </div>
             <div class="stat">
@@ -837,6 +942,8 @@ function renderEstadisticas(activosFiltrados = null) {
                 </div>
             </div>
         </div>
+
+        <p class="muted">⏸️ ${suspendidos} suspendido(s) dentro del inventario. Su valor continúa en el total hasta su baja contable.</p>
 
         <div class="grid-2">
             <div class="card">
@@ -885,8 +992,14 @@ function renderEstadisticas(activosFiltrados = null) {
 function abrirModalActivo() {
     form.reset();
     form.elements['id'].value = '';
+    document.getElementById('grupoCrearStock').style.display = '';
+    document.getElementById('crear_en_stock').checked = false;
+    selectEmp.disabled = false;
     form.elements['ruta_imagen'].value = '';
     form.elements['observaciones'].value = '';
+    form.elements['costo'].required = true;
+    form.elements['estado_fisico'].required = true;
+    if (imgInput) imgInput.value = '';
     modalTitle.textContent = '➕ Nuevo activo';
     imgPreview.innerHTML = '<div class="image-preview__placeholder">Sin imagen</div>';
     formError.style.display = 'none';
@@ -900,6 +1013,14 @@ async function editarActivo(id) {
         if (!res.ok) throw new Error(res.error);
         const a = res.data;
         App.fillForm(form, a);
+        document.getElementById('grupoCrearStock').style.display = 'none';
+        document.getElementById('crear_en_stock').checked = false;
+        selectEmp.disabled = a.situacion_inventario === 'STOCK';
+        // Estos dos datos pueden ser NULL si proceden de un Excel incompleto.
+        // No obligamos a inventarlos para modificar otra propiedad del activo.
+        form.elements['costo'].required = false;
+        form.elements['estado_fisico'].required = false;
+        if (imgInput) imgInput.value = '';
         modalTitle.textContent = '✏️ Editar activo';
         if (a.ruta_imagen) {
             imgPreview.innerHTML = `<img src="${App.esc(a.ruta_imagen)}" alt="Foto actual">`;
@@ -914,55 +1035,103 @@ async function editarActivo(id) {
     }
 }
 
-async function eliminarActivo(id, desc) {
-    if (!await App.confirm(`¿Eliminar el activo "${desc}"?`)) return;
+// Suspender y reactivar NO eliminan el bien, su responsable ni su foto.
+async function cambiarSituacionActivo(id, reactivar) {
+    const a = activosCache.find(x => Number(x.id) === Number(id));
+    if (!a || !Number.isSafeInteger(Number(id)) || Number(id) < 1) {
+        App.toast('Activo no encontrado. Actualiza la página.', 'error');
+        return;
+    }
+    if (reactivar !== esSuspendido(a)) {
+        App.toast('La situación del activo ya cambió. Actualiza la lista.', 'error');
+        return;
+    }
+
+    let motivo = '';
+    if (reactivar) {
+        const ok = await App.confirm(`¿Reactivar el activo "${a.descripcion}"?\nConservará su responsable y sus demás datos.`);
+        if (!ok) return;
+    } else {
+        const entrada = window.prompt(
+            `Motivo de suspensión del activo "${a.descripcion}" (obligatorio):`, ''
+        );
+        if (entrada === null) return;
+        motivo = entrada.trim();
+        if (!motivo || motivo.length > 500) {
+            App.toast('Escribe un motivo de 1 a 500 caracteres.', 'error', 6000);
+            return;
+        }
+        const ok = await App.confirm(`¿Suspender "${a.descripcion}"?\nNo se eliminará ni se quitará su responsable.`);
+        if (!ok) return;
+    }
+
     try {
-        const res = await App.api(`activos.php?id=${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(res.error);
-        App.toast(res.message, 'success');
+        const res = await App.api(`suspension_activos.php?id=${encodeURIComponent(id)}`, {
+            method: 'POST',
+            body: { accion: reactivar ? 'reactivar' : 'suspender', motivo }
+        });
+        if (!res?.ok) throw new Error(res?.error || 'No se pudo cambiar la situación.');
+        App.toast(res.message || (reactivar ? 'Activo reactivado' : 'Activo suspendido'), 'success');
         await cargarTodo();
     } catch (err) {
-        App.toast(err.message, 'error');
+        console.error('Error al cambiar la situación del activo:', err);
+        App.toast('No se pudo cambiar la situación: ' + err.message, 'error', 7500);
+    }
+}
+
+async function eliminarActivo(id, desc) {
+    if (!Number.isSafeInteger(Number(id)) || Number(id) < 1) {
+        App.toast('Identificador del activo inválido', 'error');
+        return;
+    }
+    if (!await App.confirm(`¿Eliminar definitivamente el activo "${desc}"?\nEsta acción no se puede deshacer.`)) return;
+    try {
+        const res = await App.api(`activos.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!res?.ok) throw new Error(res?.error || 'El servidor no confirmó la eliminación');
+        App.toast(res.message || 'Activo eliminado', 'success');
+        await cargarTodo();
+    } catch (err) {
+        console.error('No fue posible eliminar el activo:', err);
+        App.toast('No se pudo eliminar: ' + err.message, 'error', 7500);
     }
 }
 
 async function onSubmitActivo(e) {
     e.preventDefault();
-    const id = form.elements['id'].value;
 
-    const desc = form.descripcion.value.trim();
-    const ni   = form.num_inventario.value.trim();
-    const costo = form.costo.value;
+    // Leer SOLO los controles existentes en el formulario.
+    const campo = nombre => form.elements.namedItem(nombre);
+    const texto = nombre => (campo(nombre)?.value ?? '').trim();
+    const id = texto('id');
+    const esEdicion = id !== '';
+    const desc = texto('descripcion');
+    const ni = texto('num_inventario');
+    const costoTexto = texto('costo');
+    const estadoFisico = texto('estado_fisico');
 
-    if (desc.length < 2)         return mostrarError('La descripción es obligatoria');
-    if (!ni)                     return mostrarError('El número de inventario es obligatorio');
-    if (!costo || costo < 0)     return mostrarError('El costo es obligatorio y no puede ser negativo');
+    if (desc.length < 2) return mostrarError('La descripción es obligatoria.');
+    if (!ni) return mostrarError('El número de inventario es obligatorio.');
+    if (ni.length > 50) return mostrarError('El número de inventario supera 50 caracteres.');
 
-    
-    // ==========================================
-    // VALIDAR ESTADO FÍSICO
-    // ==========================================
-
-    const estadoFisico =
-        form.elements['estado_fisico'].value;
-
-    const estadosPermitidos = [
-        'BUENO',
-        'NUEVO',
-        'REGULAR',
-        'INSERVIBLE'
-    ];
-
-    if (!estadosPermitidos.includes(estadoFisico)) {
-
-        return mostrarError(
-            'Selecciona un estado físico válido.'
-        );
+    // Un bien importado puede tener costo o estado pendientes (NULL).
+    // Crear un bien nuevo sigue requiriendo ambos valores.
+    if (!esEdicion && costoTexto === '') {
+        return mostrarError('Para crear un activo indica el costo.');
+    }
+    const costo = costoTexto === '' ? null : Number(costoTexto);
+    if (costo !== null && (!Number.isFinite(costo) || costo < 0 || costo > 9999999999.99)) {
+        return mostrarError('El costo debe ser un número válido no negativo.');
     }
 
+    const estadosPermitidos = ['BUENO', 'NUEVO', 'REGULAR', 'INSERVIBLE'];
+    if (!esEdicion && !estadoFisico) {
+        return mostrarError('Selecciona el estado físico para el nuevo activo.');
+    }
+    if (estadoFisico !== '' && !estadosPermitidos.includes(estadoFisico)) {
+        return mostrarError('Selecciona un estado físico válido.');
+    }
 
-    let rutaImagen = form.elements['ruta_imagen'].value || null;
-
+    let rutaImagen = texto('ruta_imagen') || null;
     if (imgInput.files && imgInput.files[0]) {
         try {
             const fd = new FormData();
@@ -974,40 +1143,42 @@ async function onSubmitActivo(e) {
                 body: fd
             });
             const j = await r.json();
-            if (!j.ok) throw new Error(j.error);
+            if (!j.ok) throw new Error(j.error || 'No se pudo subir la imagen.');
             rutaImagen = j.ruta;
         } catch (err) {
             return mostrarError('Error al subir imagen: ' + err.message);
         }
     }
 
+    const empleadoTexto = texto('empleado_id');
     const data = {
-        descripcion:    desc,
+        descripcion: desc,
         num_inventario: ni,
-        marca:          form.marca.value.trim(),
-        modelo:         form.modelo.value.trim(),
-        serie:          form.serie.value.trim() || 'S/S',
-        material:       form.material.value.trim(),
-        estado_fisico:  estadoFisico,
-        fecha_adq:      form.fecha_adq.value,
-        factura:        form.factura.value.trim(),
-        costo:          parseFloat(costo),
-        observaciones:  form.observaciones.value.trim(),
-        empleado_id:    form.empleado_id.value ? parseInt(form.empleado_id.value, 10) : null,
-        ruta_imagen:    rutaImagen,
+        marca: texto('marca'),
+        modelo: texto('modelo'),
+        serie: texto('serie') || 'S/S',
+        material: texto('material'),
+        estado_fisico: estadoFisico || null,
+        fecha_adq: texto('fecha_adq') || null,
+        factura: texto('factura'),
+        costo: costo,
+        observaciones: texto('observaciones'),
+        empleado_id: empleadoTexto && !document.getElementById('crear_en_stock').checked ? Number(empleadoTexto) : null,
+        crear_en_stock: !esEdicion && document.getElementById('crear_en_stock').checked,
+        ruta_imagen: rutaImagen
     };
 
-    const method = id ? 'PUT' : 'POST';
-    const url    = id ? `activos.php?id=${id}` : 'activos.php';
-
     try {
+        const url = esEdicion ? `activos.php?id=${encodeURIComponent(id)}` : 'activos.php';
+        const method = esEdicion ? 'PUT' : 'POST';
         const res = await App.api(url, { method, body: data });
-        if (!res.ok) throw new Error(res.error);
-        App.toast(res.message, 'success');
+        if (!res?.ok) throw new Error(res?.error || 'El servidor no confirmó el guardado.');
+        App.toast(res.message || 'Activo guardado correctamente.', 'success');
         App.closeModal('activoModal');
         await cargarTodo();
     } catch (err) {
-        mostrarError(err.message);
+        console.error('No se pudo guardar el activo:', err);
+        mostrarError('No se pudo actualizar el activo: ' + err.message);
     }
 }
 

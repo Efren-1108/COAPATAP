@@ -207,6 +207,10 @@ $puedeImprimir = $user
 
                     <?php endif; ?>
 
+                    <?php if ($esSuper): ?>
+                        <a class="nav__link <?= $current === 'stock.php' ? 'is-active' : '' ?>" href="stock.php">🏬 Stock</a>
+                    <?php endif; ?>
+
                     <!-- =============================
                          ADSCRIPCIONES
                          SOLO SUPERUSUARIO

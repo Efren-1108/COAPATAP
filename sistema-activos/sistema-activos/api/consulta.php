@@ -26,18 +26,30 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
-$nomina = isset($_GET['nomina']) ? (int)$_GET['nomina'] : 0;
-
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method !== 'GET') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);
 }
-if ($nomina <= 0) {
-    json_response(['ok' => false, 'error' => 'Número de nómina requerido'], 400);
+
+// Admite dos identificadores, sin cambiar las consultas antiguas:
+// consulta.php?nomina=572   |   consulta.php?id=48
+$idTexto     = trim((string) ($_GET['id'] ?? ''));
+$nominaTexto = trim((string) ($_GET['nomina'] ?? ''));
+$buscarPorId = $idTexto !== '';
+$texto = $buscarPorId ? $idTexto : $nominaTexto;
+
+if (!ctype_digit($texto) || (int) $texto < 1 || (float) $texto > 2147483647) {
+    json_response([
+        'ok' => false,
+        'error' => $buscarPorId
+            ? 'Identificador de empleado inválido'
+            : 'Número de nómina requerido o inválido',
+    ], 400);
 }
 
+$identificador = (int) $texto;
 $current = require_auth();
-$isSuper = $current['es_superusuario'];
+$isSuper = (bool) $current['es_superusuario'];
 $areaId  = $current['area_id'];
 
 try {
@@ -51,8 +63,8 @@ try {
                    a.clave  AS area_clave
             FROM empleados e
             LEFT JOIN areas a ON a.id = e.area_id
-            WHERE e.numero_nomina = :n";
-    $params = [':n' => $nomina];
+            WHERE " . ($buscarPorId ? "e.id = :identificador" : "e.numero_nomina = :identificador");
+    $params = [':identificador' => $identificador];
 
     if (!$isSuper) {
         $sql .= " AND e.area_id = :__scope_area";
@@ -66,7 +78,7 @@ try {
     if (!$emp) {
         json_response([
             'ok'    => false,
-            'error' => 'No se encontró ningún empleado con el número de nómina ' . $nomina
+            'error' => 'No se encontró el empleado solicitado'
                      . ($isSuper ? '' : ' en tu área'),
         ], 404);
     }
@@ -131,7 +143,8 @@ try {
 
     // Normalizar tipos del empleado
     $emp['id']            = (int)$emp['id'];
-    $emp['numero_nomina'] = (int)$emp['numero_nomina'];
+    $emp['numero_nomina'] = $emp['numero_nomina'] !== null
+        ? (int) $emp['numero_nomina'] : null;
     $emp['area_id']       = $emp['area_id'] !== null ? (int)$emp['area_id'] : null;
 
     // ============================================================
@@ -143,7 +156,7 @@ try {
                             ('empleados', 'SEARCH', :id, :d, :u, :uid, :aid)");
     $log->execute([
         ':id'  => $emp['id'],
-        ':d'   => "Búsqueda por nómina {$nomina} — {$total} bien(es), costo total $" . number_format($costoTotal, 2),
+        ':d'   => ($buscarPorId ? "Búsqueda por ID {$identificador}" : "Búsqueda por nómina {$identificador}") . " — {$total} bien(es), costo total $" . number_format($costoTotal, 2),
         ':u'   => $current['nombre_usuario'],
         ':uid' => $current['id'],
         ':aid' => $emp['area_id'],

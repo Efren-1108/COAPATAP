@@ -1,10 +1,12 @@
 /* =====================================================
-   consulta.js — Dashboard con gráficas + Búsqueda por nómina
+   consulta.js — Dashboard con gráficas + Búsqueda por nómina y nombre
    ===================================================== */
 
 // ============ REFERENCIAS ============
 const searchForm      = document.getElementById('searchForm');
-const nominaInput     = document.getElementById('nomina');
+const busquedaGeneralInput = document.getElementById('busquedaEmpleadoGeneral');
+const listaCoincidencias = document.getElementById('listaCoincidencias');
+let empleadoSeleccionadoId = null;
 const resultContainer = document.getElementById('resultContainer');
 const statsGlobales   = document.getElementById('statsGlobales');
 
@@ -57,10 +59,11 @@ async function init() {
     // Cargar dashboard
     await cargarDashboard();
 
-    // Configurar búsqueda
-    if (nominaInput) nominaInput.focus();
-    if (searchForm) {
-        searchForm.addEventListener('submit', onBuscarNomina);
+    // Un solo formulario: número de nómina exacto o nombre parcial.
+    if (busquedaGeneralInput) busquedaGeneralInput.focus();
+    if (searchForm) searchForm.addEventListener('submit', onBuscarGeneral);
+    if (listaCoincidencias) {
+        listaCoincidencias.addEventListener('click', onClickCoincidencia);
     }
 }
 
@@ -469,34 +472,104 @@ function renderChartPorAnio(datos) {
     });
 }
 
-// ============ BÚSQUEDA POR NÓMINA ============
-async function onBuscarNomina(e) {
-    e.preventDefault();
-    const nomina = parseInt(nominaInput.value, 10);
-    if (!nomina) return;
+// ============ BÚSQUEDA POR NÓMINA O NOMBRE ============
+async function onBuscarGeneral(evento) {
+    evento.preventDefault();
+    const texto = (busquedaGeneralInput?.value || '').trim().replace(/\s+/g, ' ');
+    if (!texto) {
+        App.toast('Escribe un nombre o un número de nómina', 'error');
+        return;
+    }
 
-    resultContainer.innerHTML = '<div class="card loading"><span class="spinner"></span> Buscando...</div>';
+    empleadoSeleccionadoId = null;
+    listaCoincidencias.innerHTML = '';
+    resultContainer.innerHTML = '';
+
+    // Solo dígitos: número de nómina exacto.
+    if (/^[0-9]+$/.test(texto)) {
+        if (!/^[1-9][0-9]*$/.test(texto) || Number(texto) > 2147483647) {
+            App.toast('Introduce un número de nómina válido', 'error');
+            return;
+        }
+        await consultarResguardo(`consulta.php?nomina=${encodeURIComponent(texto)}`);
+        return;
+    }
+
+    // Cualquier otra búsqueda se interpreta como nombre parcial.
+    if (texto.length < 2 || texto.length > 100) {
+        App.toast('Escribe al menos dos caracteres del nombre', 'error');
+        return;
+    }
+    await buscarEmpleadosPorNombre(texto);
+}
+
+async function buscarEmpleadosPorNombre(texto) {
+    empleadoSeleccionadoId = null;
+    resultContainer.innerHTML = '';
+    listaCoincidencias.innerHTML = '<p><span class="spinner"></span> Buscando empleados...</p>';
 
     try {
-        const res = await App.api(`consulta.php?nomina=${nomina}`);
-        if (!res.ok) throw new Error(res.error);
-        renderResultado(res);
+        const res = await App.api(`buscar_empleados_nombre.php?q=${encodeURIComponent(texto)}`);
+        if (!res.ok) throw new Error(res.error || 'No fue posible buscar empleados');
+        const encontrados = Array.isArray(res.data) ? res.data : [];
+        if (!encontrados.length) {
+            listaCoincidencias.innerHTML = '<div class="empty-state"><p>No se encontraron empleados con ese nombre.</p></div>';
+            return;
+        }
+        listaCoincidencias.innerHTML = `
+            <h3 style="margin:.6rem 0">Selecciona el empleado correcto (${encontrados.length} coincidencia(s))</h3>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Nombre</th><th>Nómina</th><th>Cargo</th><th>Área</th><th>Adscripción</th><th>Acción</th></tr></thead>
+                    <tbody>${encontrados.map(emp => `
+                        <tr>
+                            <td><strong>${App.esc(emp.nombre)}</strong><br><small>ID interno: ${Number(emp.id)}</small></td>
+                            <td>${emp.numero_nomina == null ? 'Sin nómina' : App.esc(emp.numero_nomina)}</td>
+                            <td>${App.esc(emp.cargo || '—')}</td>
+                            <td>${App.esc(emp.area_nombre || '—')}</td>
+                            <td>${App.esc(emp.adscripcion_nombre || '—')}</td>
+                            <td><button type="button" class="btn btn--primary btn--sm" data-empleado-id="${Number(emp.id)}">Ver activos</button></td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+            ${res.hay_mas ? '<p>Hay más resultados. Escribe un nombre más completo para reducir la lista.</p>' : ''}
+        `;
+    } catch (err) {
+        listaCoincidencias.innerHTML = `<p style="color:var(--c-danger)">⚠️ ${App.esc(err.message)}</p>`;
+        App.toast(err.message, 'error');
+    }
+}
 
-        // Scroll suave al resultado
+function onClickCoincidencia(evento) {
+    const boton = evento.target.closest('button[data-empleado-id]');
+    if (!boton || !listaCoincidencias.contains(boton)) return;
+    const id = Number(boton.dataset.empleadoId);
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    consultarResguardo(`consulta.php?id=${id}`);
+}
+
+async function consultarResguardo(ruta) {
+    empleadoSeleccionadoId = null;
+    resultContainer.innerHTML = '<div class="card loading"><span class="spinner"></span> Consultando activos...</div>';
+    try {
+        const res = await App.api(ruta);
+        if (!res.ok) throw new Error(res.error || 'No fue posible consultar los activos');
+        renderResultado(res);
         resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
         resultContainer.innerHTML = `
             <div class="card empty-state">
                 <div class="empty-state__icon">⚠️</div>
                 <p>${App.esc(err.message)}</p>
-            </div>
-        `;
+            </div>`;
         App.toast(err.message, 'error');
     }
 }
 
 function renderResultado(res) {
     const e = res.empleado;
+    empleadoSeleccionadoId = Number(e.id);
     const activos = res.activos;
     const total = res.total;
     const costoTotal = res.costo_total;
@@ -565,7 +638,7 @@ function renderResultado(res) {
             <div class="empleado-info">
                 <div class="info-item">
                     <span class="info-item__label">Nómina</span>
-                    <span class="info-item__value">${App.esc(e.numero_nomina)}</span>
+                    <span class="info-item__value">${e.numero_nomina == null ? 'Sin nómina asignada' : App.esc(e.numero_nomina)}</span>
                 </div>
                 <div class="info-item" style="border-left-color: var(--c-secondary);">
                     <span class="info-item__label">Nombre completo</span>
@@ -592,10 +665,12 @@ function renderResultado(res) {
 
 // ============ IMPRIMIR RESGUARDO ============
 async function imprimirResguardo() {
-    const nomina = parseInt(document.getElementById('nomina').value, 10);
-    if (!nomina) return;
+    if (!Number.isSafeInteger(empleadoSeleccionadoId) || empleadoSeleccionadoId < 1) {
+        App.toast('Primero consulta a un empleado', 'error');
+        return;
+    }
     try {
-        const res = await App.api(`consulta.php?nomina=${nomina}`);
+        const res = await App.api(`consulta.php?id=${empleadoSeleccionadoId}`);
         if (!res.ok) throw new Error(res.error);
         renderResguardoImprimible(res);
         setTimeout(() => window.print(), 400);
@@ -620,7 +695,7 @@ function renderResguardoImprimible(res) {
 
             <h3 style="margin: 0 0 0.5rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem;">Datos del Resguardante</h3>
             <table style="width: 100%; font-size: 0.95rem; margin-bottom: 1.5rem;">
-                <tr><td style="padding: 0.25rem; width: 25%; font-weight: bold;">Nómina:</td><td style="padding: 0.25rem;">${App.esc(e.numero_nomina)}</td></tr>
+                <tr><td style="padding: 0.25rem; width: 25%; font-weight: bold;">Nómina:</td><td style="padding: 0.25rem;">${e.numero_nomina == null ? 'Sin nómina asignada' : App.esc(e.numero_nomina)}</td></tr>
                 <tr><td style="padding: 0.25rem; font-weight: bold;">Nombre:</td><td style="padding: 0.25rem;">${App.esc(e.nombre)}</td></tr>
                 <tr><td style="padding: 0.25rem; font-weight: bold;">Cargo:</td><td style="padding: 0.25rem;">${App.esc(e.cargo)}</td></tr>
             </table>

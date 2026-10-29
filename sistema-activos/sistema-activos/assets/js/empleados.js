@@ -114,6 +114,8 @@ function wireEvents() {
     selectAreaEmpleado.addEventListener('change', actualizarHintAdscEmpleado);
 
     listaAreas.addEventListener('click', onAreaCardClick);
+    // Eventos delegados: no generar JavaScript incrustado con nombres personales.
+    tablaEmpleados.addEventListener('click', onTablaEmpleadoClick);
 }
 
 // ============ LLENAR FILTROS Y SELECTS ============
@@ -273,6 +275,21 @@ function onAreaCardClick(e) {
     }
 }
 
+// Botones de la tabla: leer ID y nombre desde data-* evita errores con apóstrofes.
+function onTablaEmpleadoClick(evento) {
+    const boton = evento.target.closest('button[data-action]');
+    if (!boton || !tablaEmpleados.contains(boton)) return;
+    const id = Number(boton.dataset.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+        App.toast('Identificador del empleado inválido', 'error');
+        return;
+    }
+    if (boton.dataset.action === 'editar-empleado') editarEmpleado(id);
+    if (boton.dataset.action === 'eliminar-empleado') {
+        eliminarEmpleado(id, boton.dataset.nombre || 'este empleado');
+    }
+}
+
 // ============ RENDER: EMPLEADOS (tabla plana) ============
 function renderEmpleados() {
     const q = (busquedaEmpleados.value || '').toLowerCase().trim();
@@ -329,8 +346,8 @@ function renderEmpleados() {
                 <td>${areaTxt}</td>
                 <td style="text-align: right;">
                     <div class="table__actions">
-                        <button class="btn btn--ghost btn--sm" onclick="editarEmpleado(${e.id})">✏️</button>
-                        <button class="btn btn--danger btn--sm" onclick="eliminarEmpleado(${e.id}, '${App.esc(e.nombre).replace(/'/g, "\\'")}')">🗑️</button>
+                        <button type="button" class="btn btn--ghost btn--sm" data-action="editar-empleado" data-id="${e.id}" title="Editar empleado">✏️</button>
+                        <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-empleado" data-id="${e.id}" data-nombre="${App.esc(e.nombre)}" title="Eliminar empleado">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -590,14 +607,23 @@ function editarEmpleado(id) {
 }
 
 async function eliminarEmpleado(id, nombre) {
-    if (!await App.confirm(`¿Eliminar a "${nombre}"?\nLos bienes asignados quedarán sin resguardante.`)) return;
+    if (!Number.isSafeInteger(Number(id)) || Number(id) < 1) {
+        App.toast('Identificador del empleado inválido', 'error');
+        return;
+    }
+    if (!await App.confirm(
+        `¿Eliminar a "${nombre}"?\n\n` +
+        'Sus activos NO se borrarán: quedarán sin empleado responsable.\n' +
+        'Esta acción no se puede deshacer.'
+    )) return;
     try {
-        const res = await App.api(`empleados.php?id=${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(res.error);
-        App.toast(res.message, 'success');
+        const res = await App.api(`empleados.php?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!res?.ok) throw new Error(res?.error || 'El servidor no confirmó la eliminación');
+        App.toast(res.message || 'Empleado eliminado correctamente', 'success');
         await cargarTodo();
     } catch (err) {
-        App.toast(err.message, 'error');
+        console.error('No fue posible eliminar el empleado:', err);
+        App.toast('No se pudo eliminar: ' + err.message, 'error', 7500);
     }
 }
 

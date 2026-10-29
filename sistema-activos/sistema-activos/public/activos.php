@@ -46,6 +46,11 @@ require_once __DIR__ . '/../includes/header.php';
     <select id="filtroEmpleado">
         <option value="">👤 Todos los empleados</option>
     </select>
+    <select id="filtroSituacion" aria-label="Filtrar por situación administrativa">
+        <option value="">📋 Vigentes y suspendidos</option>
+        <option value="vigentes">✅ Solo vigentes</option>
+        <option value="suspendidos">⏸️ Solo suspendidos</option>
+    </select>
     <button class="btn btn--ghost btn--sm" id="btnExpandirTodo" title="Expandir todo">⬇ Expandir</button>
     <button class="btn btn--ghost btn--sm" id="btnContraerTodo" title="Contraer todo">⬆ Contraer</button>
 </div>
@@ -76,7 +81,8 @@ require_once __DIR__ . '/../includes/header.php';
                     <th>Inventario</th>
                     <th>Marca</th>
                     <th>Modelo</th>
-                    <th>Estado Fisico</th>
+                    <th>Estado físico</th>
+                    <th>Situación</th>
                     <th>Costo</th>
                     <th>Adscripción</th>
                     <th>Área</th>
@@ -175,29 +181,16 @@ require_once __DIR__ . '/../includes/header.php';
 
                         <span class="form-text">
                             Selecciona la condición física actual del bien.
+                            Si el Excel dejó el estado pendiente, al editar puedes conservarlo vacío.
                         </span>
 
                     </div>
 
-                    
-                    <!-- ==========================================
-                        FECHA DE ADQUISICIÓN DEL ACTIVO
-                    ========================================== -->
-
                     <div class="form-group">
-                        <label for="fecha_adq">
-                            Fecha de adquisición
-                        </label>
-
-                        <input
-                            type="date"
-                            name="fecha_adq"
-                            id="fecha_adq"
-                            class="form-control"
-                        >
+                        <label>Fecha de adquisición (opcional)</label>
+                        <input type="date" name="fecha_adq" class="form-control">
+                        <span class="form-text">Si el Excel no indica una fecha válida, puedes dejarla pendiente.</span>
                     </div>
-
-
                     <div class="form-group">
                         <label>Número de factura</label>
                         <input type="text" name="factura" class="form-control" maxlength="100">
@@ -205,6 +198,11 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="form-group">
                         <label>Costo de adquisición (MXN) <span class="req">*</span></label>
                         <input type="number" name="costo" class="form-control" min="0" step="0.01" required placeholder="0.00">
+                        <span class="form-text">En activos importados con costo pendiente, puedes editar otros datos sin inventar un importe.</span>
+                    </div>
+                    <div class="form-group form-group--full" id="grupoCrearStock">
+                        <label><input type="checkbox" id="crear_en_stock" name="crear_en_stock" value="1"> 📦 Registrar directamente en stock (Almacén general)</label>
+                        <span class="form-text">Solo para activos nuevos. No se asignará empleado ni área.</span>
                     </div>
                     <div class="form-group">
                         <label>Asignado a (Resguardante)</label>
