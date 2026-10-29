@@ -1,7 +1,7 @@
 <?php
 $page_title='Stock · Almacén general';
 $page_js='stock.js';
-$page_js_version='stock-modal-20261029-1';
+$page_js_version='stock-fechas-legibles-20261029-1';
 require_once __DIR__.'/../config/config.php';
 require_once __DIR__.'/../includes/auth.php';
 $user=require_super();
