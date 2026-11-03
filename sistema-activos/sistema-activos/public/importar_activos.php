@@ -1860,6 +1860,41 @@ function impRevisarColumna(PDO $pdo): void
     }
 }
 
+/**
+ * Selecciona únicamente bienes con responsable confirmado y datos válidos.
+ * La evaluación se repite en el servidor al guardar; nunca depende de un
+ * contador ni de una selección manipulable del navegador.
+ */
+function impSepararBienesSeguros(PDO $pdo, array $lote): array
+{
+    $aptos = []; $pendientes = [];
+    $excluidos = array_fill_keys($lote['responsables_excluidos'] ?? [], true);
+    $resueltos = $lote['resueltos'] ?? [];
+    $confirmados = $lote['identidades_confirmadas'] ?? [];
+    foreach (($lote['bienes'] ?? []) as $b) {
+        $clave = (string)($b['clave_responsable'] ?? '');
+        $fila = (int)($b['fila'] ?? 0);
+        $motivo = '';
+        if (isset($excluidos[$clave])) {
+            $motivo = 'Responsable con identidad pendiente de confirmar';
+        } else {
+            $err = impValidarBienes([$b]);
+            if ($err) {
+                $motivo = implode('; ', array_slice($err, 0, 2));
+            } else {
+                $err = impRevisarRelaciones($pdo, [$b], $resueltos, $confirmados);
+                if ($err) $motivo = implode('; ', array_slice($err, 0, 2));
+            }
+        }
+        if ($motivo !== '') {
+            $pendientes[] = ['fila'=>$fila, 'responsable'=>(string)($b['nombre'] ?? ''), 'motivo'=>$motivo];
+        } else {
+            $aptos[] = $b;
+        }
+    }
+    return ['aptos'=>$aptos, 'pendientes'=>$pendientes];
+}
+
 // ==========================================
 // GUARDAR ACTIVOS EN POSTGRESQL
 // ==========================================
@@ -1893,7 +1928,17 @@ function impGuardarActivos(
         );
     }
 
-    // VALIDAR TODOS LOS BIENES
+    // Separar registros seguros de los pendientes, sin bloquear todo el Excel.
+    if (empty($lote['empleados_confirmados'])) {
+        throw new RuntimeException('Primero confirma los empleados y catálogos de este Excel.');
+    }
+    $separacion = impSepararBienesSeguros($pdo, $lote);
+    $bienes = $separacion['aptos'];
+    if (!$bienes) {
+        throw new RuntimeException('No hay activos seguros para importar. Revisa los registros pendientes.');
+    }
+
+    // VALIDAR LOS BIENES SELECCIONADOS
 
     $errores = impValidarBienes($bienes);
 
@@ -2206,10 +2251,8 @@ function impGuardarActivos(
 
         $pdo->commit();
 
-        return compact(
-            'creados',
-            'omitidos'
-        );
+        $pendientes = $separacion['pendientes'];
+        return compact('creados', 'omitidos', 'pendientes');
 
     } catch (Throwable $ex) {
 
@@ -2526,6 +2569,8 @@ if (
                 );
                 if (isset($_SESSION['coapatap_importacion_bienes'])) {
                     $_SESSION['coapatap_importacion_bienes']['resueltos'] = $r['resueltos'];
+                    $_SESSION['coapatap_importacion_bienes']['empleados_confirmados'] = true;
+                    $_SESSION['coapatap_importacion_bienes']['responsables_excluidos'] = array_values(array_diff(array_keys($lote['candidatos']), array_keys($aptos)));
                     $_SESSION['coapatap_importacion_bienes']['identidades_confirmadas'] = array_keys(array_filter($aptos,
                         fn($c) => isset($bdActual[$c['nomina']]) && count(impDiferenciasEmpleado($c, $bdActual[$c['nomina']])) > 0));
                 }
@@ -2561,9 +2606,7 @@ if (
                     $erroresRelaciones = impRevisarRelaciones(db(), $datos['bienes'], $resueltosVista,
                         $_SESSION['coapatap_importacion_bienes']['identidades_confirmadas'] ?? []);
                 }
-                if ($omitidos) {
-                    $_SESSION['coapatap_importacion_bienes']['bloqueo_identidad'] = true;
-                }
+                // Los responsables excluidos bloquean únicamente sus propios bienes.
                 $tokenActivos = $_SESSION['coapatap_importacion_bienes']['token'] ?? '';
                 foreach ($candidatos as $claveC => $cand) {
                     if ($cand['nomina'] === '' && $cand['nombre'] !== '') {
@@ -2577,9 +2620,6 @@ if (
 
             } else {
 
-                if (!empty($lote['bloqueo_identidad'])) {
-                    throw new RuntimeException('Hay nóminas con identidad conflictiva. Los empleados válidos se pudieron registrar, pero los activos de este lote están protegidos. Corrige el Excel y analízalo nuevamente antes de importar bienes.');
-                }
                 $r = impGuardarActivos(
                     db(),
                     $lote,
@@ -2598,7 +2638,7 @@ if (
                     . $r['omitidos']
                     . ' omitidos por haber sido '
                     . 'importados antes desde '
-                    . 'el mismo Excel.';
+                    . 'el mismo Excel. ' . count($r['pendientes']) . ' activos pendientes, no guardados por seguridad.';
             }
 
         } else {
@@ -3288,7 +3328,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <?php endforeach; ?>
                     </ul></details></details>
                 <?php endif; ?>
-                <?php if ($avisosBienes): ?>
+                <?php if (!empty($avisosBienes)): ?>
                     <details><summary>Ver tipos de advertencias</summary><ul>
                     <?php foreach ($avisosAgrupados as $tipo => $cantidad): ?>
                         <?php if ($cantidad): ?><li><?= (int)$cantidad ?>: <?= impE($tipo) ?></li><?php endif; ?>
@@ -3418,18 +3458,32 @@ require_once __DIR__ . '/../includes/header.php';
             2. Importar activos a PostgreSQL
         </h3>
 
-        <?php if (
-            !$erroresBienes &&
-            !$erroresRelaciones &&
-            $candidatos &&
-            empty($_SESSION['coapatap_importacion_bienes']['bloqueo_identidad']) &&
-            !$omitidosVista
-        ): ?>
+        <?php
+            $loteVista = $_SESSION['coapatap_importacion_bienes'] ?? [];
+            $separacionVista = !empty($loteVista['empleados_confirmados'])
+                ? impSepararBienesSeguros(db(), $loteVista)
+                : ['aptos'=>[], 'pendientes'=>[]];
+            $bienesAptosVista = $separacionVista['aptos'];
+            $bienesPendientesVista = $separacionVista['pendientes'];
+            $avisosAptosVista = impAdvertenciasBienes($bienesAptosVista);
+        ?>
+        <?php if ($bienesPendientesVista): ?>
+            <details style="margin:12px 0;padding:12px;border:1px solid #d97706;border-radius:8px">
+                <summary><strong>⚠️ <?= count($bienesPendientesVista) ?> activo(s) pendientes; no se importarán</strong></summary>
+                <p>Los activos de otros empleados sí pueden guardarse. Corrige estos registros y vuelve a analizar el Excel para importarlos después.</p>
+                <ul>
+                <?php foreach (array_slice($bienesPendientesVista, 0, 80) as $pend): ?>
+                    <li>Fila <?= (int)$pend['fila'] ?> — <?= impE($pend['responsable']) ?>: <?= impE($pend['motivo']) ?></li>
+                <?php endforeach; ?>
+                </ul>
+                <?php if (count($bienesPendientesVista)>80): ?><p>Se muestran los primeros 80 pendientes.</p><?php endif; ?>
+            </details>
+        <?php endif; ?>
+        <?php if ($bienesAptosVista): ?>
 
             <p>
-                Los empleados y sus áreas coinciden
-                con PostgreSQL. Al confirmar,
-                se guardarán los bienes de este Excel.
+                Hay <?= count($bienesAptosVista) ?> activo(s) validados para importar.
+                Los registros pendientes se omitirán, sin afectar a los demás.
             </p>
 
             <form
@@ -3460,7 +3514,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <?php if ($avisosBienes): ?>
                     <label style="display:block; margin:14px 0; padding:12px; border:1px solid #d97706;">
                         <input type="checkbox" name="aceptar_pendientes" value="1" required>
-                        Comprendo que <?= count($avisosBienes) ?> advertencias
+                        Comprendo que <?= count($avisosAptosVista) ?> advertencias
                         corresponden a costos, estados o fechas pendientes.
                         Se guardarán como NULL sin suponer ni repartir valores;
                         la información original se conservará en observaciones.
@@ -3480,8 +3534,8 @@ require_once __DIR__ . '/../includes/header.php';
                     "
                 >
                     📦 Importar
-                    <?= count($datos['bienes']) ?>
-                    activos a PostgreSQL
+                    <?= count($bienesAptosVista) ?>
+                    activos válidos a PostgreSQL
                 </button>
 
             </form>
