@@ -26,13 +26,14 @@ try {
     switch ($method) {
         case 'GET':
             if ($id) {
-                $sql = "SELECT a.*,
+                $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.declarado_en AS fecha_inservible,
                                e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
                                ar.nombre AS area_nombre,
                                ad.id     AS adscripcion_id,
                                ad.nombre AS adscripcion_nombre,
                                ad.clave  AS adscripcion_clave
                         FROM activos a
+                        LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
                         LEFT JOIN empleados e ON e.id = a.empleado_id
                         LEFT JOIN areas    ar ON ar.id = a.area_id
                         LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id
@@ -55,13 +56,14 @@ try {
                 json_response(['ok' => true, 'data' => $row]);
             }
 
-            $sql = "SELECT a.*,
+            $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.declarado_en AS fecha_inservible,
                            e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
                            ar.nombre AS area_nombre,
                            ad.id     AS adscripcion_id,
                            ad.nombre AS adscripcion_nombre,
                            ad.clave  AS adscripcion_clave
                     FROM activos a
+                    LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
                     LEFT JOIN empleados e ON e.id = a.empleado_id
                     LEFT JOIN areas    ar ON ar.id = a.area_id
                     LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id";
@@ -110,6 +112,11 @@ try {
             }
 
 
+            $inservible = ($input['estado_fisico'] ?? null) === 'INSERVIBLE';
+            $motivoInservible = trim((string)($input['motivo_inservible'] ?? ''));
+            if ($inservible && ($motivoInservible === '' || strlen($motivoInservible) > 1000)) json_response(['ok'=>false,'error'=>'Indica el motivo de inservibilidad (máximo 1000 caracteres).'],400);
+            if ($inservible && !empty($input['crear_en_stock'])) json_response(['ok'=>false,'error'=>'Un bien inservible no puede registrarse como disponible en stock.'],400);
+            $pdo->beginTransaction();
             $stockNuevo = !empty($input['crear_en_stock']);
             if ($stockNuevo && !$isSuper) json_response(['ok'=>false,'error'=>'Solo el superusuario puede registrar bienes en stock.'],403);
             $empleadoId = $stockNuevo ? null : normalizarEmpleadoId($input['empleado_id'] ?? null);
@@ -128,6 +135,8 @@ try {
                 $newAreaId = $areaEmpleado;
             }
 
+            $ultimoEmpleadoId = $inservible ? $empleadoId : null;
+            if ($inservible) $empleadoId = null;
             if ($stockNuevo) $newAreaId = null;
             $sql = "INSERT INTO activos (
                         descripcion, num_inventario, marca, modelo, serie, material,
@@ -159,6 +168,7 @@ try {
                 ':stockfecha' => $stockNuevo ? date('c') : null,
             ]);
             $newId = (int)$stmt->fetchColumn();
+            if ($inservible) registrarInservible($pdo, $newId, $ultimoEmpleadoId, $newAreaId, $motivoInservible, $current);
             if ($stockNuevo) {
                 $mov = $pdo->prepare("INSERT INTO public.movimientos_stock(activo_id,tipo,motivo,usuario_id,usuario_nombre) VALUES (:id,'ENTRADA','Registro inicial en almacén general',:uid,:usr)");
                 $mov->execute([':id'=>$newId,':uid'=>$current['id'],':usr'=>$current['nombre_usuario']]);
@@ -175,6 +185,7 @@ try {
                 ':uid' => $current['id'],
                 ':aid' => $newAreaId,
             ]);
+            $pdo->commit();
             logger("Activo creado: id={$newId} inv={$input['num_inventario']} por usuario_id={$current['id']}");
             json_response(['ok' => true, 'id' => $newId, 'message' => 'Activo registrado correctamente'], 201);
             break;
@@ -197,7 +208,8 @@ try {
                 }
             }
 
-            $existe = $pdo->prepare("SELECT ruta_imagen, area_id, empleado_id, situacion_inventario FROM activos WHERE id = :id");
+            $pdo->beginTransaction();
+            $existe = $pdo->prepare("SELECT ruta_imagen, area_id, empleado_id, situacion_inventario, estado_fisico FROM activos WHERE id = :id FOR UPDATE");
             $existe->execute([':id' => $id]);
             $anterior = $existe->fetch(PDO::FETCH_ASSOC);
             if (!$anterior) {
@@ -206,7 +218,12 @@ try {
             $oldImg = $anterior['ruta_imagen'];
 
 
+            $inservible = ($input['estado_fisico'] ?? null) === 'INSERVIBLE';
+            $declaracionNueva = $inservible && $anterior['estado_fisico'] !== 'INSERVIBLE';
+            $motivoInservible = trim((string)($input['motivo_inservible'] ?? ''));
+            if ($declaracionNueva && ($motivoInservible === '' || strlen($motivoInservible) > 1000)) json_response(['ok'=>false,'error'=>'Indica el motivo de inservibilidad (máximo 1000 caracteres).'],400);
             $empleadoId = normalizarEmpleadoId($input['empleado_id'] ?? null);
+            if ($inservible && $anterior['situacion_inventario'] === 'STOCK') json_response(['ok'=>false,'error'=>'Primero retira el activo del stock antes de declararlo inservible.'],409);
             if ($anterior['situacion_inventario'] === 'STOCK' && $empleadoId !== null) {
                 json_response(['ok'=>false,'error'=>'Para retirar un bien del stock utiliza Asignar desde Stock.'],409);
             }
@@ -225,6 +242,8 @@ try {
                 $nuevaAreaId = $areaEmpleado;
             }
 
+            $ultimoEmpleadoId = $declaracionNueva ? $anterior['empleado_id'] : null;
+            if ($inservible) $empleadoId = null;
             $sql = "UPDATE activos SET
                         descripcion   = :desc,
                         num_inventario= :ni,
@@ -262,6 +281,7 @@ try {
                 ':id'   => $id,
             ]);
 
+            if ($declaracionNueva) registrarInservible($pdo, $id, $ultimoEmpleadoId, $anterior['area_id'], $motivoInservible, $current);
             if ($oldImg && $nuevaImg && $oldImg !== $nuevaImg) {
                 $fullPath = __DIR__ . '/../' . $oldImg;
                 if (file_exists($fullPath)) {
@@ -280,6 +300,7 @@ try {
                 ':uid' => $current['id'],
                 ':aid' => $nuevaAreaId,
             ]);
+            $pdo->commit();
             logger("Activo actualizado: id={$id} inv={$input['num_inventario']} por usuario_id={$current['id']}");
             json_response(['ok' => true, 'message' => 'Activo actualizado correctamente']);
             break;
@@ -304,6 +325,9 @@ try {
                 json_response(['ok' => false, 'error' => 'Activo no encontrado'], 404);
             }
 
+            $estado = $pdo->prepare("SELECT estado_fisico FROM activos WHERE id=:id");
+            $estado->execute([':id'=>$id]);
+            if ($estado->fetchColumn() === 'INSERVIBLE') json_response(['ok'=>false,'error'=>'Los bienes inservibles se conservan para control patrimonial y no se pueden eliminar.'],409);
             $del = $pdo->prepare("DELETE FROM activos WHERE id = :id");
             $del->execute([':id' => $id]);
 
@@ -331,6 +355,7 @@ try {
     }
 
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     logger("Error en activos: " . $e->getMessage(), 'ERROR');
     json_response(['ok' => false, 'error' => 'Error: ' . $e->getMessage()], 500);
 }
@@ -402,4 +427,15 @@ function obtenerAreaDelEmpleado(PDO $pdo, int $empleadoId): ?int
     $st->execute([':id' => $empleadoId]);
     $r = $st->fetch(PDO::FETCH_ASSOC);
     return (!$r || $r['area_id'] === null) ? null : (int)$r['area_id'];
+}
+
+/** Guarda una instantánea independiente del empleado, para conservar el dato aunque se elimine. */
+function registrarInservible(PDO $pdo, int $activoId, ?int $empleadoId, ?int $areaId, string $motivo, array $usuario): void {
+    $st=$pdo->prepare("SELECT e.nombre, ar.nombre AS area_nombre FROM empleados e LEFT JOIN areas ar ON ar.id=e.area_id WHERE e.id=:id");
+    $st->execute([':id'=>$empleadoId]);
+    $e=$empleadoId ? $st->fetch(PDO::FETCH_ASSOC) : false;
+    $areaNombre=null;
+    if ($areaId) { $ar=$pdo->prepare('SELECT nombre FROM areas WHERE id=:id'); $ar->execute([':id'=>$areaId]); $areaNombre=$ar->fetchColumn() ?: null; }
+    $st=$pdo->prepare("INSERT INTO public.declaraciones_inservible (activo_id,ultimo_responsable_id,ultimo_responsable_nombre,ultimo_area_nombre,motivo,usuario_id,usuario_nombre) VALUES (:aid,:eid,:nombre,:area,:motivo,:uid,:usr)");
+    $st->execute([':aid'=>$activoId,':eid'=>$empleadoId,':nombre'=>$e['nombre']??'Sin responsable anterior',':area'=>$e['area_nombre']??$areaNombre,':motivo'=>$motivo,':uid'=>$usuario['id'],':usr'=>$usuario['nombre_usuario']]);
 }

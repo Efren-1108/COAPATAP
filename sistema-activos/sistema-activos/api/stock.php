@@ -24,9 +24,10 @@ try {
  if (!$id || $id<1 || !in_array($accion,['entrada','salida'],true)) json_response(['ok'=>false,'error'=>'Solicitud inválida'],400);
  if ($motivo==='' || (function_exists('mb_strlen') ? mb_strlen($motivo, 'UTF-8') : strlen($motivo))>500) json_response(['ok'=>false,'error'=>'Escribe un motivo de 1 a 500 caracteres'],400);
  $pdo->beginTransaction();
- $st=$pdo->prepare('SELECT id,descripcion,empleado_id,suspendido,situacion_inventario FROM public.activos WHERE id=:id FOR UPDATE');
+ $st=$pdo->prepare('SELECT id,descripcion,empleado_id,suspendido,situacion_inventario,estado_fisico FROM public.activos WHERE id=:id FOR UPDATE');
  $st->execute([':id'=>$id]); $a=$st->fetch(PDO::FETCH_ASSOC);
  if (!$a) { $pdo->rollBack(); json_response(['ok'=>false,'error'=>'Activo no encontrado'],404); }
+ if ($a['estado_fisico']==='INSERVIBLE') { $pdo->rollBack(); json_response(['ok'=>false,'error'=>'Los bienes inservibles no pueden enviarse ni asignarse desde stock.'],409); }
  if ($accion==='entrada') {
    if ($a['situacion_inventario']==='STOCK') { $pdo->rollBack(); json_response(['ok'=>false,'error'=>'Ya está en stock'],409); }
    $st=$pdo->prepare("UPDATE public.activos SET empleado_id=NULL,area_id=NULL,situacion_inventario='STOCK',fecha_ingreso_stock=NOW() WHERE id=:id");

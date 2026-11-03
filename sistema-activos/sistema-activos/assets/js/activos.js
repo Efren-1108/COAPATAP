@@ -100,6 +100,7 @@ async function cargarTodo() {
         llenarFiltros();
         llenarSelectEmpleados();
         renderTodo();
+        renderInservibles();
     } catch (err) {
         App.toast(err.message, 'error');
         console.error(err);
@@ -131,6 +132,7 @@ function wireEvents() {
     filtroArea.addEventListener('change', renderTodo);
     filtroEmpleado.addEventListener('change', renderTodo);
     filtroSituacion.addEventListener('change', renderTodo);
+    document.getElementById('ordenPrecio').addEventListener('change', renderTodo);
 
     btnExpandir.addEventListener('click', () => {
         // Expandir todo lo que tenga contenido
@@ -238,6 +240,7 @@ function botonSituacion(a) {
 }
 
 function botonStock(a) {
+    if (a.estado_fisico === 'INSERVIBLE') return '';
     if (a.situacion_inventario === 'STOCK') return '<span class="badge">📦 En stock</span>';
     return `<button type="button" class="btn btn--ghost btn--sm" data-action="enviar-stock" data-id="${Number(a.id)}">📦 Enviar a stock</button>`;
 }
@@ -311,7 +314,7 @@ function getActivosFiltrados() {
     const empId = filtroEmpleado.value ? parseInt(filtroEmpleado.value, 10) : null;
     const situacion = filtroSituacion.value;
 
-    return activosCache.filter(a => {
+    const filtrados = activosCache.filter(a => {
         if (adscId !== null) {
             const adsc = getAdscDeActivo(a);
             if (!adsc || adsc.id !== adscId) return false;
@@ -332,6 +335,24 @@ function getActivosFiltrados() {
         }
         return true;
     });
+
+    // Ordenar una copia: nunca modificar el cache ni los datos guardados.
+    const orden = document.getElementById('ordenPrecio').value;
+    if (orden === 'desc' || orden === 'asc') {
+        const precio = a => {
+            if (a.costo === null || a.costo === undefined || a.costo === '') return null;
+            const n = Number(a.costo);
+            return Number.isFinite(n) ? n : null;
+        };
+        filtrados.sort((a, b) => {
+            const x = precio(a), y = precio(b);
+            if (x === null && y === null) return 0;
+            if (x === null) return 1;
+            if (y === null) return -1;
+            return orden === 'desc' ? y - x : x - y;
+        });
+    }
+    return filtrados;
 }
 
 // ============ RENDER: TODO ============
@@ -497,6 +518,9 @@ function onAdscCardClick(e) {
         case 'enviar-stock':
             enviarActivoAStock(parseInt(target.dataset.id, 10));
             break;
+        case 'declarar-inservible':
+            declararInservibleDesdeLista(parseInt(target.dataset.id,10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
@@ -647,6 +671,9 @@ function onAreaCardClick(e) {
         case 'enviar-stock':
             enviarActivoAStock(parseInt(target.dataset.id, 10));
             break;
+        case 'declarar-inservible':
+            declararInservibleDesdeLista(parseInt(target.dataset.id,10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
@@ -762,6 +789,9 @@ function onEmpleadoCardClick(e) {
         case 'enviar-stock':
             enviarActivoAStock(parseInt(target.dataset.id, 10));
             break;
+        case 'declarar-inservible':
+            declararInservibleDesdeLista(parseInt(target.dataset.id,10));
+            break;
         case 'editar-activo':
             editarActivo(parseInt(target.dataset.id, 10));
             break;
@@ -817,6 +847,7 @@ function onTablaActivoClick(evento) {
         return;
     }
     if (boton.dataset.action === 'enviar-stock') enviarActivoAStock(id);
+    if (boton.dataset.action === 'declarar-inservible') declararInservibleDesdeLista(id);
     if (boton.dataset.action === 'editar-activo') editarActivo(id);
     if (boton.dataset.action === 'suspender-activo') cambiarSituacionActivo(id, false);
     if (boton.dataset.action === 'reactivar-activo') cambiarSituacionActivo(id, true);
@@ -894,6 +925,7 @@ function renderTablaTodos(activosFiltrados = null) {
                         <div class="acciones-menu__opciones">
                             ${botonSituacion(a)}
                             ${botonStock(a)}
+                            ${a.estado_fisico !== 'INSERVIBLE' ? `<button type="button" class="btn btn--danger btn--sm" data-action="declarar-inservible" data-id="${a.id}">🚫 Declarar inservible</button>` : ''}
                             <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar activo">✏️ Editar</button>
                             <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️ Eliminar</button>
                         </div>
@@ -1019,6 +1051,7 @@ function renderEstadisticas(activosFiltrados = null) {
 // ============ MODAL ACTIVO ============
 function abrirModalActivo() {
     form.reset();
+    actualizarMotivoInservible();
     form.elements['id'].value = '';
     document.getElementById('grupoCrearStock').style.display = '';
     document.getElementById('crear_en_stock').checked = false;
@@ -1041,6 +1074,8 @@ async function editarActivo(id) {
         if (!res.ok) throw new Error(res.error);
         const a = res.data;
         App.fillForm(form, a);
+        form.elements['motivo_inservible'].value = '';
+        actualizarMotivoInservible();
         document.getElementById('grupoCrearStock').style.display = 'none';
         document.getElementById('crear_en_stock').checked = false;
         selectEmp.disabled = a.situacion_inventario === 'STOCK';
@@ -1136,6 +1171,9 @@ async function onSubmitActivo(e) {
     const ni = texto('num_inventario');
     const costoTexto = texto('costo');
     const estadoFisico = texto('estado_fisico');
+    const motivoInservible = texto('motivo_inservible');
+    const original = esEdicion ? activosCache.find(a => String(a.id) === id) : null;
+    if (estadoFisico === 'INSERVIBLE' && (!original || original.estado_fisico !== 'INSERVIBLE') && !motivoInservible) return mostrarError('Indica el motivo por el que el activo es inservible.');
 
     if (desc.length < 2) return mostrarError('La descripción es obligatoria.');
     if (!ni) return mostrarError('El número de inventario es obligatorio.');
@@ -1187,6 +1225,7 @@ async function onSubmitActivo(e) {
         serie: texto('serie') || 'S/S',
         material: texto('material'),
         estado_fisico: estadoFisico || null,
+        motivo_inservible: motivoInservible,
         fecha_adq: texto('fecha_adq') || null,
         factura: texto('factura'),
         costo: costo,
@@ -1209,6 +1248,38 @@ async function onSubmitActivo(e) {
         mostrarError('No se pudo actualizar el activo: ' + err.message);
     }
 }
+
+function actualizarMotivoInservible() {
+    const estado = form.elements['estado_fisico'].value;
+    const bloque = document.getElementById('grupoMotivoInservible');
+    bloque.style.display = estado === 'INSERVIBLE' ? '' : 'none';
+}
+form.elements['estado_fisico'].addEventListener('change', actualizarMotivoInservible);
+
+async function declararInservibleDesdeLista(id) {
+    await editarActivo(id);
+    if (form.elements['id'].value !== String(id)) return;
+    form.elements['estado_fisico'].value = 'INSERVIBLE';
+    actualizarMotivoInservible();
+    form.elements['motivo_inservible'].focus();
+}
+function renderInservibles() {
+    const lista = activosCache.filter(a => a.estado_fisico === 'INSERVIBLE');
+    document.getElementById('countInservibles').textContent = lista.length;
+    const tbody = document.getElementById('tablaInservibles');
+    tbody.innerHTML = lista.length ? lista.map(a => `<tr>
+      <td><strong>${App.esc(a.descripcion)}</strong><small style="display:block">${App.esc(a.num_inventario||'')}</small></td>
+      <td>${App.esc(a.ultimo_responsable_nombre || 'Sin responsable anterior')}</td>
+      <td>${App.esc(a.ultimo_area_nombre || '—')}</td>
+      <td>${App.esc(a.motivo_inservible || 'Registro anterior sin motivo documentado')}</td>
+      <td>${App.esc(a.fecha_inservible ? new Date(a.fecha_inservible).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'}) : '—')}</td>
+      <td><button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">✏️ Consultar / editar</button></td>
+    </tr>`).join('') : '<tr><td colspan="6">No hay bienes inservibles registrados.</td></tr>';
+}
+document.getElementById('tablaInservibles').addEventListener('click', e => {
+    const b=e.target.closest('[data-action="editar-activo"]');
+    if(b) editarActivo(Number(b.dataset.id));
+});
 
 function mostrarError(msg) {
     formError.textContent = msg;

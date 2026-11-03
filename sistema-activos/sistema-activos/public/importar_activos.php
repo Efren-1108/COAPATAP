@@ -49,6 +49,56 @@ function impN(mixed $v): string
     ));
 }
 
+/** Compara nombres ignorando tratamientos, acentos y formato, nunca apellidos faltantes. */
+function impNombreIdentidad(mixed $nombre): string
+{
+    $n = impN($nombre);
+    $partes = preg_split('/\s+/', $n) ?: [];
+    $titulos = ['C','CP','C P','LIC','LICENCIADO','LICENCIADA','MTRO','MTRA',
+        'ING','INGENIERO','INGENIERA','DR','DRA','PROF','PROFA'];
+    while ($partes && in_array($partes[0], $titulos, true)) array_shift($partes);
+    if (count($partes) >= 2 && $partes[0] === 'C' && $partes[1] === 'P') {
+        array_shift($partes); array_shift($partes);
+    }
+    return implode(' ', $partes);
+}
+
+/** Diferencias de área no prueban que sean dos personas distintas. */
+function impIdentidadDistinta(array $excel, array $bd): bool
+{
+    return impNombreIdentidad($excel['nombre'] ?? '') !==
+        impNombreIdentidad($bd['nombre'] ?? '');
+}
+
+/** Normaliza nombres de hojas solo para encontrarlas; no cambia el XLSX. */
+function impClaveHoja(string $nombre): string
+{
+    $nombre = str_replace(["\xc2\xa0", "\xe2\x80\x8b", "\xef\xbb\xbf"], ' ', $nombre);
+    return impN($nombre);
+}
+
+/** Valor vacío de plantilla: 0, texto 0, guiones o celda vacía. */
+function impEsMarcadorVacio(mixed $v): bool
+{
+    $n = impN($v);
+    return $n === '' || $n === '0' || $n === '00' || $n === 'SIN DATOS'
+        || $n === 'N A' || $n === 'NO APLICA';
+}
+
+/** Explica diferencias reales sin ocultar conflictos de identidad. */
+function impDiferenciasEmpleado(array $excel, array $bd): array
+{
+    $d = [];
+    foreach (['nombre' => 'nombre', 'area' => 'área', 'adscripcion' => 'adscripción'] as $campo => $etiqueta) {
+        if (($campo === 'nombre' ? impNombreIdentidad($excel[$campo] ?? '') : impN($excel[$campo] ?? '')) !==
+            ($campo === 'nombre' ? impNombreIdentidad($bd[$campo] ?? '') : impN($bd[$campo] ?? ''))) {
+            $d[] = $etiqueta . ': Excel «' . trim((string)($excel[$campo] ?? ''))
+                . '» / BD «' . trim((string)($bd[$campo] ?? '')) . '»';
+        }
+    }
+    return $d;
+}
+
 // ==========================================
 // LEER XML DEL ARCHIVO XLSX
 // ==========================================
@@ -553,9 +603,12 @@ function impEstado(string $s): ?string
 {
     return match (impN($s)) {
         'B', 'BUENO', 'BUENOS' => 'BUENO',
-        'N', 'NUEVO', 'NUEVOS' => 'NUEVO',
-        'R', 'REGULAR' => 'REGULAR',
+        'N', 'NUEVO', 'NUEVOS', 'NUEVA', 'NUEVAS' => 'NUEVO',
+        'R', 'REGULAR', 'REGULARES' => 'REGULAR',
         'I', 'INSERVIBLE', 'INSERVIBLES' => 'INSERVIBLE',
+        'B ESTADO', 'BUEN ESTADO', 'EN BUEN ESTADO' => 'BUENO',
+        'NUEVO ESTADO', 'EN ESTADO NUEVO' => 'NUEVO',
+        'MAL ESTADO', 'NO FUNCIONA', 'FUERA DE SERVICIO' => 'INSERVIBLE',
         default => null
     };
 }
@@ -856,7 +909,18 @@ function impAnalizar(array $filas, array $fusiones = []): array
 
         $desc = $valor('descripcion');
 
-        if ($desc === '') {
+        // Una fila reservada con ceros y sin un bien identificable no es un activo.
+        // Se evalúan todas las columnas de identificación para no descartar
+        // accidentalmente un activo real cuyo número de inventario sea 0.
+        $identificadores = [
+            $desc, $valor('inventario'), $valor('marca'),
+            $valor('modelo'), $valor('serie'), $valor('material')
+        ];
+        if (!array_filter($identificadores, static fn($v) => !impEsMarcadorVacio($v))) {
+            continue;
+        }
+
+        if ($desc === '' || impN($desc) === '0') {
             continue;
         }
 
@@ -987,6 +1051,19 @@ function impEmpleadosCandidatos(array $bloques): array
 {
     $grupos = [];
     foreach ($bloques as $b) {
+        // Nunca registrar a la persona ficticia «0» de las plantillas.
+        // Si hubiera bienes reales asociados, no se importarán sin
+        // identificar antes a un responsable válido.
+        if (impEsMarcadorVacio($b['nombre'] ?? '') &&
+            impEsMarcadorVacio($b['nomina'] ?? '') &&
+            (int)($b['cantidad'] ?? 0) === 0) {
+            continue;
+        }
+        // Un formato de resguardo vacío no es una persona. No crear
+        // empleados para filas reservadas sin bienes reales.
+        if ((int) ($b['cantidad'] ?? 0) === 0) {
+            continue;
+        }
         $clave = impClaveResponsable($b);
         if (!isset($grupos[$clave])) {
             $grupos[$clave] = [
@@ -998,15 +1075,42 @@ function impEmpleadosCandidatos(array $bloques): array
                 'adscripcion' => (string) $b['adscripcion'],
                 'bienes' => 0,
                 'problemas' => [],
+                'origen_campos' => array_fill_keys(['nombre', 'cargo', 'area', 'adscripcion'], (int) ($b['fila'] ?? 0) + 1),
             ];
+        }
+        // Una nómina no puede representar dos identidades distintas.
+        // No se fusionan ni se corrigen automáticamente los resguardos.
+        if (str_starts_with($clave, 'N') &&
+            !impEsMarcadorVacio($b['nombre'] ?? '') &&
+            !impEsMarcadorVacio($grupos[$clave]['nombre'] ?? '') &&
+            impN($b['nombre']) !== impN($grupos[$clave]['nombre'])) {
+            $filaPrimera = $grupos[$clave]['origen_campos']['nombre'] ?? '?';
+            $filaSegunda = (int)($b['fila'] ?? 0) + 1;
+            $detalle = 'NÓMINA DUPLICADA ENTRE PERSONAS DIFERENTES: ' .
+                $b['nomina'] . '. «' . $grupos[$clave]['nombre'] . '» (fila aprox. ' .
+                $filaPrimera . ') y «' . $b['nombre'] . '» (fila aprox. ' .
+                $filaSegunda . '). Verifica la nómina con Recursos Humanos y corrige el Excel. ' .
+                'NO se importarán los empleados ni los activos de esta nómina.';
+            if (!in_array($detalle, $grupos[$clave]['problemas'], true)) {
+                $grupos[$clave]['problemas'][] = $detalle;
+            }
         }
         $grupos[$clave]['bienes'] += (int) $b['cantidad'];
         foreach (['nombre', 'cargo', 'area', 'adscripcion'] as $campo) {
-            if ($grupos[$clave][$campo] === '' && $b[$campo] !== '') {
-                $grupos[$clave][$campo] = $b[$campo];
-            } elseif ($b[$campo] !== '' && $grupos[$clave][$campo] !== '' &&
-                impN($b[$campo]) !== impN($grupos[$clave][$campo])) {
-                $grupos[$clave]['problemas'][] = 'Valores distintos para ' . $campo;
+            $actual = trim((string) ($b[$campo] ?? ''));
+            $anterior = trim((string) ($grupos[$clave][$campo] ?? ''));
+            $filaActual = (int) ($b['fila'] ?? 0) + 1;
+            if ($anterior === '' && $actual !== '') {
+                $grupos[$clave][$campo] = $actual;
+                $grupos[$clave]['origen_campos'][$campo] = $filaActual;
+            } elseif ($actual !== '' && $anterior !== '' && impN($actual) !== impN($anterior)) {
+                $filaAnterior = $grupos[$clave]['origen_campos'][$campo] ?? 'otro bloque';
+                if ($campo === 'nombre' && str_starts_with($clave, 'N')) continue;
+                $detalle = 'Diferencia en ' . $campo . ': «' . $anterior . '» (fila aprox. ' . $filaAnterior .
+                    ') frente a «' . $actual . '» (fila aprox. ' . $filaActual . ')';
+                if (!in_array($detalle, $grupos[$clave]['problemas'], true)) {
+                    $grupos[$clave]['problemas'][] = $detalle;
+                }
             }
         }
     }
@@ -1038,14 +1142,29 @@ function impSeleccionarHoja(
             );
         }
 
-        if (
-            $solicitada !== '' &&
-            !isset($hojas[$solicitada])
-        ) {
-            throw new RuntimeException(
-                'La hoja solicitada no existe: '
-                . $solicitada
-            );
+        // Primero respetar coincidencia exacta; después aceptar diferencias
+        // de espacios, acentos, mayúsculas y caracteres invisibles.
+        if ($solicitada !== '' && !isset($hojas[$solicitada])) {
+            $claveSolicitada = impClaveHoja($solicitada);
+            $coinciden = [];
+            foreach (array_keys($hojas) as $nombreHoja) {
+                if (impClaveHoja($nombreHoja) === $claveSolicitada) {
+                    $coinciden[] = $nombreHoja;
+                }
+            }
+            if (count($coinciden) === 1) {
+                $solicitada = $coinciden[0];
+            } elseif (count($coinciden) > 1) {
+                throw new RuntimeException(
+                    'El nombre de hoja coincide con varias hojas. Escribe el nombre exacto: '
+                    . implode(' / ', $coinciden)
+                );
+            } else {
+                throw new RuntimeException(
+                    'La hoja solicitada no existe: ' . $solicitada
+                    . '. Hojas disponibles: ' . implode(' / ', array_keys($hojas))
+                );
+            }
         }
 
         $textos = impCompartidas($zip);
@@ -1355,6 +1474,18 @@ function impCrearEmpleados(
                 throw new RuntimeException('Falta ' . $campo . ' o es demasiado largo: ' . $e['nombre']);
             }
         }
+        if ($n !== '') {
+            // Una diferencia real requiere confirmación individual y explícita.
+            $stVer = $pdo->prepare('SELECT e.id, e.nombre, a.nombre AS area, ad.nombre AS adscripcion
+                FROM empleados e LEFT JOIN areas a ON a.id=e.area_id
+                LEFT JOIN adscripciones ad ON ad.id=a.adscripcion_id WHERE e.numero_nomina=:n');
+            $stVer->execute([':n'=>(int)$n]);
+            $actualVer = $stVer->fetch(PDO::FETCH_ASSOC);
+            if ($actualVer && impDiferenciasEmpleado($e, $actualVer) &&
+                (string)($decisiones[$e['clave']] ?? '') !== 'confirmar_existente') {
+                throw new RuntimeException('Debes confirmar la identidad de la nómina ' . $n . ' antes de continuar.');
+            }
+        }
         if ($n === '') {
             $decision = (string) ($decisiones[$e['clave']] ?? '');
             if (!preg_match('/^(nuevo|id:[1-9][0-9]*)$/', $decision)) {
@@ -1376,6 +1507,17 @@ function impCrearEmpleados(
             (tabla, accion, registro_id, detalle, usuario, usuario_id, area_id)
             VALUES ('empleados', 'INSERT', :id, :d, :u, :uid, :aid)");
         foreach ($candidatos as $e) {
+            $nomina = trim((string)$e['nomina']);
+            if ($nomina !== '') {
+                $stNomina->execute([':n'=>(int)$nomina]);
+                $actual = $stNomina->fetch(PDO::FETCH_ASSOC);
+                if ($actual) {
+                    $resueltos[$e['clave']] = (int)$actual['id'];
+                    $existentes++;
+                    // Confirmar reutilización no cambia nombre, cargo ni ubicación de la BD.
+                    continue;
+                }
+            }
             $prevAds = (int)$pdo->query('SELECT COUNT(*) FROM adscripciones')->fetchColumn();
             $adsId = impEncontrarOcrearAds($pdo, $e['adscripcion']);
             $ads += (int)$pdo->query('SELECT COUNT(*) FROM adscripciones')->fetchColumn() - $prevAds;
@@ -1468,8 +1610,8 @@ function impValidarBienes(array $bienes): array
         if ($f < 1 || ($n !== '' && !preg_match('/^[1-9][0-9]{0,8}$/', $n))) {
             $errores[] = $pref . 'nómina inválida.';
         }
-        if ($n === '' && (impN($b['nombre'] ?? '') === '' ||
-            trim((string)($b['cargo'] ?? '')) === '' ||
+        if ($n === '' && (impEsMarcadorVacio($b['nombre'] ?? '') ||
+            impEsMarcadorVacio($b['cargo'] ?? '') ||
             empty($b['clave_responsable']))) {
             $errores[] = $pref . 'faltan nombre o cargo del responsable sin nómina.';
         }
@@ -1643,7 +1785,7 @@ function impObservacionesParaBD(array $b): ?string
 // VERIFICAR EMPLEADOS, ÁREAS Y ADSCRIPCIONES
 // ==========================================
 
-function impRevisarRelaciones(PDO $pdo, array $bienes, array $resueltos = []): array
+function impRevisarRelaciones(PDO $pdo, array $bienes, array $resueltos = [], array $confirmados = []): array
 {
     $porNomina = $pdo->prepare('SELECT e.id AS empleado_id, e.nombre,
         a.nombre AS area_nombre, ad.nombre AS adscripcion_nombre
@@ -1681,9 +1823,10 @@ function impRevisarRelaciones(PDO $pdo, array $bienes, array $resueltos = []): a
         $emp = $cache[$ck];
         if (!$emp) {
             $errores[] = 'Fila ' . $b['fila'] . ': empleado no existe o no tiene área/adscripción.';
-        } elseif (impN($emp['area_nombre']) !== impN($b['area']) ||
+        } elseif (!in_array($clave, $confirmados, true) &&
+            (impN($emp['area_nombre']) !== impN($b['area']) ||
             impN($emp['adscripcion_nombre']) !== impN($b['adscripcion']) ||
-            ($n === '' && impN($emp['nombre']) !== impN($b['nombre']))) {
+            ($n === '' && impN($emp['nombre']) !== impN($b['nombre'])))) {
             $errores[] = 'Fila ' . $b['fila'] . ': responsable/área/adscripción no coincide.';
         }
         if (count($errores) >= 30) break;
@@ -1787,7 +1930,8 @@ function impGuardarActivos(
     $errores = impRevisarRelaciones(
         $pdo,
         $bienes,
-        $lote['resueltos'] ?? []
+        $lote['resueltos'] ?? [],
+        $lote['identidades_confirmadas'] ?? []
     );
 
     if ($errores) {
@@ -1938,10 +2082,12 @@ function impGuardarActivos(
                 }
             }
             $emp = $empleados[$ck];
-            if (!$emp ||
+            $confirmadoIdentidad = in_array($claveResponsable,
+                $lote['identidades_confirmadas'] ?? [], true);
+            if (!$emp || (!$confirmadoIdentidad && (
                 impN($emp['area_nombre']) !== impN($b['area']) ||
                 impN($emp['adscripcion_nombre']) !== impN($b['adscripcion']) ||
-                ($nomina === '' && impN($emp['nombre']) !== impN($b['nombre']))) {
+                ($nomina === '' && impN($emp['nombre']) !== impN($b['nombre']))))) {
                 throw new RuntimeException('Asignación incorrecta de la fila ' . $b['fila']
                     . ' al responsable ' . ($b['nombre'] ?? $nomina));
             }
@@ -2000,7 +2146,13 @@ function impGuardarActivos(
                     $b['costo'],
 
                 ':obs' =>
-                    impObservacionesParaBD($b),
+                    (function() use ($b, $emp, $confirmadoIdentidad) {
+                        $obs = impObservacionesParaBD($b) ?? '';
+                        if ($confirmadoIdentidad && (impN($emp['area_nombre']) !== impN($b['area']) || impN($emp['adscripcion_nombre']) !== impN($b['adscripcion']))) {
+                            $obs .= ($obs !== '' ? ' | ' : '') . '[Excel: área ' . $b['area'] . '; adscripción ' . $b['adscripcion'] . '; se conserva ubicación de empleado en BD]';
+                        }
+                        return $obs ?: null;
+                    })(),
 
                 ':emp' =>
                     (int) $emp['empleado_id'],
@@ -2343,19 +2495,47 @@ if (
                 $accion === 'confirmar_empleados'
             ) {
 
+                // Solo procesar responsables seguros; nunca asignar a una
+                // identidad con nómina duplicada o diferente de la BD.
+                $bdActual = impResumenBD(db());
+                $aptos = []; $omitidos = [];
+                foreach ($lote['candidatos'] as $claveC => $cand) {
+                    $existente = $cand['nomina'] !== '' ? ($bdActual[$cand['nomina']] ?? null) : null;
+                    $incompleto = !empty($cand['problemas']);
+                    foreach (['nombre', 'cargo', 'area', 'adscripcion'] as $campoC) {
+                        if (impEsMarcadorVacio($cand[$campoC] ?? '')) $incompleto = true;
+                    }
+                    $difiereBD = $existente && count(impDiferenciasEmpleado($cand, $existente)) > 0;
+                    $confirmado = (string)(($_POST['vincular'] ?? [])[$claveC] ?? '') === 'confirmar_existente';
+                    if ($incompleto || ($difiereBD && !$confirmado)) {
+                        $omitidos[] = $cand['nomina'] !== ''
+                            ? 'Nómina ' . $cand['nomina'] . ': ' . $cand['nombre']
+                            : $cand['nombre'];
+                        continue;
+                    }
+                    $aptos[$claveC] = $cand;
+                }
+                if (!$aptos) {
+                    throw new RuntimeException('No hay responsables seguros para registrar. Corrige las nóminas indicadas en el Excel.');
+                }
                 $r = impCrearEmpleados(
                     db(),
-                    $lote['candidatos'],
+                    $aptos,
                     $usuario,
                     is_array($_POST['vincular'] ?? null) ? $_POST['vincular'] : []
                 );
                 if (isset($_SESSION['coapatap_importacion_bienes'])) {
                     $_SESSION['coapatap_importacion_bienes']['resueltos'] = $r['resueltos'];
+                    $_SESSION['coapatap_importacion_bienes']['identidades_confirmadas'] = array_keys(array_filter($aptos,
+                        fn($c) => isset($bdActual[$c['nomina']]) && count(impDiferenciasEmpleado($c, $bdActual[$c['nomina']])) > 0));
                 }
 
                 unset($_SESSION[$clave]);
 
                 $mensaje =
+                    ($omitidos ? 'IMPORTACIÓN PARCIAL DE RESPONSABLES: ' . count($omitidos) .
+                        ' responsable(s) omitido(s) por seguridad (' . implode('; ', array_slice($omitidos, 0, 12)) . '). ' .
+                        'Sus activos NO se importarán en este lote. ' : '') .
                     'Alta finalizada: '
                     . $r['creados']
                     . ' empleados nuevos, '
@@ -2378,7 +2558,11 @@ if (
                 $erroresBienes = impValidarBienes($datos['bienes'] ?? []);
                 $avisosBienes = impAdvertenciasBienes($datos['bienes'] ?? []);
                 if (!$erroresBienes) {
-                    $erroresRelaciones = impRevisarRelaciones(db(), $datos['bienes'], $resueltosVista);
+                    $erroresRelaciones = impRevisarRelaciones(db(), $datos['bienes'], $resueltosVista,
+                        $_SESSION['coapatap_importacion_bienes']['identidades_confirmadas'] ?? []);
+                }
+                if ($omitidos) {
+                    $_SESSION['coapatap_importacion_bienes']['bloqueo_identidad'] = true;
                 }
                 $tokenActivos = $_SESSION['coapatap_importacion_bienes']['token'] ?? '';
                 foreach ($candidatos as $claveC => $cand) {
@@ -2393,6 +2577,9 @@ if (
 
             } else {
 
+                if (!empty($lote['bloqueo_identidad'])) {
+                    throw new RuntimeException('Hay nóminas con identidad conflictiva. Los empleados válidos se pudieron registrar, pero los activos de este lote están protegidos. Corrige el Excel y analízalo nuevamente antes de importar bienes.');
+                }
                 $r = impGuardarActivos(
                     db(),
                     $lote,
@@ -2610,7 +2797,18 @@ require_once __DIR__ . '/../includes/header.php';
         del formulario inferior. No se vincula automáticamente por el nombre.</p>
 
         <?php
-        $puedeCrear = !empty($candidatos);
+        $puedeCrear = false;
+        $omitidosVista = 0;
+        foreach ($candidatos as $candVista) {
+            $bdVista = $candVista['nomina'] !== '' ? ($empleadosBD[$candVista['nomina']] ?? null) : null;
+            $invalidoVista = !empty($candVista['problemas']) ||
+                false; // La identidad con diferencias se puede confirmar en el formulario.
+            foreach (['nombre','cargo','area','adscripcion'] as $campoVista) {
+                if (impEsMarcadorVacio($candVista[$campoVista] ?? '')) $invalidoVista = true;
+            }
+            if ($invalidoVista) $omitidosVista++;
+            else $puedeCrear = true;
+        }
         ?>
 
         <div style="overflow-x:auto">
@@ -2649,15 +2847,15 @@ require_once __DIR__ . '/../includes/header.php';
                         $vinculado = isset($resueltosVista[$c['clave']]);
 
                         $faltan =
-                            $c['nombre'] === '' ||
-                            $c['cargo'] === '' ||
-                            $c['area'] === '' ||
-                            $c['adscripcion'] === '' ||
+                            impEsMarcadorVacio($c['nombre']) ||
+                            impEsMarcadorVacio($c['cargo']) ||
+                            impEsMarcadorVacio($c['area']) ||
+                            impEsMarcadorVacio($c['adscripcion']) ||
                             !empty($c['problemas']);
 
                         $conflicto = $bd && (
-                            impN($bd['nombre']) !==
-                                impN($c['nombre']) ||
+                            impNombreIdentidad($bd['nombre']) !==
+                                impNombreIdentidad($c['nombre']) ||
 
                             impN(
                                 $bd['area'] ?? ''
@@ -2670,12 +2868,6 @@ require_once __DIR__ . '/../includes/header.php';
                             )
                         );
 
-                        if (
-                            $faltan ||
-                            $conflicto
-                        ) {
-                            $puedeCrear = false;
-                        }
 
                         ?>
 
@@ -2718,13 +2910,30 @@ require_once __DIR__ . '/../includes/header.php';
                             <td>
 
                                 <?php if ($faltan): ?>
-
-                                    ⚠️ Datos incompletos
-                                    o contradictorios
+                                    <span style="color:#9a3412;font-weight:600">⚠️ Revisar datos</span>
+                                    <details style="font-size:12px;max-width:320px">
+                                        <summary>Ver motivo</summary>
+                                        <?php
+                                            $faltantes = [];
+                                            foreach (['nombre', 'cargo', 'area', 'adscripcion'] as $campoF) {
+                                                if (impEsMarcadorVacio($c[$campoF] ?? '')) $faltantes[] = $campoF;
+                                            }
+                                            if ($faltantes) echo '<div>Falta: ' . impE(implode(', ', $faltantes)) . '</div>';
+                                            foreach (($c['problemas'] ?? []) as $detalle) {
+                                                echo '<div>' . impE($detalle) . '</div>';
+                                            }
+                                        ?>
+                                    </details>
 
                                 <?php elseif ($conflicto): ?>
-
-                                    ⚠️ Conflicto con la BD
+                                    <span style="color:#92400e;font-weight:600">⚠️ Nómina coincidente: confirmar datos</span>
+                                    <details style="font-size:12px;max-width:340px">
+                                        <summary>Ver motivo y cómo resolverlo</summary>
+                                        <p>La nómina identifica a un empleado existente. Confirma si es la misma persona. El sistema no cambiará automáticamente el nombre ni el área en PostgreSQL.</p>
+                                        <?php foreach (impDiferenciasEmpleado($c, $bd) as $diferencia): ?>
+                                            <div><?= impE($diferencia) ?></div>
+                                        <?php endforeach; ?>
+                                    </details>
 
                                 <?php elseif ($vinculado): ?>
                                     ✅ Responsable sin nómina confirmado
@@ -3046,69 +3255,50 @@ require_once __DIR__ . '/../includes/header.php';
 
         </div>
 
-        <!-- ERRORES DEL ANÁLISIS -->
-
-        <?php if (
-            $erroresBienes ||
-            $erroresRelaciones
-        ): ?>
-
-            <div
-                role="alert"
-                style="
-                    padding:12px;
-                    margin:14px 0;
-                    border:1px solid #f59e0b;
-                    border-radius:8px;
-                "
-            >
-
-                <strong>
-                    Hay datos pendientes de revisar
-                    antes de importar.
-                </strong>
-
-                <ul>
-
-                    <?php foreach (
-                        array_slice(
-                            array_merge(
-                                $erroresBienes,
-                                $erroresRelaciones
-                            ),
-                            0,
-                            12
-                        ) as $err
-                    ): ?>
-
-                        <li>
-                            <?= impE($err) ?>
-                        </li>
-
+        <!-- RESUMEN ÚNICO: los detalles por fila ya están en la tabla -->
+        <?php if ($erroresBienes || $erroresRelaciones || $avisosBienes): ?>
+            <?php
+                $erroresAgrupados = [];
+                foreach (array_merge($erroresBienes, $erroresRelaciones) as $error) {
+                    $tipo = preg_replace('/^Fila\s+\d+\s*:\s*/ui', '', (string)$error);
+                    $tipo = preg_replace('/\b\d+\b/u', '#', $tipo);
+                    $tipo = mb_substr($tipo, 0, 100);
+                    $erroresAgrupados[$tipo] = ($erroresAgrupados[$tipo] ?? 0) + 1;
+                }
+                $avisosAgrupados = ['Estado físico pendiente' => 0, 'Fecha pendiente' => 0, 'Costo compartido' => 0, 'Costo pendiente' => 0];
+                foreach ($avisosBienes as $aviso) {
+                    if (str_contains($aviso, 'estado físico')) $avisosAgrupados['Estado físico pendiente']++;
+                    elseif (str_contains($aviso, 'fecha no válida')) $avisosAgrupados['Fecha pendiente']++;
+                    elseif (str_contains($aviso, 'costo COMPARTIDO')) $avisosAgrupados['Costo compartido']++;
+                    else $avisosAgrupados['Costo pendiente']++;
+                }
+            ?>
+            <div role="status" style="padding:14px;margin:16px 0;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc">
+                <strong>Resumen del análisis</strong>
+                <p style="margin:7px 0">⛔ <?= count($erroresBienes) + count($erroresRelaciones) ?> errores que requieren corrección · ⚠️ <?= count($avisosBienes) ?> advertencias de datos pendientes.</p>
+                <p style="margin:7px 0;font-size:13px">Los errores impiden importar los registros afectados. Las advertencias de costo, estado o fecha pueden conservarse como pendientes, sin inventar valores.</p>
+                <?php if ($erroresAgrupados): ?>
+                    <details><summary>Ver tipos de errores</summary><ul>
+                    <?php foreach ($erroresAgrupados as $tipo => $cantidad): ?>
+                        <li><?= (int)$cantidad ?> caso(s): <?= impE($tipo) ?></li>
                     <?php endforeach; ?>
-
-                </ul>
-
-            </div>
-
-        <?php endif; ?>
-
-        <!-- DATOS QUE PUEDEN IMPORTARSE SIN INVENTAR VALORES -->
-        <?php if ($avisosBienes): ?>
-            <div role="status" style="padding:14px; margin:16px 0; border:1px solid #d97706; border-radius:8px;">
-                <strong>Datos incompletos o compartidos: <?= count($avisosBienes) ?> advertencias</strong>
-                <p>Estos valores NO se adivinan. Podrás importarlos con costo,
-                estado físico o fecha en NULL, conservando los textos y
-                los importes totales originales en observaciones.
-                Los totales financieros no incluirán esos importes pendientes.</p>
-                <details>
-                    <summary>Ver advertencias y renglones</summary>
-                    <ul>
-                        <?php foreach (array_slice($avisosBienes, 0, 100) as $aviso): ?>
-                            <li><?= impE($aviso) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </details>
+                    </ul><details><summary>Ver filas con errores</summary><ul>
+                    <?php foreach (array_slice(array_merge($erroresBienes, $erroresRelaciones), 0, 100) as $error): ?>
+                        <li><?= impE($error) ?></li>
+                    <?php endforeach; ?>
+                    </ul></details></details>
+                <?php endif; ?>
+                <?php if ($avisosBienes): ?>
+                    <details><summary>Ver tipos de advertencias</summary><ul>
+                    <?php foreach ($avisosAgrupados as $tipo => $cantidad): ?>
+                        <?php if ($cantidad): ?><li><?= (int)$cantidad ?>: <?= impE($tipo) ?></li><?php endif; ?>
+                    <?php endforeach; ?>
+                    </ul><details><summary>Ver filas con advertencias</summary><ul>
+                    <?php foreach (array_slice($avisosBienes, 0, 100) as $aviso): ?>
+                        <li><?= impE($aviso) ?></li>
+                    <?php endforeach; ?>
+                    </ul></details></details>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
@@ -3121,6 +3311,15 @@ require_once __DIR__ . '/../includes/header.php';
             adscripciones faltantes
         </h3>
 
+        <?php if ($omitidosVista): ?>
+            <div style="border:1px solid #b45309;border-radius:8px;padding:12px;margin:12px 0;background:#fffbeb;color:#78350f">
+                <strong>⚠️ <?= (int)$omitidosVista ?> responsable(s) con conflicto o datos incompletos.</strong>
+                Se excluirán del registro de empleados. Los empleados válidos podrán guardarse
+                por separado. Para proteger las asignaciones, los activos de este archivo
+                no se importarán hasta corregir las nóminas y volver a analizar el Excel.
+                El sistema nunca decidirá a quién pertenece una nómina duplicada.
+            </div>
+        <?php endif; ?>
         <?php if ($puedeCrear && $tokenEmpleados !== ''): ?>
 
             <form
@@ -3149,7 +3348,29 @@ require_once __DIR__ . '/../includes/header.php';
                 >
 
                 <?php foreach ($candidatos as $cand): ?>
-                    <?php if ($cand['nomina'] === ''): ?>
+                    <?php $bdCand = $cand['nomina'] !== '' ? ($empleadosBD[$cand['nomina']] ?? null) : null; ?>
+                    <?php if ($bdCand && empty($cand['problemas']) &&
+                        count(impDiferenciasEmpleado($cand, $bdCand)) > 0): ?>
+                        <div style="padding:12px;margin:12px 0;border:1px solid #eab308;border-radius:8px;background:#fffbeb">
+                            <strong>Nómina <?= impE($cand['nomina']) ?>: verificar identidad</strong>
+                            <p>Excel: <?= impE($cand['nombre']) ?> (<?= impE($cand['area']) ?>)</p>
+                            <p>BD: <?= impE($bdCand['nombre']) ?> (<?= impE($bdCand['area']) ?>)</p>
+                            <label>Decisión:
+                                <select name="vincular[<?= impE($cand['clave']) ?>]" required
+                                    style="display:block;width:100%;padding:8px">
+                                    <option value="">Selecciona después de verificar...</option>
+                                    <option value="confirmar_existente">Confirmo que es la misma persona: reutilizar empleado existente sin modificar sus datos</option>
+                                    <option value="pendiente">No estoy seguro: dejar pendiente</option>
+                                </select>
+                            </label>
+                            <small>Si son personas distintas, corrige la nómina en el Excel. El área del empleado existente no se modificará.</small>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($cand['nomina'] === '' && empty($cand['problemas']) &&
+                        !impEsMarcadorVacio($cand['nombre'] ?? '') &&
+                        !impEsMarcadorVacio($cand['cargo'] ?? '') &&
+                        !impEsMarcadorVacio($cand['area'] ?? '') &&
+                        !impEsMarcadorVacio($cand['adscripcion'] ?? '')): ?>
                         <?php $opciones = $coincidencias[$cand['clave']] ?? []; ?>
                         <div style="padding:12px; margin:12px 0; border:1px solid #aaa; border-radius:8px;">
                             <label for="resolver_<?= impE($cand['clave']) ?>">
@@ -3200,7 +3421,9 @@ require_once __DIR__ . '/../includes/header.php';
         <?php if (
             !$erroresBienes &&
             !$erroresRelaciones &&
-            $candidatos
+            $candidatos &&
+            empty($_SESSION['coapatap_importacion_bienes']['bloqueo_identidad']) &&
+            !$omitidosVista
         ): ?>
 
             <p>

@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Gestión de Activos Fijos';
 $page_js    = 'activos.js';
-$page_js_version = 'acciones-20261029-2';
+$page_js_version = 'orden-precio-20261031-1';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_auth();
@@ -30,6 +30,7 @@ require_once __DIR__ . '/../includes/header.php';
     <button class="tab" data-tab="todos" role="tab">
         📦 Todos <span class="tab__count" id="countTodos">0</span>
     </button>
+    <button class="tab" data-tab="inservibles" role="tab">🚫 Inservibles <span class="tab__count" id="countInservibles">0</span></button>
     <button class="tab" data-tab="stats" role="tab">
         📊 Estadísticas
     </button>
@@ -51,6 +52,11 @@ require_once __DIR__ . '/../includes/header.php';
         <option value="">📋 Vigentes y suspendidos</option>
         <option value="vigentes">✅ Solo vigentes</option>
         <option value="suspendidos">⏸️ Solo suspendidos</option>
+    </select>
+    <select id="ordenPrecio" aria-label="Ordenar activos por precio" title="Ordenar los activos dentro de cada grupo">
+        <option value="">💰 Orden original</option>
+        <option value="desc">💰 Mayor a menor precio</option>
+        <option value="asc">💰 Menor a mayor precio</option>
     </select>
     <button class="btn btn--ghost btn--sm" id="btnExpandirTodo" title="Expandir todo">⬇ Expandir</button>
     <button class="btn btn--ghost btn--sm" id="btnContraerTodo" title="Contraer todo">⬆ Contraer</button>
@@ -132,11 +138,17 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<div class="tab-panel" id="panelInservibles" data-panel="inservibles">
+  <div class="card"><h2 class="card__title">🚫 Bienes declarados inservibles</h2>
+  <p class="muted">Estos bienes se conservan en la base de datos, sin asignación activa.</p>
+  <div class="table-wrap"><table class="table"><thead><tr><th>Activo</th><th>Último responsable</th><th>Última área</th><th>Motivo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="tablaInservibles"></tbody></table></div></div>
+</div>
 <!-- ============ PANEL: ESTADÍSTICAS ============ -->
 <div class="tab-panel" id="panelStats" data-panel="stats">
     <div id="statsDashboard"></div>
 </div>
 
+<style>#grupoMotivoInservible{padding:12px;border:1px solid #fca5a5;border-radius:10px;background:rgba(220,38,38,.04);margin-top:12px}</style>
 <!-- ============ MODAL: ACTIVO ============ -->
 <div class="modal-backdrop" id="activoModal">
     <div class="modal">
@@ -213,7 +225,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <option value="INSERVIBLE">
                                 INSERVIBLE
                             </option>
-                        </select>
+                        </select><div id="grupoMotivoInservible" style="display:none"><label for="motivo_inservible">Motivo de declaración de inservibilidad <span class="req">*</span></label><textarea class="form-control" id="motivo_inservible" name="motivo_inservible" maxlength="1000" rows="3" placeholder="Explica por qué se declaró inservible"></textarea><small>Se retirará la asignación actual y se conservará el último responsable.</small></div>
 
                         <span class="form-text">
                             Selecciona la condición física actual del bien.
