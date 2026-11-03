@@ -551,6 +551,15 @@ function impDerecha(
     return '';
 }
 
+/** Un error de fórmula no constituye un área ni adscripción válida. */
+function impValorUbicacionInvalido(string $valor): bool
+{
+    $v = trim($valor);
+    return $v === '' || in_array(strtoupper($v), [
+        '#NAME?', '#REF!', '#VALUE!', '#N/A', '#DIV/0!', '#NUM!', '#NULL!', '0'
+    ], true);
+}
+
 // ==========================================
 // IDENTIFICAR NÚMERO DE NÓMINA
 // ==========================================
@@ -802,24 +811,21 @@ function impAnalizar(array $filas, array $fusiones = []): array
 
             $t = impN($txt);
 
-            if (str_contains(
-                $t,
-                'BIENES CON LOS QUE CUENTA EL'
-            )) {
-                $area = impDerecha(
-                    $fila,
-                    $col
-                );
+            // Los formatos institucionales usan tanto «BIENES CON LOS
+            // QUE CUENTA EL:» como «BIENES CON LOS QUE CUENTA :».
+            // Ambos identifican el área del resguardo.
+            if (str_contains($t, 'BIENES CON LOS QUE CUENTA')) {
+                $candidata = impDerecha($fila, $col);
+                if (!impValorUbicacionInvalido($candidata)) {
+                    $area = $candidata;
+                }
             }
 
-            if (str_contains(
-                $t,
-                'AREA DE ADSCRIPCION'
-            )) {
-                $adscripcion = impDerecha(
-                    $fila,
-                    $col
-                );
+            if (str_contains($t, 'AREA DE ADSCRIPCION')) {
+                $candidata = impDerecha($fila, $col);
+                if (!impValorUbicacionInvalido($candidata)) {
+                    $adscripcion = $candidata;
+                }
             }
 
             // Firma del resguardante.
@@ -1672,16 +1678,8 @@ function impValidarBienes(array $bienes): array
         // ÁREA Y ADSCRIPCIÓN
 
         if (
-            trim(
-                (string) (
-                    $b['area'] ?? ''
-                )
-            ) === '' ||
-            trim(
-                (string) (
-                    $b['adscripcion'] ?? ''
-                )
-            ) === ''
+            impValorUbicacionInvalido((string)($b['area'] ?? '')) ||
+            impValorUbicacionInvalido((string)($b['adscripcion'] ?? ''))
         ) {
             $errores[] =
                 $pref
