@@ -166,7 +166,7 @@ $puedeImprimir = $user
                             : '' ?>"
                         href="index.php"
                     >
-                        🔍 Consulta
+                        🔍 Dashboard
                     </a>
 
                     <!-- =============================

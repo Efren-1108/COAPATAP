@@ -15,7 +15,7 @@ if (current_user() !== null) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar sesión · <?= e(APP_NAME) ?></title>
-    <link rel="stylesheet" href="<?= e(base_url()) ?>/assets/css/styles.css">
+    <link rel="stylesheet" href="<?= e(base_url()) ?>/assets/css/styles.css?v=<?= filemtime(__DIR__ . '/../assets/css/styles.css') ?>">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
     <script>
         window.API_BASE = <?= json_encode((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . base_url() . '/api/') ?>;
@@ -63,8 +63,7 @@ if (current_user() !== null) {
             <div class="form-error" id="formError" hidden></div>
 
             <button type="submit" class="btn btn--primary btn--block" id="btnLogin">
-                <span class="btn__label">🔑 Iniciar sesión</span>
-                <span class="spinner" hidden></span>
+                <span class="btn__label">Iniciar sesión</span>
             </button>
         </form>
 
@@ -79,6 +78,6 @@ if (current_user() !== null) {
 </div>
 
 <script src="<?= e(base_url()) ?>/assets/js/app.js?v=<?= e(APP_VERSION) ?>"></script>
-<script src="<?= e(base_url()) ?>/assets/js/auth.js?v=<?= e(APP_VERSION) ?>"></script>
+<script src="<?= e(base_url()) ?>/assets/js/auth.js?v=<?= filemtime(__DIR__ . '/../assets/js/auth.js') ?>"></script>
 </body>
 </html>

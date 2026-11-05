@@ -9,8 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>🔍 Consulta de Resguardo</h1>
-        <p>Busca empleados por nombre o nómina y consulta sus bienes; las estadísticas aparecen debajo.</p>
+        <!-- <h1>Dashboard</h1> -->
         <?php if (!$user['es_superusuario']): ?>
             <p class="badge badge--info">📌 Solo verás datos de tu adscripción: <strong><?= e($user['area_nombre']) ?></strong></p>
         <?php endif; ?>

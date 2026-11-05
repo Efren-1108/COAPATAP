@@ -8,7 +8,6 @@ const inputPass = document.getElementById('password');
 const btnLogin  = document.getElementById('btnLogin');
 const errBox    = document.getElementById('formError');
 const label     = btnLogin.querySelector('.btn__label');
-const spinner   = btnLogin.querySelector('.spinner');
 
 document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', onSubmit);
@@ -54,8 +53,8 @@ function showError(msg) {
 
 function setLoading(on) {
     btnLogin.disabled = on;
-    spinner.hidden = !on;
-    label.style.opacity = on ? '0.6' : '1';
+    btnLogin.setAttribute('aria-busy', String(on));
+    label.textContent = on ? 'Iniciando sesión...' : 'Iniciar sesión';
 }
 
 /* Mostrar u ocultar contraseña */
