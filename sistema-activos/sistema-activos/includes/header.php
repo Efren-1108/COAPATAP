@@ -160,14 +160,18 @@ $puedeImprimir = $user
                          CONSULTA
                     ============================== -->
 
-                    <a
-                        class="nav__link <?= $current === 'index.php'
-                            ? 'is-active'
-                            : '' ?>"
-                        href="index.php"
-                    >
-                        🔍 Dashboard
-                    </a>
+                        <a
+                            class="nav__link nav--consulta-animada <?= $current === 'index.php' ? 'is-active' : '' ?>"
+                            href="index.php"
+                        >
+                            <img
+                                class="nav__icon"
+                                src="<?= e($assetsBase) ?>img/icons/icono-consulta.png"
+                                data-gif="<?= e($assetsBase) ?>img/icons/icono-consulta.gif"
+                                alt=""
+                            >
+                            Dashboard
+                        </a>
 
                     <!-- =============================
                          EMPLEADOS Y ÁREAS
@@ -176,16 +180,19 @@ $puedeImprimir = $user
                     <?php if (has_permission('empleados')): ?>
 
                         <a
-                            class="nav__link <?= in_array(
+                            class="nav__link nav--icono-animado <?= in_array(
                                 $current,
                                 ['empleados.php', 'areas.php'],
                                 true
-                            )
-                                ? 'is-active'
-                                : '' ?>"
+                            ) ? 'is-active' : '' ?>"
                             href="empleados.php"
                         >
-                            👥 Empleados y Áreas
+                            <img
+                                src="<?= e($assetsBase) ?>img/icons/empleados-areas.png"
+                                class="nav__icon"
+                                alt=""
+                            >
+                            Empleados y Áreas
                         </a>
 
                     <?php endif; ?>
@@ -197,12 +204,15 @@ $puedeImprimir = $user
                     <?php if (has_permission('activos')): ?>
 
                         <a
-                            class="nav__link <?= $current === 'activos.php'
-                                ? 'is-active'
-                                : '' ?>"
+                            class="nav__link nav--icono-animado <?= $current === 'activos.php' ? 'is-active' : '' ?>"
                             href="activos.php"
                         >
-                            📦 Activos
+                            <img
+                                src="<?= e($assetsBase) ?>img/icons/activos.png"
+                                class="nav__icon"
+                                alt=""
+                            >
+                            Activos
                         </a>
 
                     <?php endif; ?>

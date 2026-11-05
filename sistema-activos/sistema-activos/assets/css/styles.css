@@ -2344,3 +2344,92 @@ body:not(.login-page) {
         background-color: #ffffff !important;
     }
 }
+
+/* Íconos del menú principal */
+.topbar .nav__link .nav__icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    background: transparent;
+    flex-shrink: 0;
+}
+
+/* Empleados y Áreas: icono PNG estático que anima una sola vez al pulsar */
+.topbar .nav--icono-animado .nav__icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: transparent;
+    transform-origin: center;
+}
+.topbar .nav--icono-animado.animando .nav__icon {
+    animation: coapatapIconoClick 0.55s ease-in-out 1;
+}
+@keyframes coapatapIconoClick {
+    0%, 100% { transform: translateY(0) scale(1) rotate(0); }
+    35% { transform: translateY(-3px) scale(1.18) rotate(-8deg); }
+    65% { transform: translateY(0) scale(1.09) rotate(7deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .topbar .nav--icono-animado.animando .nav__icon { animation: none; }
+}
+
+/* =========================================
+   ICONOS GENERALES DEL MENU - COAPATAP
+   ========================================= */
+
+/* Tamaño uniforme para todos los iconos */
+.topbar .nav__link img.nav__icon {
+    display: block;
+
+    width: 24px !important;
+    height: 24px !important;
+
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+
+    object-fit: contain;
+    flex: 0 0 24px;
+
+    background: transparent;
+    padding: 0;
+    margin: 0;
+
+    transform-origin: center;
+}
+
+/* Alineación con el texto del menú */
+.topbar .nav__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Animación cuando se hace clic */
+.topbar .nav--icono-animado.animando img.nav__icon {
+    animation: iconoCoapatap 0.55s ease-in-out 1;
+}
+
+@keyframes iconoCoapatap {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    35% {
+        transform: scale(1.20) rotate(-8deg);
+    }
+
+    65% {
+        transform: scale(1.10) rotate(8deg);
+    }
+}
+
+/* Accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+    .topbar .nav--icono-animado.animando img.nav__icon {
+        animation: none;
+    }
+}
