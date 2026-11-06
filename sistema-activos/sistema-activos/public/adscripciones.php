@@ -9,8 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>🏛️ Gestión de Adscripciones</h1>
-        <p>Administra las sucursales, planteles o direcciones. Cada área pertenece a una adscripción.</p>
+        <h1>Gestión de Adscripciones</h1>
     </div>
     <button class="btn btn--primary" id="btnNuevo">➕ Nueva adscripción</button>
 </section>

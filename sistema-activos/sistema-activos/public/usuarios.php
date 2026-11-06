@@ -9,8 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>🔐 Gestión de Usuarios</h1>
-        <p>Administra los usuarios que pueden operar el sistema y sus permisos.</p>
+        <h1>Gestión de Usuarios</h1>
     </div>
     <button class="btn btn--primary" id="btnNuevo">➕ Nuevo usuario</button>
 </section>

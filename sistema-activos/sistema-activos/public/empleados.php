@@ -9,8 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>🏢 Empleados y Áreas</h1>
-        <p>Administra los departamentos y su personal. Cada área pertenece a una adscripción.</p>
+        <h1>Empleados y Áreas</h1>      
     </div>
 </section>
 

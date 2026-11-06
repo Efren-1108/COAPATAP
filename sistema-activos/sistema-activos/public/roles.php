@@ -9,8 +9,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>🛡️ Gestión de Roles</h1>
-        <p>Define los roles que pueden asignarse a los usuarios del sistema.</p>
+        <h1>Gestión de Roles</h1>
     </div>
     <button class="btn btn--primary" id="btnNuevo">➕ Nuevo rol</button>
 </section>

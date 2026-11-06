@@ -7,7 +7,7 @@ require_once __DIR__.'/../includes/auth.php';
 $user=require_super();
 require_once __DIR__.'/../includes/header.php';
 ?>
-<section class="page-header"><div><h1>🏬 Stock — Almacén general</h1><p>Bienes resguardados, disponibles o suspendidos. Las entradas y salidas quedan registradas.</p></div><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a></section>
+<section class="page-header"><div><h1>Stock — Almacén general</h1></div><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a></section>
 <div class="toolbar"><input id="buscarStock" placeholder="Buscar descripción, inventario o marca" aria-label="Buscar activos en stock"></div>
 <div id="resumenStock" class="stats"></div>
 <div class="table-wrap stock-table-wrap"><table class="table stock-table"><thead><tr><th>Activo</th><th>Situación</th><th>Entrada</th><th>Acciones</th></tr></thead><tbody id="stockTabla"></tbody></table></div>

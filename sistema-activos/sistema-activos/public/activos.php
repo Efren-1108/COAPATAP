@@ -10,8 +10,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <section class="page-header">
     <div>
-        <h1>📦 Gestión de Activos Fijos</h1>
-        <p>Administra el inventario de bienes y asígnalos a los resguardantes.</p>
+        <h1>Gestión de Activos Fijos</h1>
     </div>
     <button class="btn btn--primary" id="btnNuevo">➕ Nuevo activo</button>
 </section>
