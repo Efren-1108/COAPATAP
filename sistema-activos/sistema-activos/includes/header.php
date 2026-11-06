@@ -212,14 +212,29 @@ $puedeImprimir = $user
                                 class="nav__icon"
                                 alt=""
                             >
-                            Activosss
+                            Activos
                         </a>
 
                     <?php endif; ?>
 
+                    <!-- =============================
+                         STOCK                    
+                    ============================== -->
+
                     <?php if ($esSuper): ?>
-                        <a class="nav__link <?= $current === 'stock.php' ? 'is-active' : '' ?>" href="stock.php">🏬 Stock</a>
+                        <a
+                            class="nav__link nav--icono-animado <?= $current === 'stock.php' ? 'is-active' : '' ?>"
+                            href="stock.php"
+                        >
+                            <img
+                                src="<?= e($assetsBase) ?>img/icons/stock-menu.png"
+                                class="nav__icon"
+                                alt=""
+                            >
+                            Stock
+                        </a>
                     <?php endif; ?>
+
 
                     <!-- =============================
                          ADSCRIPCIONES
@@ -229,12 +244,17 @@ $puedeImprimir = $user
                     <?php if ($esSuper): ?>
 
                         <a
-                            class="nav__link <?= $current === 'adscripciones.php'
+                            class="nav__link nav--icono-animado <?= $current === 'adscripciones.php'
                                 ? 'is-active'
                                 : '' ?>"
                             href="adscripciones.php"
                         >
-                            🏛️ Adscripciones
+                        <img
+                            src="<?= e($assetsBase) ?>img/icons/adscripciones-menu.png"
+                            class="nav__icon"
+                            alt=""
+                        >
+                            Adscripciones
                         </a>
 
                     <?php endif; ?>
@@ -246,13 +266,18 @@ $puedeImprimir = $user
                     <?php if ($puedeImprimir): ?>
 
                         <a
-                            class="nav__link <?= $current === 'vista_previa_resguardo.php'
+                            class="nav__link nav--icono-animado <?= $current === 'vista_previa_resguardo.php'
                                 ? 'is-active'
                                 : '' ?>"
                             href="vista_previa_resguardo.php"
                             title="Imprimir y guardar resguardos"
                         >
-                            🖨️ Impresión
+                            <img
+                                src="<?= e($assetsBase) ?>img/icons/imprimi.png"
+                                class="nav__icon"
+                                alt=""
+                            >
+                            Impresión
                         </a>
 
                     <?php endif; ?>
@@ -268,13 +293,18 @@ $puedeImprimir = $user
                         ========================== -->
 
                         <a
-                            class="nav__link <?= $current === 'importar_activos.php'
+                            class="nav__link nav--icono-animado <?= $current === 'importar_activos.php'
                                 ? 'is-active'
                                 : '' ?>"
                             href="importar_activos.php"
                             title="Importar empleados y activos desde Excel"
                         >
-                            📥 Importar Excel
+                        <img
+                            src="<?= e($assetsBase) ?>img/icons/importar-excel.png"
+                            class="nav__icon nav__icon--blanco"
+                            alt=""
+                        >
+                            Importar Excel
                         </a>
 
                         <!-- =========================
@@ -282,12 +312,17 @@ $puedeImprimir = $user
                         ========================== -->
 
                         <a
-                            class="nav__link <?= $current === 'usuarios.php'
+                            class="nav__link nav--icono-animado <?= $current === 'usuarios.php'
                                 ? 'is-active'
                                 : '' ?>"
                             href="usuarios.php"
                         >
-                            🔐 Usuarios
+                        <img
+                            src="<?= e($assetsBase) ?>img/icons/llave-menu.png"
+                            class="nav__icon"
+                            alt=""
+                        >
+                            Usuarios
                         </a>
 
                         <!-- =========================
@@ -295,12 +330,17 @@ $puedeImprimir = $user
                         ========================== -->
 
                         <a
-                            class="nav__link <?= $current === 'roles.php'
+                            class="nav__link nav--icono-animado <?= $current === 'roles.php'
                                 ? 'is-active'
                                 : '' ?>"
                             href="roles.php"
                         >
-                            🛡️ Roles
+                        <img
+                            src="<?= e($assetsBase) ?>img/icons/Roles.png"
+                            class="nav__icon"
+                            alt=""
+                        >
+                            Roles
                         </a>
 
                     <?php endif; ?>
