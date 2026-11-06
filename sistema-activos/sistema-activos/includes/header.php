@@ -1,4 +1,3 @@
-
 <?php
 /**
  * Encabezado principal del sistema
@@ -146,6 +145,27 @@ $puedeImprimir = $user
         <div class="container topbar__inner">
 
             <?php if ($user): ?>
+
+                <!-- =====================================
+                    IDENTIDAD INSTITUCIONAL COAPATAP
+                ====================================== -->
+
+                <a
+                    class="brand brand--institucional"
+                    href="index.php"
+                    aria-label="Ir al panel principal de COAPATAP"
+                >
+                    <span class="brand__logo">
+                        <img
+                            src="<?= e($assetsBase) ?>img/logo-coapatap.png"
+                            alt=""
+                        >
+                    </span>
+
+                    <span class="brand__text">
+                        <strong>Sistema de Control de Activos Fijos</strong> 
+                    </span>
+                </a>
 
                 <!-- =================================
                      MENÚ PRINCIPAL

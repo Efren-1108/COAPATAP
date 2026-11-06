@@ -18,8 +18,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <!-- ============ BUSCADOR ÚNICO POR NÓMINA O NOMBRE ============ -->
 <section class="card search-card" id="buscadorResguardos" style="margin-bottom: 2rem; margin-top: 1rem;">
-    <h2>🔍 Búsqueda de empleados y activos</h2>
-    <p>Escribe el número de nómina o parte del nombre del empleado. Si encuentras varias coincidencias, selecciona al responsable correcto.</p>
+    <h2>Búsqueda de empleados y activos</h2>
     <form id="searchForm" class="search-form" autocomplete="off" role="search">
         <input type="search" id="busquedaEmpleadoGeneral" name="busqueda"
                maxlength="100" placeholder="Ej. 572 o Esteban Díaz"
@@ -50,28 +49,28 @@ require_once __DIR__ . '/../includes/header.php';
 <!-- ============ GRÁFICAS ============ -->
 <div class="grid-2">
     <div class="card">
-        <h2 class="card__title">📊 Activos por adscripción</h2>
+        <h2 class="card__title">Activos por adscripción</h2>
         <div class="chart-wrapper">
             <canvas id="chartPorAdscripcion"></canvas>
         </div>
     </div>
 
     <div class="card">
-        <h2 class="card__title">💰 Valor por adscripción</h2>
+        <h2 class="card__title">Valor por adscripción</h2>
         <div class="chart-wrapper">
             <canvas id="chartValorAdscripcion"></canvas>
         </div>
     </div>
 
     <div class="card">
-        <h2 class="card__title">🏢 Top 10 áreas con más activos</h2>
+        <h2 class="card__title">Áreas con más activos</h2>
         <div class="chart-wrapper">
             <canvas id="chartTopAreas"></canvas>
         </div>
     </div>
 
     <div class="card">
-        <h2 class="card__title">🏆 Top 10 empleados por valor</h2>
+        <h2 class="card__title">Empleados con mayor activos</h2>
         <div class="chart-wrapper">
             <canvas id="chartTopEmpleados"></canvas>
         </div>
@@ -80,7 +79,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <!-- ============ GRÁFICA DE LÍNEA (ancho completo) ============ -->
 <div class="card">
-    <h2 class="card__title">📈 Valor de adquisiciones por año</h2>
+    <h2 class="card__title">Valor de adquisiciones por año</h2>
     <div class="chart-wrapper chart-wrapper--wide">
         <canvas id="chartPorAnio"></canvas>
     </div>

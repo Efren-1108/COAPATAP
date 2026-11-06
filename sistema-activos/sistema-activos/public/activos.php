@@ -16,7 +16,7 @@ require_once __DIR__ . '/../includes/header.php';
 </section>
 
 <!-- ============ TABS ============ -->
-<div class="tabs" role="tablist">
+<div class="tabs--activos" role="tablist">
     <button class="tab is-active" data-tab="adscripciones" role="tab">
         🏛️ Por adscripción <span class="tab__count" id="countAdsc">0</span>
     </button>
