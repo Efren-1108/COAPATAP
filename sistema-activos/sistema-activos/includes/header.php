@@ -212,7 +212,7 @@ $puedeImprimir = $user
                                 class="nav__icon"
                                 alt=""
                             >
-                            Activos
+                            Activosss
                         </a>
 
                     <?php endif; ?>
