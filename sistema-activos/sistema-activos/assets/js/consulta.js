@@ -109,28 +109,39 @@ async function cargarDashboard() {
 function renderStats(t) {
     statsGlobales.innerHTML = `
         <div class="stat">
-            <span class="stat__icon">📦</span>
+            <span class="stat__icon">
+                <img src="../assets/img/stats/caja.png" alt="Activos totales" class="stat__icon-img">
+            </span>
             <div>
                 <div class="stat__num">${t.total_activos}</div>
                 <div class="stat__lbl">Activos totales</div>
             </div>
         </div>
+
         <div class="stat">
-            <span class="stat__icon">💰</span>
+            <span class="stat__icon">
+                <img src="../assets/img/stats/dinero.png" alt="Valor total" class="stat__icon-img">
+            </span>
             <div>
                 <div class="stat__num">${App.money(t.costo_total)}</div>
                 <div class="stat__lbl">Valor total</div>
             </div>
         </div>
+
         <div class="stat">
-            <span class="stat__icon">👤</span>
+            <span class="stat__icon">
+                <img src="../assets/img/stats/empleados.png" alt="Asignados" class="stat__icon-img">
+            </span>
             <div>
                 <div class="stat__num">${t.asignados}</div>
                 <div class="stat__lbl">Asignados</div>
             </div>
         </div>
+
         <div class="stat">
-            <span class="stat__icon">⚠️</span>
+            <span class="stat__icon">
+                <img src="../assets/img/stats/cuidado.png" alt="Sin asignar" class="stat__icon-img">
+            </span>
             <div>
                 <div class="stat__num">${t.sin_asignar}</div>
                 <div class="stat__lbl">Sin asignar</div>

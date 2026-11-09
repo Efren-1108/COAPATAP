@@ -1,0 +1,525 @@
+/* COAPATAP - Impresión y configuración institucional
+   Estilo de PANTALLA por tarjetas independientes y blancos limpios.
+   El documento imprimible conserva todas las reglas técnicas originales. */
+@import url('./resguardo-impresion.css');
+
+/* Estilos de configuración migrados de su antiguo <style> */
+.config-imagenes {
+    margin: 24px 0 40px;
+}
+
+.config-imagenes__intro {
+    color: var(--c-muted, #64748b);
+    max-width: 850px;
+}
+
+.config-imagenes__grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(275px, 1fr));
+
+    gap: 18px;
+    margin: 22px 0;
+}
+
+.config-imagenes__tarjeta {
+    background: var(--c-surface, #ffffff);
+
+    border: 1px solid var(--c-border, #e2e8f0);
+    border-radius: 12px;
+
+    padding: 18px;
+}
+
+.config-imagenes__tarjeta h2 {
+    margin: 0 0 4px;
+    font-size: 1.12rem;
+}
+
+.config-imagenes__tarjeta p {
+    margin: 0 0 12px;
+    color: var(--c-muted, #64748b);
+}
+
+.config-imagenes__preview {
+    height: 145px;
+
+    border: 1px dashed #a3b0c4;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    overflow: hidden;
+
+    padding: 12px;
+    margin-bottom: 14px;
+
+    color: #475569;
+    text-align: center;
+}
+
+.config-imagenes__preview img {
+    max-width: 100%;
+    max-height: 100%;
+
+    width: auto;
+    height: auto;
+
+    object-fit: contain;
+}
+
+.config-imagenes__campo {
+    display: block;
+
+    margin: 12px 0;
+    font-weight: 600;
+}
+
+.config-imagenes__campo input {
+    display: block;
+
+    margin-top: 6px;
+
+    width: 100%;
+    padding: 9px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: #111827;
+}
+
+.config-imagenes__boton {
+    border: 0;
+    border-radius: 8px;
+
+    background: #2563eb;
+    color: #ffffff;
+
+    font-weight: 700;
+    padding: 10px 14px;
+
+    cursor: pointer;
+}
+
+.config-imagenes__boton--secundario {
+    background: #334155;
+}
+
+.config-imagenes__boton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.config-imagenes__aviso {
+    padding: 12px 14px;
+    border-radius: 8px;
+
+    margin: 15px 0;
+
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+}
+
+.config-imagenes__aviso--error {
+    background: #fff1f2;
+    border-color: #fda4af;
+}
+
+.config-imagenes__historial {
+    background: var(--c-surface, #ffffff);
+
+    border: 1px solid var(--c-border, #e2e8f0);
+    border-radius: 12px;
+
+    padding: 18px;
+    margin: 18px 0;
+}
+
+.config-imagenes__historial h3 {
+    margin: 0 0 10px;
+}
+
+.config-imagenes__version {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+    flex-wrap: wrap;
+
+    padding: 12px 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.config-imagenes__miniatura {
+    background: #ffffff;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+
+    width: 92px;
+    height: 65px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 5px;
+}
+
+.config-imagenes__miniatura img {
+    max-width: 100%;
+    max-height: 100%;
+
+    object-fit: contain;
+}
+
+.config-imagenes__datos {
+    flex: 1;
+    min-width: 170px;
+
+    overflow-wrap: anywhere;
+}
+
+.config-imagenes__datos small {
+    display: block;
+    color: var(--c-muted, #64748b);
+}
+
+.config-imagenes__activo {
+    font-weight: 700;
+    color: #15803d;
+}
+
+/* Evitar imprimir esta pantalla */
+
+@media print {
+
+    .config-imagenes {
+        display: none !important;
+    }
+
+}
+
+/* ============================================================
+   IMPRESIÓN — diseño azul institucional: tarjetas blancas independientes
+   SOLO pantalla: no cambia la maqueta del documento imprimible.
+   ============================================================ */
+@media screen {
+  .modulo-impresion {
+    --imp-azul: #2563eb;
+    --imp-azul-oscuro: #1d4ed8;
+    --imp-tinta: #172943;
+    --imp-borde: #dce5ed;
+    max-width: 1280px;
+    margin: 28px auto 32px;
+    padding: 0 10px;
+    color: var(--imp-tinta);
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .modulo-impresion *, .config-imagenes * {box-sizing: border-box;}
+  .imp-encabezado-modulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    min-height: auto;
+    margin: 0 0 22px;
+    padding: 26px 30px;
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 20px;
+    background:
+      radial-gradient(ellipse 45% 150% at 105% 100%,rgba(165,195,245,.20),transparent 71%),
+      linear-gradient(130deg,rgba(255,255,255,.98),rgba(248,252,252,.95));
+    box-shadow: 0 9px 25px rgba(34,62,84,.09);
+  }
+  .imp-encabezado-modulo__titulo {min-width: 0;}
+  .imp-encabezado-modulo__etiqueta,
+  .config-imagenes__etiqueta {
+    display:block;
+    margin-bottom: 9px;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: .70rem;
+    font-weight: 800;
+    color: #536579;
+  }
+  .imp-encabezado-modulo h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-size: clamp(1.5rem,2.7vw,2.15rem);
+    line-height: 1.2;
+    color: #172840;
+  }
+  .imp-encabezado-modulo__icono {
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 47px;
+    height: 47px;
+    border-radius: 12px;
+    background: #e6f0ff;
+    font-size: 1.42rem;
+  }
+  .modulo-impresion .imp-descripcion {
+    color: #586d7e;
+    margin: 10px 0 0;
+    font-size: .95rem;
+    line-height: 1.5;
+  }
+  .imp-btn-configuracion {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    border: 1px solid #b4cef8;
+    border-radius: 11px;
+    background: rgba(255,255,255,.88);
+    color: #1f4c9a;
+    text-decoration: none;
+    font-weight: 750;
+    font-size: .86rem;
+    transition: background .18s, transform .18s;
+  }
+  .imp-btn-configuracion:hover {
+    background: #eef5ff;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+  }
+  .imp-pasos {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0 0 20px;
+    padding: 0 9px;
+    list-style: none;
+  }
+  .imp-pasos li {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid #d5e0e7;
+    border-radius: 999px;
+    padding: 8px 14px 8px 8px;
+    background: rgba(255,255,255,.8);
+    color: #435268;
+    font-size: .81rem;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(28,52,78,.03);
+  }
+  .imp-pasos li span {
+    display:grid;
+    place-items:center;
+    width:29px;
+    height:29px;
+    border-radius:50%;
+    background:#e9f2ff;
+    color:#2356a9;
+    font-size:.75rem;
+    font-weight:900;
+  }
+  .imp-pasos li.imp-pasos__activo {border-color:#bcd5ff;background:#e7f1ff;color:#174587;}
+  .imp-pasos li.imp-pasos__activo span {background:#bcd6ff;color:#173f83;}
+
+  /* Ninguna tarjeta grande rodea los selectores y los firmantes. */
+  .modulo-impresion .impresion-formulario {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr)) minmax(175px,.75fr);
+    gap: 16px;
+    align-items: stretch;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+  .modulo-impresion .impresion-formulario > label.imp-filtro-card,
+  .modulo-impresion .impresion-formulario > .imp-accion-card,
+  .modulo-impresion .imp-firmantes > .imp-firmante-control {
+    min-width: 0;
+    border: 1px solid rgba(231,236,242,.94);
+    border-radius: 17px;
+    padding: 22px 19px;
+    background: rgba(255,255,255,.96);
+    box-shadow: 0 7px 20px rgba(25,60,88,.075);
+  }
+  .modulo-impresion .impresion-formulario > label.imp-filtro-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 15px;
+    font-size: .91rem;
+    color: #142c44;
+    font-weight: 800;
+  }
+  .imp-filtro-card::before {
+    display: block;
+    width: 24px;
+    height: 4px;
+    content: '';
+    border-radius: 4px;
+    background: #3b82f6;
+  }
+  .modulo-impresion .impresion-formulario > label select,
+  .modulo-impresion .imp-firmantes input[type="text"] {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    border: 1px solid #cdd7e2;
+    border-radius: 10px;
+    background: #fafcfe;
+    color: #25384d;
+    padding: 10px 13px;
+    font-size: .90rem;
+  }
+  .modulo-impresion :is(select,input[type="text"]):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-color: #2563eb;
+  }
+  .modulo-impresion .imp-accion-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 12px;
+    text-align: center;
+    background: linear-gradient(150deg,#f5f9ff,#eaf2ff);
+  }
+  .imp-accion-card__icono {
+    font-size: 2.4rem;
+    line-height: .9;
+    font-weight: 700;
+    color: #2563eb;
+  }
+  .modulo-impresion .imp-btn-primario {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #1d4ed8;
+    border-radius: 10px;
+    background: linear-gradient(115deg,#2563eb,#1d4ed8);
+    color: white;
+    font-size: .88rem;
+    font-weight: 800;
+    min-height: 45px;
+    padding: 11px 15px;
+    cursor: pointer;
+    box-shadow: 0 6px 13px rgba(37,99,235,.16);
+  }
+  .modulo-impresion .imp-btn-primario:hover {background: #1e40af;color: #fff;}
+  .modulo-impresion .imp-firmantes {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    grid-column: 1 / -1;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .modulo-impresion .imp-firmante-control {
+    gap: 12px;
+    border-left: 4px solid #3b82f6 !important;
+  }
+  .modulo-impresion .imp-firmante-control label {color:#1b344d;font-size:.92rem;font-weight:800;}
+  .modulo-impresion .imp-firmante-ayuda {color: #647487;font-size:.78rem;line-height:1.5;}
+  .modulo-impresion .imp-aviso {
+    margin: 17px 0 !important;
+    border: 1px solid #f5d49c;
+    border-left: 4px solid #e6a640;
+    border-radius: 12px;
+    padding: 13px 16px;
+    background: rgba(255,250,239,.95);
+    color: #63491c;
+  }
+  .modulo-impresion .imp-error {background:#fff0f1;color:#9c243a;border-color:#f5c7cd;border-left-color:#dd4560;}
+  .modulo-impresion .imp-resumen {margin: 24px 0 14px;gap:14px;}
+  .modulo-impresion .imp-resumen > div {
+    min-width:0;
+    border:1px solid #dbe7fa;
+    border-radius:12px;
+    padding:16px;
+    background:rgba(255,255,255,.95);
+    box-shadow: 0 4px 12px rgba(37,99,235,.06);
+  }
+  .modulo-impresion .imp-resumen small {color:#526779;font-weight:700;}
+  .modulo-impresion .imp-resumen strong {color:#173b69;font-size:1.04rem;}
+  .modulo-impresion .imp-acciones {
+    border:1px solid #dbe7fa;
+    border-radius:13px;
+    padding:18px;
+    background:rgba(255,255,255,.96);
+    box-shadow: 0 4px 15px rgba(37,99,235,.07);
+    color:#355276;
+  }
+  .imp-documentos {margin:30px auto 38px;}
+  .imp-documentos .resguardo-hoja {box-shadow:0 6px 18px rgba(23,49,73,.14);}
+
+  /* Configuración de impresión usa también este CSS y mantiene POST/CSRF originales. */
+  .config-imagenes {max-width:1260px;margin:26px auto 40px;padding:0 10px;color:#172943;}
+  .config-imagenes__hero {
+    padding:27px 30px;
+    border-radius:18px;
+    border:1px solid #e5eaf0;
+    background:linear-gradient(120deg,#fff,#f2f7ff);
+    box-shadow:0 8px 24px rgba(29,63,87,.08);
+    margin-bottom:23px;
+  }
+  .config-imagenes__hero h1 {margin:0 0 9px;color:#17304a;font-size:clamp(1.5rem,2.6vw,2rem);}
+  .config-imagenes__intro {color:#607283;max-width:850px;line-height:1.6;margin:0;}
+  .config-imagenes__grid {gap:17px;}
+  .config-imagenes__tarjeta,.config-imagenes__historial {
+    border:1px solid #dce7f8;
+    border-radius:16px;
+    background:rgba(255,255,255,.96);
+    padding:23px;
+    box-shadow:0 6px 18px rgba(24,70,133,.075);
+  }
+  .config-imagenes__preview {background:#f8fbff;border-color:#bfd4f2;}
+  .config-imagenes__boton {background:#2563eb;border-radius:9px;}
+  .config-imagenes__boton:hover:not(:disabled){background:#1d4ed8;}
+  .config-imagenes__boton--secundario {background:#405c84;}
+}
+
+@media screen and (max-width:1130px) {
+  .modulo-impresion .impresion-formulario {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .modulo-impresion .imp-accion-card {min-height:135px;}
+}
+@media screen and (max-width:700px) {
+  .modulo-impresion,.config-imagenes {padding:0 6px;margin-top:16px;}
+  .imp-encabezado-modulo {flex-direction:column;align-items:stretch;padding:20px;gap:15px;}
+  .imp-btn-configuracion {width:100%;}
+  .imp-pasos {padding:0;gap:6px;}
+  .imp-pasos li {font-size:.73rem;}
+  .modulo-impresion .impresion-formulario,
+  .modulo-impresion .imp-firmantes {grid-template-columns:1fr;}
+  .modulo-impresion .impresion-formulario > label.imp-filtro-card,
+  .modulo-impresion .impresion-formulario > .imp-accion-card,
+  .modulo-impresion .imp-firmantes > .imp-firmante-control {padding:18px;}
+  .modulo-impresion .imp-resumen {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .modulo-impresion .imp-acciones {flex-direction:column;align-items:stretch;}
+  .config-imagenes__hero {padding:22px;}
+}
+@media screen and (max-width:440px) {
+  .modulo-impresion .imp-resumen {grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .imp-btn-configuracion {transition:none;}
+  .imp-btn-configuracion:hover {transform:none;}
+}
+

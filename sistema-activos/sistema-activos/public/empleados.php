@@ -13,7 +13,7 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </section>
 
-<div class="tabs" role="tablist">
+<div class="tabs tabs--activos" role="tablist">
     <button class="tab is-active" data-tab="areas" role="tab">
         🏢 Áreas <span class="tab__count" id="countAreas">0</span>
     </button>

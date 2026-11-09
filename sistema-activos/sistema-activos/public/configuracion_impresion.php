@@ -26,6 +26,7 @@ require_once __DIR__ . '/../includes/auth.php';
 $user = require_super();
 
 $page_title = 'Configuración de impresión';
+$page_css = 'impresion.css';
 
 // ==========================================
 // 2. TIPOS DE IMÁGENES
@@ -698,220 +699,16 @@ require_once __DIR__ . '/../includes/header.php';
      10. ESTILOS DE CONFIGURACIÓN
 ========================================= -->
 
-<style>
-
-.config-imagenes {
-    margin: 24px 0 40px;
-}
-
-.config-imagenes__intro {
-    color: var(--c-muted, #64748b);
-    max-width: 850px;
-}
-
-.config-imagenes__grid {
-    display: grid;
-
-    grid-template-columns:
-        repeat(auto-fit, minmax(275px, 1fr));
-
-    gap: 18px;
-    margin: 22px 0;
-}
-
-.config-imagenes__tarjeta {
-    background: var(--c-surface, #ffffff);
-
-    border: 1px solid var(--c-border, #e2e8f0);
-    border-radius: 12px;
-
-    padding: 18px;
-}
-
-.config-imagenes__tarjeta h2 {
-    margin: 0 0 4px;
-    font-size: 1.12rem;
-}
-
-.config-imagenes__tarjeta p {
-    margin: 0 0 12px;
-    color: var(--c-muted, #64748b);
-}
-
-.config-imagenes__preview {
-    height: 145px;
-
-    border: 1px dashed #a3b0c4;
-    border-radius: 8px;
-
-    background: #ffffff;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    overflow: hidden;
-
-    padding: 12px;
-    margin-bottom: 14px;
-
-    color: #475569;
-    text-align: center;
-}
-
-.config-imagenes__preview img {
-    max-width: 100%;
-    max-height: 100%;
-
-    width: auto;
-    height: auto;
-
-    object-fit: contain;
-}
-
-.config-imagenes__campo {
-    display: block;
-
-    margin: 12px 0;
-    font-weight: 600;
-}
-
-.config-imagenes__campo input {
-    display: block;
-
-    margin-top: 6px;
-
-    width: 100%;
-    padding: 9px;
-
-    border: 1px solid #cbd5e1;
-    border-radius: 7px;
-
-    background: #ffffff;
-    color: #111827;
-}
-
-.config-imagenes__boton {
-    border: 0;
-    border-radius: 8px;
-
-    background: #2563eb;
-    color: #ffffff;
-
-    font-weight: 700;
-    padding: 10px 14px;
-
-    cursor: pointer;
-}
-
-.config-imagenes__boton--secundario {
-    background: #334155;
-}
-
-.config-imagenes__boton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.config-imagenes__aviso {
-    padding: 12px 14px;
-    border-radius: 8px;
-
-    margin: 15px 0;
-
-    background: #eff6ff;
-    border: 1px solid #93c5fd;
-}
-
-.config-imagenes__aviso--error {
-    background: #fff1f2;
-    border-color: #fda4af;
-}
-
-.config-imagenes__historial {
-    background: var(--c-surface, #ffffff);
-
-    border: 1px solid var(--c-border, #e2e8f0);
-    border-radius: 12px;
-
-    padding: 18px;
-    margin: 18px 0;
-}
-
-.config-imagenes__historial h3 {
-    margin: 0 0 10px;
-}
-
-.config-imagenes__version {
-    display: flex;
-    align-items: center;
-
-    gap: 14px;
-    flex-wrap: wrap;
-
-    padding: 12px 0;
-    border-top: 1px solid #e2e8f0;
-}
-
-.config-imagenes__miniatura {
-    background: #ffffff;
-
-    border: 1px solid #e2e8f0;
-    border-radius: 7px;
-
-    width: 92px;
-    height: 65px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    padding: 5px;
-}
-
-.config-imagenes__miniatura img {
-    max-width: 100%;
-    max-height: 100%;
-
-    object-fit: contain;
-}
-
-.config-imagenes__datos {
-    flex: 1;
-    min-width: 170px;
-
-    overflow-wrap: anywhere;
-}
-
-.config-imagenes__datos small {
-    display: block;
-    color: var(--c-muted, #64748b);
-}
-
-.config-imagenes__activo {
-    font-weight: 700;
-    color: #15803d;
-}
-
-/* Evitar imprimir esta pantalla */
-
-@media print {
-
-    .config-imagenes {
-        display: none !important;
-    }
-
-}
-
-</style>
-
+<!-- La presentación se define en assets/css/impresion.css -->
 <!-- ========================================
      11. PANTALLA DE CONFIGURACIÓN
 ========================================= -->
 
 <section class="config-imagenes">
 
-    <h1>🖼️ Configuración de impresión</h1>
+    <header class="config-imagenes__hero">
+    <span class="config-imagenes__etiqueta">Documentos institucionales</span>
+    <h1>🖼️ Configuración de logos</h1>
 
     <p class="config-imagenes__intro">
         Sube una imagen solamente cuando necesites
@@ -920,6 +717,7 @@ require_once __DIR__ . '/../includes/header.php';
         reutilizarlas cuando sea necesario.
         Esta sección es exclusiva del superusuario.
     </p>
+    </header>
 
     <!-- =====================================
          MENSAJES
@@ -1119,7 +917,7 @@ require_once __DIR__ . '/../includes/header.php';
          12. HISTORIAL DE IMÁGENES
     ====================================== -->
 
-    <h2>📚 Historial de imágenes</h2>
+    <h2>Historial de imágenes</h2>
 
     <?php foreach (
         $tipos as $tipo => $informacion

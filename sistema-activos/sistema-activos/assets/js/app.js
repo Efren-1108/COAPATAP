@@ -230,3 +230,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+
+/* ==========================================
+   COAPATAP - ICONO GLOBAL PARA AGREGAR
+   ========================================== */
+
+function aplicarIconoAgregar() {
+
+    // Buscar botones principales de todo el sistema
+    const botones = document.querySelectorAll(
+        'button.btn--primary, a.btn--primary'
+    );
+
+    botones.forEach(boton => {
+
+        // Evitar procesar dos veces el mismo botón
+        if (boton.classList.contains('btn--icono-agregar')) {
+            return;
+        }
+
+        // Buscar el primer texto del botón
+        const walker = document.createTreeWalker(
+            boton,
+            NodeFilter.SHOW_TEXT
+        );
+
+        let nodo;
+
+        while ((nodo = walker.nextNode())) {
+
+            if (!nodo.nodeValue.trim()) continue;
+
+            // Detectar el emoji morado o el símbolo +
+            const patron = /^\s*(?:➕|\+)\s*/u;
+
+            if (patron.test(nodo.nodeValue)) {
+
+                // Quitar únicamente el símbolo anterior
+                nodo.nodeValue = nodo.nodeValue.replace(
+                    patron,
+                    ''
+                );
+
+                // Aplicar el estilo global
+                boton.classList.add('btn--icono-agregar');
+            }
+
+            break;
+        }
+    });
+}
+
+// Ejecutar automáticamente al cargar cada página
+if (document.readyState === 'loading') {
+    document.addEventListener(
+        'DOMContentLoaded',
+        aplicarIconoAgregar
+    );
+} else {
+    aplicarIconoAgregar();
+}

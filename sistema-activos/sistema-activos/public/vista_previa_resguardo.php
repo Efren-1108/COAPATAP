@@ -610,7 +610,7 @@ $leyenda = 'BIENES CON LOS QUE PARTICIPO EN MI TRABAJO, '
 
 $page_title = 'Impresión de resguardos';
 
-$page_css = 'resguardo-impresion.css';
+$page_css = 'impresion.css';
 
 require_once __DIR__ . '/../includes/header.php';
 
@@ -630,10 +630,15 @@ require_once __DIR__ . '/../includes/header.php';
     <!-- ENCABEZADO DEL MÓDULO -->
 
     <div class="imp-encabezado-modulo">
-
-        <h1>
-            🖨️ Impresión de resguardos
-        </h1>
+        <div class="imp-encabezado-modulo__titulo">
+            <!-- <span class="imp-encabezado-modulo__etiqueta">COAPATAP · Control de activos</span> -->
+            <h1><span class="imp-encabezado-modulo__icono" aria-hidden="true">
+                <img src="<?= e($assetsBase) ?>img/icons/imprimir.png" 
+                class="imp-encabezado-modulo__imagen"
+                alt="">
+            </span> Impresión de resguardos</h1>
+            <!-- <p class="imp-descripcion">Selecciona la adscripción, el área y el resguardante para generar el documento.</p> -->
+        </div>
 
         <!-- =================================
              BOTÓN DE CONFIGURACIÓN
@@ -647,19 +652,18 @@ require_once __DIR__ . '/../includes/header.php';
                 class="imp-btn-configuracion"
                 title="Administrar los logotipos institucionales"
             >
-                ⚙️ Configurar impresión
+                ⚙️ Configurar de logos
             </a>
 
         <?php endif; ?>
 
     </div>
 
-    <!-- DESCRIPCIÓN -->
-
-    <p>
-        Selecciona la adscripción, el área y el
-        resguardante para generar el documento.
-    </p>
+    <ol class="imp-pasos" aria-label="Etapas de impresión">
+        <li class="imp-pasos__activo"><span>01</span> Elegir resguardante</li>
+        <li><span>02</span> Revisar datos y firmantes</li>
+        <li><span>03</span> Imprimir resguardo</li>
+    </ol>
 
 
     <!-- Aviso si alguna imagen no está lista -->
@@ -708,7 +712,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- ADSCRIPCIÓN -->
 
-        <label>
+        <label class="imp-filtro-card imp-filtro-card--adscripcion">
             1. Adscripción
 
             <select
@@ -743,7 +747,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- ÁREA -->
 
-        <label>
+        <label class="imp-filtro-card imp-filtro-card--area">
             2. Área
 
             <select
@@ -779,7 +783,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- EMPLEADO -->
 
-        <label>
+        <label class="imp-filtro-card imp-filtro-card--nomina">
             3. Empleado (número de nómina)
 
             <select
@@ -823,12 +827,12 @@ require_once __DIR__ . '/../includes/header.php';
 
         <!-- CONSULTAR -->
 
-        <button
-            type="submit"
-            class="imp-btn imp-btn-primario"
-        >
-            🔍 Consultar resguardo
-        </button>
+        <div class="imp-accion-card">
+            <span class="imp-accion-card__icono" aria-hidden="true">⌕</span>
+            <button type="submit" class="imp-btn imp-btn-primario">
+                Consultar resguardo
+            </button>
+        </div>
 
         <!-- ===================================
              RESPONSABLES DE FIRMA

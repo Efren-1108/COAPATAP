@@ -2680,40 +2680,38 @@ if (
 // INTERFAZ DEL MÓDULO
 // ==========================================
 
+$page_css = 'importacion.css';
+$page_js = 'importacion-ui.js';
 require_once __DIR__ . '/../includes/header.php';
 
 ?>
 
-<section
-    style="
-        max-width:1400px;
-        margin:24px auto 48px;
-        padding:0 12px;
-    "
->
+<section class="importacion-page">
 
-    <h1>📥 Importación de Excel</h1>
-
-    <p>
-        Analiza los bienes, verifica sus datos y
-        confirma por separado el registro de
-        empleados y la importación de activos.
-    </p>
+    <header class="importacion-hero">
+        <div class="importacion-hero__contenido">
+            <!-- <span class="importacion-hero__etiqueta">COAPATAP · Gestión de información</span> -->
+            <h1>Importación de Excel</h1>
+            <!-- <p>
+                Analiza los bienes, verifica sus datos y
+                confirma por separado el registro de
+                empleados y la importación de activos.
+            </p> -->
+        </div>
+        <div class="importacion-hero__formato" aria-hidden="true">XLSX</div>
+        <ol class="importacion-etapas" aria-label="Etapas de importación">
+            <li class="importacion-etapas__activo"><span>01</span> Analizar archivo</li>
+            <li><span>02</span> Confirmar responsables</li>
+            <li><span>03</span> Importar activos</li>
+        </ol>
+    </header>
 
     <!-- FORMULARIO DE ANÁLISIS -->
 
     <form
+        class="importacion-upload"
         method="post"
         enctype="multipart/form-data"
-        style="
-            display:flex;
-            gap:14px;
-            flex-wrap:wrap;
-            align-items:end;
-            padding:16px;
-            border:1px solid #ddd;
-            border-radius:10px;
-        "
     >
 
         <input
@@ -2728,18 +2726,24 @@ require_once __DIR__ . '/../includes/header.php';
             value="analizar"
         >
 
-        <label>
-            Archivo Excel (.xlsx, máx. 10 MB)
-
-            <input
-                type="file"
-                name="excel"
-                accept=".xlsx"
-                required
-            >
+        <label class="importacion-upload__archivo" id="importacionZonaArchivo">
+            <span class="importacion-upload__titulo">Archivo Excel (.xlsx, máx. 10 MB)</span>
+            <span class="importacion-upload__contenido">
+                <span class="importacion-upload__simbolo" aria-hidden="true">↑</span>
+                <strong>Selecciona o arrastra tu archivo Excel</strong>
+                <small>Formato .xlsx · Tamaño máximo 10 MB</small>
+                <input
+                    id="importacionInputArchivo"
+                    type="file"
+                    name="excel"
+                    accept=".xlsx"
+                    required
+                >
+                <small class="importacion-upload__nombre" id="importacionNombreArchivo" aria-live="polite">Ningún archivo seleccionado</small>
+            </span>
         </label>
 
-        <label>
+        <label class="importacion-upload__hoja">
             Nombre de la hoja (opcional)
 
             <input
@@ -2753,8 +2757,8 @@ require_once __DIR__ . '/../includes/header.php';
             >
         </label>
 
-        <button type="submit">
-            🔎 Analizar sin guardar
+        <button type="submit" class="importacion-boton importacion-boton--analizar">
+            🔎 Analizar archivo
         </button>
 
     </form>
@@ -2763,13 +2767,7 @@ require_once __DIR__ . '/../includes/header.php';
 
     <?php if ($error !== ''): ?>
 
-        <p
-            role="alert"
-            style="
-                color:#991b1b;
-                font-weight:bold;
-            "
-        >
+        <p role="alert" class="importacion-aviso importacion-aviso--error">
             <?= impE($error) ?>
         </p>
 
@@ -2777,19 +2775,15 @@ require_once __DIR__ . '/../includes/header.php';
 
     <?php if ($mensaje !== ''): ?>
 
-        <p
-            role="status"
-            style="
-                color:#166534;
-                font-weight:bold;
-            "
-        >
+        <p role="status" class="importacion-aviso importacion-aviso--exito">
             <?= impE($mensaje) ?>
         </p>
 
     <?php endif; ?>
 
     <?php if ($datos): ?>
+
+    <div class="importacion-resultados">
 
         <!-- RESUMEN -->
 
@@ -2849,7 +2843,7 @@ require_once __DIR__ . '/../includes/header.php';
         }
         ?>
 
-        <div style="overflow-x:auto">
+        <div class="importacion-tabla-scroll">
 
             <table
                 style="
@@ -3005,7 +2999,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         <h3>Resguardos detectados</h3>
 
-        <div style="overflow-x:auto">
+        <div class="importacion-tabla-scroll">
 
             <table
                 style="
@@ -3093,13 +3087,7 @@ require_once __DIR__ . '/../includes/header.php';
             sin copiar un mismo total a todos los renglones.
         </p>
 
-        <div
-            style="
-                overflow:auto;
-                max-height:580px;
-                border:1px solid #ddd;
-            "
-        >
+        <div class="importacion-tabla-scroll importacion-tabla-scroll--detalle">
 
             <table
                 style="
@@ -3558,6 +3546,7 @@ require_once __DIR__ . '/../includes/header.php';
             requiere comprobación adicional.
         </p>
 
+    </div><!-- /.importacion-resultados -->
     <?php endif; ?>
 
 </section>

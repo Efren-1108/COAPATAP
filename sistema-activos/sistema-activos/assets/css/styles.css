@@ -2559,3 +2559,384 @@ body:not(.login-page) {
     }
 }
 
+/* ==========================================
+   SUBMENU DE ACTIVOS - ESTILO AZUL
+   COAPATAP
+   ========================================== */
+
+/* Contenedor completamente transparente */
+.tabs.tabs--activos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    gap: 8px;
+    padding: 0;
+    margin-bottom: 20px;
+
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+/* Opciones sin seleccionar */
+.tabs.tabs--activos .tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+    padding: 10px 14px;
+
+    background: transparent;
+    color: #123b67;
+
+    border: none;
+    border-radius: 10px;
+    margin: 0;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+/* Efecto al pasar el mouse */
+.tabs.tabs--activos .tab:hover:not(.is-active) {
+    color: #1454df;
+    background: rgba(37, 99, 235, 0.10);
+    transform: translateY(-2px);
+}
+
+/* OPCION SELECCIONADA */
+.tabs.tabs--activos .tab.is-active {
+    background: #2563eb;
+    color: #ffffff;
+
+    border: none;
+    border-radius: 10px;
+
+    text-shadow: none;
+
+    box-shadow: 0 3px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* Contadores normales */
+.tabs.tabs--activos .tab__count {
+    background: rgba(255,255,255,0.85);
+    color: #17365d;
+
+    border-radius: 20px;
+    padding: 3px 9px;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* Contador de la opcion activa */
+.tabs.tabs--activos .tab.is-active .tab__count {
+    background: #ffffff;
+    color: #2563eb;
+}
+
+/* Navegacion por teclado */
+.tabs.tabs--activos .tab:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+
+/* Adaptacion a celulares */
+@media (max-width: 768px) {
+    .tabs.tabs--activos {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    .tabs.tabs--activos .tab {
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 9px 12px;
+    }
+}
+
+/* Reducir movimiento si el usuario lo prefiere */
+@media (prefers-reduced-motion: reduce) {
+    .tabs.tabs--activos .tab {
+        transition: none;
+    }
+}
+
+/* ============================================================
+   COAPATAP — PROPUESTA 4 CORREGIDA
+   UN SOLO PANEL que contiene el título, el filtro y las gráficas.
+   Pega este bloque AL FINAL de assets/css/styles.css.
+
+   Reemplaza el anexo anterior dashboard_propuesta4.css si puedes.
+   Si ya lo habías pegado, puedes dejarlo: estas clases nuevas
+   son diferentes y no reutilizan .dash-resumen.
+   ============================================================ */
+
+/* Panel completo color azul claro que deja entrever el logotipo de fondo. */
+.dashboard-charts-panel {
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+    margin: 0 0 24px;
+    border-radius: 18px;
+    border: 1px solid rgba(175, 199, 231, .74);
+    background: rgba(236, 245, 255, .83);
+    box-shadow: 0 8px 24px rgba(24, 66, 125, .10);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* El título y el filtro son parte de la cabecera del panel. */
+.dashboard-charts-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 2px 2px 0;
+}
+
+.dashboard-charts-panel__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: #143763;
+    font-size: clamp(1.15rem, 1.45vw, 1.4rem);
+    font-weight: 800;
+    line-height: 1.3;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, .5);
+}
+
+/* Resetea los estilos antiguos de #filtroDashboard (incluidos móviles). */
+#filtroDashboard.dashboard-charts-panel__filter {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0 0 0 auto;
+    padding: 6px 8px 6px 10px;
+    background: rgba(255, 255, 255, .92);
+    border: 1px solid #c9d8ef;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(25, 68, 130, .09);
+}
+
+.dashboard-charts-panel__filter-icon {
+    display: block;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    color: #2563eb;
+}
+
+#filtroDashboard.dashboard-charts-panel__filter label {
+    display: block;
+    width: auto;
+    margin: 0;
+    color: #17365d;
+    font-weight: 700;
+    font-size: .88rem;
+    white-space: nowrap;
+}
+
+#filtroDashboard.dashboard-charts-panel__filter select {
+    flex: 0 1 auto;
+    width: clamp(180px, 22vw, 270px);
+    min-width: 0;
+    max-width: 100%;
+    height: 38px;
+    margin: 0;
+    padding: 6px 12px;
+    color: #17365d;
+    background: #ffffff;
+    border: 1px solid #bfd1ed;
+    border-radius: 8px;
+    font: inherit;
+    font-size: .88rem;
+    cursor: pointer;
+}
+
+#filtroDashboard.dashboard-charts-panel__filter select:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Tres gráficas en la primera fila, como en la propuesta 4.
+   La cuarta y la quinta se conservan debajo. */
+.dashboard-charts-panel__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    align-items: stretch;
+}
+
+.dashboard-charts-panel__grid > .dashboard-chart-card {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: clamp(14px, 1.6vw, 22px);
+    background: rgba(255, 255, 255, .98);
+    border: 1px solid #dbe5f3;
+    border-radius: 14px;
+    box-shadow: 0 3px 10px rgba(22, 62, 118, .07);
+}
+
+.dashboard-charts-panel__grid .card__title {
+    color: #172c4d;
+    font-size: clamp(.98rem, 1.15vw, 1.12rem);
+    line-height: 1.3;
+    margin-bottom: 14px;
+}
+
+.dashboard-charts-panel__grid .chart-wrapper {
+    min-width: 0;
+    height: 310px;
+}
+
+/* La gráfica de línea ocupa dos columnas en la segunda fila. */
+.dashboard-charts-panel__grid > .dashboard-chart-card--wide {
+    grid-column: span 2;
+}
+.dashboard-charts-panel__grid .chart-wrapper--wide {
+    height: 320px;
+}
+
+@media (max-width: 1120px) {
+    .dashboard-charts-panel__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .dashboard-charts-panel {
+        padding: 12px;
+    }
+    .dashboard-charts-panel__header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    #filtroDashboard.dashboard-charts-panel__filter {
+        margin-left: 0;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    .dashboard-charts-panel__grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+    }
+    .dashboard-charts-panel__grid > .dashboard-chart-card--wide {
+        grid-column: auto;
+    }
+    .dashboard-charts-panel__grid .chart-wrapper,
+    .dashboard-charts-panel__grid .chart-wrapper--wide {
+        height: 290px;
+    }
+}
+
+@media (max-width: 420px) {
+    #filtroDashboard.dashboard-charts-panel__filter select {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+}
+
+@media print {
+    .dashboard-charts-panel {
+        background: #fff !important;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+    #filtroDashboard.dashboard-charts-panel__filter {
+        display: none !important;
+    }
+    .dashboard-charts-panel__grid > .dashboard-chart-card {
+        break-inside: avoid;
+    }
+}
+
+
+/* ==========================================
+   COAPATAP - BOTONES DE AGREGAR
+   ========================================== */
+
+.btn--icono-agregar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Icono único para todos los botones */
+.btn--icono-agregar::before {
+    content: "";
+
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+
+    background-image: url('../img/icons/mas.png');
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+
+    /* Convierte el icono negro a blanco */
+    filter: brightness(0) invert(1);
+}
+
+/* Efecto suave al pasar el cursor */
+.btn--icono-agregar:hover::before {
+    transform: scale(1.12);
+    transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn--icono-agregar:hover::before {
+        transform: none;
+        transition: none;
+    }
+}
+
+/* ==========================================
+   ICONO PERSONALIZADO - IMPRESION COAPATAP
+   ========================================== */
+
+.imp-encabezado-modulo__icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.imp-encabezado-modulo__imagen {
+    display: block;
+
+    width: 32px;
+    height: 32px;
+
+    object-fit: contain;
+    background: transparent;
+}
