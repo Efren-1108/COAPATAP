@@ -2940,3 +2940,27 @@ body:not(.login-page) {
     object-fit: contain;
     background: transparent;
 }
+
+/* ========================================
+   ICONOS DE ESTADISTICAS - COAPATAP
+   ======================================== */
+
+/* Tamaño general */
+.stat__icon .stat__img {
+    display: block;
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+
+    /* Color azul institucional */
+    filter: brightness(0) saturate(100%)
+            invert(32%) sepia(90%)
+            saturate(2200%) hue-rotate(211deg);
+}
+
+/* Color verde para estados activos */
+.stat__icon .stat__img--ok {
+    filter: brightness(0) saturate(100%)
+            invert(45%) sepia(75%)
+            saturate(650%) hue-rotate(90deg);
+}

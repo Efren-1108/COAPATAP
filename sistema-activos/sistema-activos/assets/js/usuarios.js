@@ -121,14 +121,16 @@ function cargarStats() {
     const activos = usuariosCache.filter(u => u.estado).length;
     statsBox.innerHTML = `
         <div class="stat">
-            <span class="stat__icon">🔐</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/privado.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${total}</div>
                 <div class="stat__lbl">Usuarios totales</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">✅</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/palomita.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${activos}</div>
                 <div class="stat__lbl">Usuarios activos</div>

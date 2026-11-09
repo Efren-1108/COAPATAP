@@ -70,28 +70,32 @@ function cargarStats() {
 
     statsBox.innerHTML = `
         <div class="stat">
-            <span class="stat__icon">🏛️</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/negro.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${total}</div>
                 <div class="stat__lbl">Adscripciones totales</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">✅</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/palomita.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${activas}</div>
                 <div class="stat__lbl">Activas</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">🏢</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/edificio.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${totalAreas}</div>
                 <div class="stat__lbl">Áreas vinculadas</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">👥</span>
+            <span class="stat__icon">
+            <img src="../assets/img/stats/empleados.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${totalEmp}</div>
                 <div class="stat__lbl">Empleados totales</div>

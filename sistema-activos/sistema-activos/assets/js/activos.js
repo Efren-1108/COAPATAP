@@ -863,21 +863,24 @@ function renderTablaTodos(activosFiltrados = null) {
     const totalCosto = activosFiltrados.reduce((s, a) => s + parseFloat(a.costo || 0), 0);
     statsResumen.innerHTML = `
         <div class="stat">
-            <span class="stat__icon">📦</span>
+            <span class="stat__icon">
+            <img src="../assets/img/stats/caja.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${activosFiltrados.length}</div>
                 <div class="stat__lbl">Activos mostrados</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">⏸️</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/pausa.png" class="stat__img" alt=""></span></span>
             <div>
                 <div class="stat__num">${activosFiltrados.filter(esSuspendido).length}</div>
                 <div class="stat__lbl">Suspendidos</div>
             </div>
         </div>
         <div class="stat">
-            <span class="stat__icon">💰</span>
+            <span class="stat__icon">
+            <img src="../assets/img/stats/dinero.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${App.money(totalCosto)}</div>
                 <div class="stat__lbl">Valor total</div>

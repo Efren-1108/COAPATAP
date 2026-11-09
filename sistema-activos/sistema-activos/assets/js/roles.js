@@ -32,7 +32,8 @@ async function cargar() {
 function cargarStats() {
     statsBox.innerHTML = `
         <div class="stat">
-            <span class="stat__icon">🛡️</span>
+            <span class="stat__icon">
+            <img src="../assets/img/icons/Roles.png" class="stat__img" alt=""></span>
             <div>
                 <div class="stat__num">${rolesCache.length}</div>
                 <div class="stat__lbl">Roles definidos</div>
