@@ -3,7 +3,7 @@ $page_title = 'Consulta de resguardo';
 $page_js    = 'consulta.js';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_auth();
+$user = require_permission('consulta');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

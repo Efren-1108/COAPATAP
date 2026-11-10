@@ -4,7 +4,7 @@ $page_js    = 'activos.js';
 $page_js_version = 'diagnostico-inservibles-20261110-1';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_auth();
+$user = require_permission('activos');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

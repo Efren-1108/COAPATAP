@@ -15,7 +15,8 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/importacion_celdas.php';
 
-$usuario = require_super();
+$usuario = require_permission('importar');
+if (empty($usuario['es_superusuario'])) { http_response_code(403); exit('La importación masiva está reservada al Superusuario.'); }
 $page_title = 'Importar activos desde Excel';
 
 // ==========================================

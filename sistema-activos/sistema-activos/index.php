@@ -9,5 +9,5 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/auth.php';
 
 $hasSession = current_user() !== null;
-header('Location: public/' . ($hasSession ? 'index.php' : 'login.php'), true, 302);
+header('Location: public/' . ($hasSession ? default_module_page() : 'login.php'), true, 302);
 exit;

@@ -12,8 +12,31 @@ const busqueda   = document.getElementById('busqueda');
 const statsBox   = document.getElementById('stats');
 
 let rolesCache = [];
+let modulosCache = [];
+const permisosBox = document.getElementById('rolesPermisos');
 
-document.addEventListener('DOMContentLoaded', cargar);
+function permisosSeleccionados() {
+    return [...permisosBox.querySelectorAll('input[name="modulos"]:checked')].map(el => el.value);
+}
+function pintarPermisos(seleccionados = []) {
+    permisosBox.innerHTML = modulosCache.map(m => `
+        <label class="roles-permiso">
+            <input type="checkbox" name="modulos" value="${App.esc(m.clave)}" ${seleccionados.includes(m.clave) ? 'checked' : ''}>
+            <span><strong>${App.esc(m.nombre)}</strong><small>${App.esc(m.descripcion || '')}</small></span>
+        </label>
+    `).join('');
+}
+async function cargarCatalogo() {
+    const res = await App.api('roles.php?catalogo=1');
+    if (!res.ok) throw new Error(res.error);
+    modulosCache = res.data;
+    pintarPermisos();
+}
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+    try { await cargarCatalogo(); await cargar(); } catch (err) { App.toast(err.message, 'error'); btnNuevo.disabled = true; }
+});
 
 async function cargar() {
     tablaBody.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner"></span> Cargando...</td></tr>';
@@ -49,7 +72,7 @@ function render(lista) {
     }
     tablaBody.innerHTML = lista.map(r => {
         const esSistema = (r.clave === 'superusuario' || r.clave === 'usuario');
-        const estadoBadge = r.activo
+        const estadoBadge = [true,'t','1',1].includes(r.activo)
             ? '<span class="badge badge--active">Activo</span>'
             : '<span class="badge badge--inactive">Inactivo</span>';
         const badgeClave = esSistema
@@ -65,7 +88,7 @@ function render(lista) {
                 <td>${estadoBadge}</td>
                 <td>
                     <div class="table__actions">
-                        <button class="btn btn--ghost btn--sm" onclick="editar(${r.id})">✏️</button>
+                        ${r.clave === 'superusuario' ? '<span class="muted">Acceso total</span>' : `<button class="btn btn--ghost btn--sm" onclick="editar(${r.id})" title="Editar rol y permisos">✏️</button>`}
                         ${esSistema ? '' : `<button class="btn btn--danger btn--sm" onclick="eliminar(${r.id}, '${App.esc(r.nombre).replace(/'/g, "\\'")}')">🗑️</button>`}
                     </div>
                 </td>
@@ -84,8 +107,9 @@ busqueda.addEventListener('input', () => {
 
 btnNuevo.addEventListener('click', () => {
     form.reset();
-    form.id.value = '';
+    form.elements['id'].value = '';
     form.activo.checked = true;
+    pintarPermisos();
     modalTitle.textContent = '➕ Nuevo rol';
     formError.style.display = 'none';
     App.openModal('rolModal');
@@ -96,8 +120,9 @@ window.editar = async (id) => {
         const res = await App.api(`roles.php?id=${id}`);
         if (!res.ok) throw new Error(res.error);
         App.fillForm(form, res.data);
-        form.id.value = id;
-        form.activo.checked = !!res.data.activo;
+        form.elements['id'].value = id;
+        form.activo.checked = [true, 't', '1', 1].includes(res.data.activo);
+        pintarPermisos(res.data.permisos || []);
         modalTitle.textContent = '✏️ Editar rol';
         formError.style.display = 'none';
         App.openModal('rolModal');
@@ -120,12 +145,13 @@ window.eliminar = async (id, nombre) => {
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = form.id.value;
+    const id = form.elements['id'].value;
     const data = {
         clave:       form.clave.value.trim(),
         nombre:      form.nombre.value.trim(),
         descripcion: form.descripcion.value.trim(),
         activo:      form.activo.checked,
+        permisos:    permisosSeleccionados(),
     };
     if (data.clave.length < 2)  return mostrarError('La clave es obligatoria (mín. 2 caracteres)');
     if (data.nombre.length < 2) return mostrarError('El nombre es obligatorio');

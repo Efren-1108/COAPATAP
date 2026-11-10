@@ -29,11 +29,12 @@ function onSubmit(e) {
     App.api('auth.php', { method: 'POST', body: { usuario, password } })
         .then(res => {
             if (!res.ok) throw new Error(res.error || 'No se pudo iniciar sesión');
-            // Redirigir al inicio (mantenemos la raíz del proyecto)
+            // Enviar al primer módulo autorizado por el rol.
             const path = window.location.pathname;
+            const destino = typeof res.destino === 'string' && /^[a-z_]+\.php$/.test(res.destino) ? res.destino : 'index.php';
             const target = path.includes('/public/')
-                ? path.replace(/\/public\/[^/]*$/, '/public/index.php')
-                : path.replace(/\/[^/]*$/, '/public/index.php');
+                ? path.replace(/\/public\/[^/]*$/, '/public/' + destino)
+                : path.replace(/\/[^/]*$/, '/public/' + destino);
             window.location.href = target;
         })
         .catch(err => {

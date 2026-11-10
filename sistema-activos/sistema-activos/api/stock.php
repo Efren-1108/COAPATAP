@@ -2,8 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_auth_csrf();
-if (!has_permission('activos')) json_response(['ok'=>false,'error'=>'Sin permiso de activos'],403);
+$user = require_permission_csrf('stock');
 $pdo = db();
 try {
  if ($_SERVER['REQUEST_METHOD'] === 'GET') {

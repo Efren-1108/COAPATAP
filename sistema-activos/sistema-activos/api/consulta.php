@@ -48,7 +48,7 @@ if (!ctype_digit($texto) || (int) $texto < 1 || (float) $texto > 2147483647) {
 }
 
 $identificador = (int) $texto;
-$current = require_auth();
+$current = require_permission('consulta');
 $isSuper = (bool) $current['es_superusuario'];
 $areaId  = $current['area_id'];
 

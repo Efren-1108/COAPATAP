@@ -20,7 +20,9 @@ $id     = isset($_GET['id'])     ? (int)$_GET['id']     : null;
 $nomina = isset($_GET['nomina']) ? (int)$_GET['nomina'] : null;
 $q      = isset($_GET['q'])      ? trim($_GET['q'])     : null;
 
-$current = require_auth_csrf();
+$current = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    ? require_any_permission(['empleados', 'activos', 'stock', 'usuarios', 'consulta', 'impresion'])
+    : require_permission_csrf('empleados');
 $isSuper = $current['es_superusuario'];
 $areaId  = $current['area_id'];
 

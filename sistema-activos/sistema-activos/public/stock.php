@@ -4,10 +4,10 @@ $page_js='stock.js';
 $page_js_version='stock-fechas-legibles-20261029-1';
 require_once __DIR__.'/../config/config.php';
 require_once __DIR__.'/../includes/auth.php';
-$user=require_super();
+$user=require_permission('stock');
 require_once __DIR__.'/../includes/header.php';
 ?>
-<section class="page-header"><div><h1>Stock — Almacén general</h1></div><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a></section>
+<section class="page-header"><div><h1>Stock — Almacén general</h1></div><?php if (has_permission('activos')): ?><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a><?php endif; ?></section>
 <div class="toolbar"><input id="buscarStock" placeholder="Buscar descripción, inventario o marca" aria-label="Buscar activos en stock"></div>
 <div id="resumenStock" class="stats"></div>
 <div class="table-wrap stock-table-wrap"><table class="table stock-table"><thead><tr><th>Activo</th><th>Situación</th><th>Entrada</th><th>Acciones</th></tr></thead><tbody id="stockTabla"></tbody></table></div>

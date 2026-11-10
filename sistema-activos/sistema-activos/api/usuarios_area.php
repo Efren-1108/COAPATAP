@@ -13,7 +13,10 @@ if ($areaId <= 0) {
     json_response(['ok' => false, 'error' => 'ID de área requerido'], 400);
 }
 
-$current = require_auth();
+$current = require_any_permission(['empleados', 'usuarios']);
+if (empty($current['es_superusuario']) && $areaId !== (int)$current['area_id']) {
+    json_response(['ok' => false, 'error' => 'Sin permiso para consultar usuarios de esta área'], 403);
+}
 
 try {
     $pdo = db();

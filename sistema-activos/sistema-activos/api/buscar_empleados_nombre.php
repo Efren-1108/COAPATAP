@@ -12,7 +12,7 @@ require_once __DIR__ . '/../includes/auth.php';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);
 }
-$current = require_auth();
+$current = require_any_permission(['consulta', 'empleados', 'activos', 'usuarios', 'impresion']);
 $q = trim((string) ($_GET['q'] ?? ''));
 $q = preg_replace('/\s+/u', ' ', $q) ?? $q;
 $longitud = function_exists('mb_strlen') ? mb_strlen($q, 'UTF-8') : strlen($q);

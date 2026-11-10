@@ -3,7 +3,7 @@ $page_title = 'Gestión de Usuarios';
 $page_js    = 'usuarios.js';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_super();        // solo superusuario
+$user = require_permission('usuarios');        // solo superusuario
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

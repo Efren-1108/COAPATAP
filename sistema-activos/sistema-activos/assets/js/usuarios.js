@@ -95,7 +95,7 @@ function toggleAreaRequired() {
 async function cargarRoles() {
     const res = await App.api('roles.php');
     if (!res.ok) throw new Error(res.error);
-    rolesCache = res.data.filter(r => r.activo);
+    rolesCache = res.data.filter(r => [true,'t',1,'1'].includes(r.activo) && (window.IS_SUPERUSER || r.clave !== 'superusuario'));
     selectRol.innerHTML = rolesCache
         .map(r => `<option value="${r.id}" data-clave="${App.esc(r.clave)}">${App.esc(r.nombre)}</option>`)
         .join('');

@@ -3,7 +3,7 @@ $page_title = 'Gestión de Roles';
 $page_js    = 'roles.js';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_super();
+$user = require_permission('roles');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -39,7 +39,7 @@ require_once __DIR__ . '/../includes/header.php';
 
 <!-- Modal -->
 <div class="modal-backdrop" id="rolModal">
-    <div class="modal" style="max-width: 520px;">
+    <div class="modal" style="max-width: 760px;">
         <div class="modal__header">
             <h2 class="modal__title" id="modalTitle">➕ Nuevo rol</h2>
             <button class="modal__close" onclick="App.closeModal('rolModal')">×</button>
@@ -62,6 +62,13 @@ require_once __DIR__ . '/../includes/header.php';
                         <textarea name="descripcion" class="form-control" rows="2" maxlength="500"></textarea>
                     </div>
                     <div class="form-group form-group--full">
+                        <label>Permisos de acceso a módulos</label>
+                        <p class="form-text" style="margin:0 0 8px">Marca los módulos que podrá abrir este rol. Las operaciones globales de Stock, Adscripciones e Importar Excel siguen reservadas al Superusuario.</p>
+                        <div class="roles-permisos" id="rolesPermisos" role="group" aria-label="Permisos de acceso">
+                            Cargando módulos...
+                        </div>
+                    </div>
+                    <div class="form-group form-group--full">
                         <label class="checkbox">
                             <input type="checkbox" name="activo" value="1" checked>
                             <span>Rol activo</span>
@@ -78,4 +85,12 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<style>
+.roles-permisos {display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;}
+.roles-permiso {display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--c-border);border-radius:10px;cursor:pointer;background:var(--c-surface);}
+.roles-permiso:hover {border-color:var(--c-primary,#2563eb);}
+.roles-permiso input {width:18px;height:18px;flex:none;margin-top:2px;accent-color:#2563eb;}
+.roles-permiso strong {display:block;font-size:.92rem;}
+.roles-permiso small {display:block;color:var(--c-muted);font-size:.8rem;line-height:1.4;margin-top:4px;}
+</style>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

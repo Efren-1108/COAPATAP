@@ -21,7 +21,7 @@ if ($method !== 'GET') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);
 }
 
-$current = require_auth();
+$current = require_permission('consulta');
 $isSuper = $current['es_superusuario'];
 $areaId  = $current['area_id'];
 

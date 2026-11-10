@@ -38,8 +38,8 @@ $input  = json_input();
 $accion = $input['accion'] ?? null;
 $q      = isset($_GET['q']) ? trim((string)$_GET['q']) : null;
 
-$current = require_super_csrf();
-$esSuper = true;
+$current = require_permission_csrf('usuarios');
+$esSuper = !empty($current['es_superusuario']);
 
 try {
     $pdo = db();
@@ -67,7 +67,7 @@ try {
                 ");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row) {
+                if (!$row || (!$esSuper && (int)$row['area_id'] !== (int)$current['area_id'])) {
                     json_response(['ok' => false, 'error' => 'Usuario no encontrado'], 404);
                 }
                 $row = normalizarUsuario($row);
@@ -86,14 +86,19 @@ try {
                 LEFT JOIN areas a ON a.id = u.area_id
             ";
             $params = [];
+            if (!$esSuper) {
+                $sql .= " WHERE u.area_id = :__area AND r.clave <> 'superusuario'";
+                $params[':__area'] = (int)$current['area_id'];
+            }
             if ($q) {
-                $sql .= " WHERE LOWER(u.nombre_completo) LIKE :q
+                $sql .= ($esSuper ? ' WHERE ' : ' AND ') . "(LOWER(u.nombre_completo) LIKE :q
                           OR LOWER(u.nombre_usuario)  LIKE :q
                           OR LOWER(COALESCE(u.correo,'')) LIKE :q";
                 $params[':q'] = '%' . strtolower($q) . '%';
                 if ($tieneNumeroNomina) {
                     $sql .= " OR CAST(u.numero_nomina AS TEXT) LIKE :q";
                 }
+                $sql .= ')';
             }
             $sql .= " ORDER BY u.estado DESC, u.nombre_completo ASC";
 
@@ -127,6 +132,12 @@ try {
                     json_response(['ok' => false, 'error' => 'La contraseña debe tener al menos 8 caracteres'], 400);
                 }
 
+                // Los administradores delegados no pueden resetear cuentas fuera de su área ni superusuarios.
+                if (!$esSuper) {
+                    $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND u.area_id=:area AND r.clave<>'superusuario'");
+                    $gate->execute([':id'=>$resetId,':area'=>(int)$current['area_id']]);
+                    if (!$gate->fetch()) json_response(['ok'=>false,'error'=>'Sin permiso sobre este usuario'],403);
+                }
                 // Verificar que el usuario exista
                 $chk = $pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id = :id");
                 $chk->execute([':id' => $resetId]);
@@ -165,6 +176,9 @@ try {
                 json_response(['ok' => false, 'error' => 'El rol seleccionado no existe o está inactivo'], 400);
             }
 
+            if (!$esSuper && ($rol['clave'] === 'superusuario' || $areaId !== (int)$current['area_id'])) {
+                json_response(['ok'=>false,'error'=>'Solo puedes gestionar usuarios de tu área y no superusuarios'],403);
+            }
             // Validaciones generales
             $err = validarUsuario($nombre, $user, $rol['clave'], $nomina, $pwd, true);
             if ($err !== true) {
@@ -256,11 +270,14 @@ try {
             }
 
             // Verificar que el usuario exista
-            $chk = $pdo->prepare("SELECT id, nombre_usuario FROM usuarios WHERE id = :id");
+            $chk = $pdo->prepare("SELECT u.id, u.nombre_usuario, u.area_id, r.clave AS rol_clave FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id = :id");
             $chk->execute([':id' => $id]);
             $actual = $chk->fetch();
             if (!$actual) {
                 json_response(['ok' => false, 'error' => 'Usuario no encontrado'], 404);
+            }
+            if (!$esSuper && ($actual['rol_clave']==='superusuario' || (int)$actual['area_id'] !== (int)$current['area_id'])) {
+                json_response(['ok'=>false,'error'=>'Sin permisos sobre este usuario'],403);
             }
 
             $nombre  = trim((string)($input['nombre_completo'] ?? ''));
@@ -279,6 +296,9 @@ try {
                 json_response(['ok' => false, 'error' => 'El rol seleccionado no existe o está inactivo'], 400);
             }
 
+            if (!$esSuper && ($rol['clave']==='superusuario' || $areaId !== (int)$current['area_id'])) {
+                json_response(['ok'=>false,'error'=>'No puedes asignar ese rol ni cambiar el área'],403);
+            }
             // Validaciones generales (sin password obligatoria en PUT)
             $err = validarUsuario($nombre, $user, $rol['clave'], $nomina, null, false);
             if ($err !== true) {
@@ -394,6 +414,11 @@ try {
                 json_response(['ok' => false, 'error' => 'Usuario no encontrado'], 404);
             }
 
+            if (!$esSuper) {
+                $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND u.area_id=:area AND r.clave<>'superusuario'");
+                $gate->execute([':id'=>$id,':area'=>(int)$current['area_id']]);
+                if (!$gate->fetch()) json_response(['ok'=>false,'error'=>'Sin permiso para eliminar este usuario'],403);
+            }
             // No eliminar al último superusuario
             if (esUltimoSuperusuario($pdo, $id)) {
                 json_response(['ok' => false, 'error' => 'No puedes eliminar al último superusuario del sistema'], 400);

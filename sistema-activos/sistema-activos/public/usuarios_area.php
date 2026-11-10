@@ -2,7 +2,7 @@
 $page_title = 'Usuarios por Área';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_auth();
+$user = require_any_permission(['empleados', 'usuarios']);
 require_once __DIR__ . '/../includes/header.php';
 ?>
 

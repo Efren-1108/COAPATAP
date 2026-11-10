@@ -44,7 +44,7 @@ $nominaInt = (int)$nomina;
 // ============================================================
 // Autenticación y permisos
 // ============================================================
-$current = require_auth();
+$current = require_any_permission(['consulta', 'empleados', 'activos', 'usuarios', 'impresion']);
 $isSuper = $current['es_superusuario'];
 $areaId  = $current['area_id'];
 

@@ -3,7 +3,7 @@ $page_title = 'Gestión de Adscripciones';
 $page_js    = 'adscripciones.js';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
-$user = require_super();
+$user = require_permission('adscripciones');
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
@@ -11,7 +11,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div>
         <h1>Gestión de Adscripciones</h1>
     </div>
-    <button class="btn btn--primary" id="btnNuevo">➕ Nueva adscripción</button>
+    <button class="btn btn--primary" id="btnNuevo" <?= empty($user['es_superusuario']) ? 'style="display:none"' : '' ?>>➕ Nueva adscripción</button>
 </section>
 
 <div class="toolbar no-print">

@@ -22,12 +22,7 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-$user = require_auth();
-
-if (!has_permission('activos')) {
-    http_response_code(403);
-    exit('No tienes permiso para consultar resguardos.');
-}
+$user = require_permission('impresion');
 
 // ==========================================
 // 2. FUNCIONES AUXILIARES

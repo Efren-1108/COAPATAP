@@ -58,7 +58,7 @@ $esSuper = $user
 // Permiso para acceder a impresión
 
 $puedeImprimir = $user
-    ? has_permission('activos')
+    ? has_permission('impresion')
     : false;
 
 ?>
@@ -121,6 +121,7 @@ $puedeImprimir = $user
 
         window.CSRF_TOKEN =
             <?= json_encode(csrf_token()) ?>;
+        window.IS_SUPERUSER = <?= $esSuper ? 'true' : 'false' ?>;
 
     </script>
 
@@ -168,7 +169,7 @@ $puedeImprimir = $user
 
                 <button type="button"
                     class="brand brand--institucional"
-                    data-navegar="index.php"
+                    data-navegar="<?= e(default_module_page()) ?>"
                     aria-label="Ir al panel principal de COAPATAP"
                 >
                     <span class="brand__logo">
@@ -196,6 +197,7 @@ $puedeImprimir = $user
                          CONSULTA
                     ============================== -->
 
+                    <?php if (has_permission('consulta')): ?>
                         <button type="button"
                             class="nav__link nav--consulta-animada <?= $current === 'index.php' ? 'is-active' : '' ?>"
                             data-navegar="index.php"
@@ -208,6 +210,8 @@ $puedeImprimir = $user
                             >
                             Dashboard
                         </button>
+
+                    <?php endif; ?>
 
                     <!-- =============================
                          EMPLEADOS Y ÁREAS
@@ -257,7 +261,7 @@ $puedeImprimir = $user
                          STOCK                    
                     ============================== -->
 
-                    <?php if ($esSuper): ?>
+                    <?php if (has_permission('stock')): ?>
                         <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'stock.php' ? 'is-active' : '' ?>"
                             data-navegar="stock.php"
@@ -277,7 +281,7 @@ $puedeImprimir = $user
                          SOLO SUPERUSUARIO
                     ============================== -->
 
-                    <?php if ($esSuper): ?>
+                    <?php if (has_permission('adscripciones')): ?>
 
                         <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'adscripciones.php'
@@ -322,8 +326,9 @@ $puedeImprimir = $user
                          OPCIONES DE SUPERUSUARIO
                     ============================== -->
 
-                    <?php if ($esSuper): ?>
+                    <?php if (has_any_permission(['importar', 'usuarios', 'roles'])): ?>
 
+                        <?php if (has_permission('importar')): ?>
                         <!-- =========================
                              IMPORTAR EXCEL
                         ========================== -->
@@ -343,6 +348,8 @@ $puedeImprimir = $user
                             Importar Excel
                         </button>
 
+                        <?php endif; ?>
+                        <?php if (has_permission('usuarios')): ?>
                         <!-- =========================
                              USUARIOS
                         ========================== -->
@@ -361,6 +368,8 @@ $puedeImprimir = $user
                             Usuarios
                         </button>
 
+                        <?php endif; ?>
+                        <?php if (has_permission('roles')): ?>
                         <!-- =========================
                              ROLES
                         ========================== -->
@@ -379,6 +388,7 @@ $puedeImprimir = $user
                             Roles
                         </button>
 
+                        <?php endif; ?>
                     <?php endif; ?>
 
                 </nav>

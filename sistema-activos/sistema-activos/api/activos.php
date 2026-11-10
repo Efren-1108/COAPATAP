@@ -16,7 +16,7 @@ $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $empId  = isset($_GET['empleado_id']) ? (int)$_GET['empleado_id'] : null;
 $q      = isset($_GET['q']) ? trim($_GET['q']) : null;
 
-$current = require_auth_csrf();
+$current = require_permission_csrf('activos');
 $isSuper = $current['es_superusuario'];
 $areaId  = $current['area_id'];
 
@@ -46,9 +46,11 @@ try {
                     json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
                 }
 
+                // El permiso de Activos permite consultar bienes del área del usuario,
+                // no solamente los que estén asignados a su empleado.
+                // Si la cuenta no tiene área, se deniega por seguridad.
                 if (!$isSuper) {
-                    $myEmpId = obtenerEmpleadoIdDeUsuario($pdo, (int)$current['id']);
-                    if (!$myEmpId || (int)$row['empleado_id'] !== (int)$myEmpId) {
+                    if ($areaId === null || $row['area_id'] === null || (int)$row['area_id'] !== (int)$areaId) {
                         json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
                     }
                 }
@@ -84,13 +86,15 @@ try {
                 $params[':q'] = '%' . strtolower($q) . '%';
             }
 
+            // Los roles con acceso a Activos ven TODOS los bienes de su área:
+            // asignados a otro empleado, sin asignar e inservibles del área.
+            // No se permite el acceso global a roles distintos de Superusuario.
             if (!$isSuper) {
-                $myEmpId = obtenerEmpleadoIdDeUsuario($pdo, (int)$current['id']);
-                if ($myEmpId) {
-                    $where[] = "a.empleado_id = :my_eid";
-                    $params[':my_eid'] = $myEmpId;
-                } else {
+                if ($areaId === null) {
                     $where[] = "1 = 0";
+                } else {
+                    $where[] = "a.area_id = :scope_area";
+                    $params[':scope_area'] = (int)$areaId;
                 }
             }
 

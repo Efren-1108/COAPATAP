@@ -117,6 +117,9 @@ function render(lista) {
     }
 
     listaAdsc.innerHTML = lista.map(a => renderAdscripcionCard(a)).join('');
+    if (!window.IS_SUPERUSER) {
+        listaAdsc.querySelectorAll('[data-action="nueva-area"], [data-action="editar-adsc"], [data-action="eliminar-adsc"], [data-action="editar-area"], [data-action="eliminar-area"]').forEach(el => el.remove());
+    }
 }
 
 function renderAdscripcionCard(adsc) {

@@ -16,10 +16,19 @@ require_once __DIR__ . '/../includes/auth.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $q      = isset($_GET['q'])  ? trim((string)$_GET['q']) : null;
-$user   = require_super_csrf();
+$user = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    ? require_any_permission(['adscripciones','consulta','empleados','activos','importar','usuarios'])
+    : require_super_csrf(); // Modificaciones globales reservadas al Superusuario.
 
 try {
     $pdo = db();
+    $adscPermitida = null;
+    if (empty($user['es_superusuario'])) {
+        $st = $pdo->prepare('SELECT adscripcion_id FROM areas WHERE id = :aid');
+        $st->execute([':aid' => (int)$user['area_id']]);
+        $adscPermitida = $st->fetchColumn();
+        if (!$adscPermitida) $adscPermitida = -1;
+    }
 
     switch ($method) {
         // ============================================================
@@ -30,7 +39,7 @@ try {
                 $stmt = $pdo->prepare("SELECT * FROM adscripciones WHERE id = :id");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row) {
+                if (!$row || ($adscPermitida !== null && (int)$row['id'] !== (int)$adscPermitida)) {
                     json_response(['ok' => false, 'error' => 'Adscripción no encontrada'], 404);
                 }
 
@@ -69,7 +78,11 @@ try {
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
-            json_response(['ok' => true, 'data' => $stmt->fetchAll()]);
+            $rows = $stmt->fetchAll();
+            if ($adscPermitida !== null) {
+                $rows = array_values(array_filter($rows, fn($r) => (int)$r['id'] === (int)$adscPermitida));
+            }
+            json_response(['ok' => true, 'data' => $rows]);
             break;
 
         // ============================================================

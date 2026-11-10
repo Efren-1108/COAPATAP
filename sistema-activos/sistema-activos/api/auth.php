@@ -134,7 +134,7 @@ try {
                 FROM usuarios u
                 JOIN roles r ON r.id = u.rol_id
                 LEFT JOIN areas a ON a.id = u.area_id
-                WHERE u.nombre_usuario = :u
+                WHERE u.nombre_usuario = :u AND r.activo IS TRUE
                 LIMIT 1
             ");
             $stmt->execute([':u' => $usuario]);
@@ -145,7 +145,7 @@ try {
                 rate_limit_login_fail($usuario);
                 json_response(['ok' => false, 'error' => 'Usuario o contraseña incorrectos'], 401);
             }
-            if (!$row['estado']) {
+            if (!in_array($row['estado'], [true, 1, '1', 't', 'true'], true)) {
                 json_response(['ok' => false, 'error' => 'El usuario está inactivo. Contacta al administrador.'], 403);
             }
             if (!password_verify($password, $row['password_hash'])) {
@@ -173,6 +173,7 @@ try {
                 'message'    => 'Bienvenido ' . $row['nombre_completo'],
                 'data'       => sanitize_user($row),
                 'csrf_token' => $csrfToken,
+                'destino' => default_module_page(),
             ]);
         }
 

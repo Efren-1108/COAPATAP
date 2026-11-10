@@ -69,7 +69,7 @@ function load_current_user(int $userId): ?array{
             FROM usuarios u
             JOIN roles r ON r.id = u.rol_id
             LEFT JOIN areas a ON a.id = u.area_id
-            WHERE u.id = :id
+            WHERE u.id = :id AND r.activo IS TRUE
             LIMIT 1
         ");
         $stmt->execute([':id' => $userId]);
@@ -84,7 +84,7 @@ function load_current_user(int $userId): ?array{
         $_SESSION = [];
         return null;
     }
-    if (!$row['estado']) {
+    if (!in_array($row['estado'], [true, 1, '1', 't', 'true'], true)) {
         // Usuario inactivo: cerrarle la sesión.
         $_SESSION = [];
         return null;
@@ -227,9 +227,73 @@ function has_permission(string $modulo_clave): bool
             ':modulo' => $modulo_clave
         ]);
         $res = $stmt->fetch();
-        return $res ? (bool)$res['concedido'] : false;
+        // PDO_PGSQL puede devolver 't' o 'f'; (bool)'f' seria TRUE.
+        return $res && in_array($res['concedido'], [true, 1, '1', 't', 'true'], true);
     } catch (Throwable $e) {
         logger("auth.has_permission error: " . $e->getMessage(), 'ERROR');
         return false;
     }
+}
+
+/** Permite entrar si el rol tiene acceso a cualquiera de los módulos indicados. */
+function has_any_permission(array $modules): bool
+{
+    foreach ($modules as $module) {
+        if (has_permission($module)) return true;
+    }
+    return false;
+}
+
+/** Comprueba el permiso también contra acceso directo a la URL o API. */
+function require_any_permission(array $modules): array
+{
+    $user = require_auth();
+    if (!has_any_permission($modules)) {
+        if (is_ajax_request()) {
+            json_response(['ok' => false, 'error' => 'No tienes permiso para acceder a este módulo'], 403);
+        }
+        http_response_code(403);
+        exit('<h1>403 — Sin permisos</h1><p>Tu rol no tiene acceso a esta sección.</p>');
+    }
+    return $user;
+}
+
+function require_permission(string $module): array
+{
+    return require_any_permission([$module]);
+}
+
+/** Para APIs que modifican datos: sesión, permiso y CSRF. */
+function require_any_permission_csrf(array $modules): array
+{
+    $user = require_any_permission($modules);
+    if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['POST','PUT','DELETE','PATCH'], true)) {
+        csrf_require();
+    }
+    return $user;
+}
+
+function require_permission_csrf(string $module): array
+{
+    return require_any_permission_csrf([$module]);
+}
+
+/** Página de inicio según los módulos autorizados, sin dejar al usuario frente a un 403. */
+function default_module_page(): string
+{
+    $pages = [
+        'consulta' => 'index.php',
+        'empleados' => 'empleados.php',
+        'activos' => 'activos.php',
+        'stock' => 'stock.php',
+        'adscripciones' => 'adscripciones.php',
+        'impresion' => 'vista_previa_resguardo.php',
+        'usuarios' => 'usuarios.php',
+        'roles' => 'roles.php',
+    ];
+    foreach ($pages as $key => $filename) {
+        if (has_permission($key)) return $filename;
+    }
+    // Siempre disponible: Mi perfil / cambiar contraseña.
+    return 'perfil.php';
 }

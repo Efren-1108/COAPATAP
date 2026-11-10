@@ -5,7 +5,7 @@ require_once __DIR__ . '/../includes/auth.php';
 
 // Si ya hay sesión, redirigir al inicio.
 if (current_user() !== null) {
-    header('Location: index.php');
+    header('Location: ' . default_module_page());
     exit;
 }
 ?>

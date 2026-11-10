@@ -17,7 +17,9 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
-$user   = require_super_csrf();
+$user = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    ? require_any_permission(['empleados','activos','adscripciones','usuarios','stock','importar'])
+    : require_super_csrf(); // Los cambios de áreas globales siguen reservados al Superusuario.
 
 try {
     $pdo = db();
@@ -35,7 +37,7 @@ try {
                 ");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row) json_response(['ok' => false, 'error' => 'Área no encontrada'], 404);
+                if (!$row || (empty($user['es_superusuario']) && (int)$row['id'] !== (int)$user['area_id'])) json_response(['ok' => false, 'error' => 'Área no encontrada'], 404);
 
                 $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE area_id = :id");
                 $stmtCount->execute([':id' => $row['id']]);
@@ -60,6 +62,9 @@ try {
                 GROUP BY a.id, ad.nombre, ad.clave
                 ORDER BY a.activo DESC, ad.nombre ASC NULLS LAST, a.nombre ASC
             ")->fetchAll();
+            if (empty($user['es_superusuario'])) {
+                $rows = array_values(array_filter($rows, fn($r) => (int)$r['id'] === (int)$user['area_id']));
+            }
             json_response(['ok' => true, 'data' => $rows]);
             break;
 
