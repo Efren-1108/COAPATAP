@@ -642,9 +642,6 @@ function renderResultado(res) {
                 <div>
                     <h2>👤 Datos del Resguardante</h2>
                 </div>
-                <button class="btn btn--success" onclick="imprimirResguardo()">
-                    🖨️ Imprimir / Guardar PDF
-                </button>
             </div>
             <div class="empleado-info">
                 <div class="info-item">

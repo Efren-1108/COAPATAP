@@ -1054,8 +1054,9 @@ function renderEstadisticas(activosFiltrados = null) {
 // ============ MODAL ACTIVO ============
 function abrirModalActivo() {
     form.reset();
-    actualizarMotivoInservible();
     form.elements['id'].value = '';
+    form.dataset.estadoOriginal = '';
+    actualizarMotivoInservible();
     document.getElementById('grupoCrearStock').style.display = '';
     document.getElementById('crear_en_stock').checked = false;
     selectEmp.disabled = false;
@@ -1077,7 +1078,9 @@ async function editarActivo(id) {
         if (!res.ok) throw new Error(res.error);
         const a = res.data;
         App.fillForm(form, a);
-        form.elements['motivo_inservible'].value = '';
+        form.dataset.estadoOriginal = a.estado_fisico || '';
+        form.elements['motivo_inservible'].value = a.motivo_inservible || '';
+        form.elements['numero_diagnostico'].value = a.numero_diagnostico || '';
         actualizarMotivoInservible();
         document.getElementById('grupoCrearStock').style.display = 'none';
         document.getElementById('crear_en_stock').checked = false;
@@ -1175,7 +1178,11 @@ async function onSubmitActivo(e) {
     const costoTexto = texto('costo');
     const estadoFisico = texto('estado_fisico');
     const motivoInservible = texto('motivo_inservible');
+    const numeroDiagnostico = texto('numero_diagnostico');
     const original = esEdicion ? activosCache.find(a => String(a.id) === id) : null;
+    // El numero de diagnostico solo se edita en bienes previamente declarados inservibles.
+    const puedeEditarDiagnostico = esEdicion && form.dataset.estadoOriginal === 'INSERVIBLE' && estadoFisico === 'INSERVIBLE';
+    if (puedeEditarDiagnostico && numeroDiagnostico.length > 100) return mostrarError('El número de diagnóstico no debe superar 100 caracteres.');
     if (estadoFisico === 'INSERVIBLE' && (!original || original.estado_fisico !== 'INSERVIBLE') && !motivoInservible) return mostrarError('Indica el motivo por el que el activo es inservible.');
 
     if (desc.length < 2) return mostrarError('La descripción es obligatoria.');
@@ -1229,6 +1236,7 @@ async function onSubmitActivo(e) {
         material: texto('material'),
         estado_fisico: estadoFisico || null,
         motivo_inservible: motivoInservible,
+        ...(puedeEditarDiagnostico ? { numero_diagnostico: numeroDiagnostico } : {}),
         fecha_adq: texto('fecha_adq') || null,
         factura: texto('factura'),
         costo: costo,
@@ -1255,7 +1263,11 @@ async function onSubmitActivo(e) {
 function actualizarMotivoInservible() {
     const estado = form.elements['estado_fisico'].value;
     const bloque = document.getElementById('grupoMotivoInservible');
+    const grupoDiagnostico = document.getElementById('grupoNumeroDiagnostico');
     bloque.style.display = estado === 'INSERVIBLE' ? '' : 'none';
+    // No mostrar al crear ni al declarar un activo inservible por primera vez.
+    const editandoInservible = form.elements['id'].value !== '' && form.dataset.estadoOriginal === 'INSERVIBLE';
+    grupoDiagnostico.style.display = estado === 'INSERVIBLE' && editandoInservible ? '' : 'none';
 }
 form.elements['estado_fisico'].addEventListener('change', actualizarMotivoInservible);
 

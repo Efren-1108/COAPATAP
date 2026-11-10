@@ -132,6 +132,22 @@ $puedeImprimir = $user
         src="<?= e($assetsBase) ?>js/vendor/chart.umd.min.js?v=<?= e(APP_VERSION) ?>"
     ></script>
 
+    <!-- Botones del menu: mantienen el aspecto de los enlaces sin exponer URL al pasar el cursor -->
+    <style>
+        button.brand,
+        button.nav__link,
+        button.user-menu__item {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            font-family: inherit;
+            line-height: inherit;
+            cursor: pointer;
+            text-align: left;
+        }
+        button.user-menu__item { width: 100%; }
+    </style>
+
 </head>
 
 <body>
@@ -150,9 +166,9 @@ $puedeImprimir = $user
                     IDENTIDAD INSTITUCIONAL COAPATAP
                 ====================================== -->
 
-                <a
+                <button type="button"
                     class="brand brand--institucional"
-                    href="index.php"
+                    data-navegar="index.php"
                     aria-label="Ir al panel principal de COAPATAP"
                 >
                     <span class="brand__logo">
@@ -165,7 +181,7 @@ $puedeImprimir = $user
                     <span class="brand__text">
                         <strong>Sistema de Control de Activos Fijos</strong> 
                     </span>
-                </a>
+                </button>
 
                 <!-- =================================
                      MENÚ PRINCIPAL
@@ -180,9 +196,9 @@ $puedeImprimir = $user
                          CONSULTA
                     ============================== -->
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--consulta-animada <?= $current === 'index.php' ? 'is-active' : '' ?>"
-                            href="index.php"
+                            data-navegar="index.php"
                         >
                             <img
                                 class="nav__icon"
@@ -191,7 +207,7 @@ $puedeImprimir = $user
                                 alt=""
                             >
                             Dashboard
-                        </a>
+                        </button>
 
                     <!-- =============================
                          EMPLEADOS Y ÁREAS
@@ -199,13 +215,13 @@ $puedeImprimir = $user
 
                     <?php if (has_permission('empleados')): ?>
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= in_array(
                                 $current,
                                 ['empleados.php', 'areas.php'],
                                 true
                             ) ? 'is-active' : '' ?>"
-                            href="empleados.php"
+                            data-navegar="empleados.php"
                         >
                             <img
                                 src="<?= e($assetsBase) ?>img/icons/empleados-areas.png"
@@ -213,7 +229,7 @@ $puedeImprimir = $user
                                 alt=""
                             >
                             Empleados y Áreas
-                        </a>
+                        </button>
 
                     <?php endif; ?>
 
@@ -223,9 +239,9 @@ $puedeImprimir = $user
 
                     <?php if (has_permission('activos')): ?>
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'activos.php' ? 'is-active' : '' ?>"
-                            href="activos.php"
+                            data-navegar="activos.php"
                         >
                             <img
                                 src="<?= e($assetsBase) ?>img/icons/activos.png"
@@ -233,7 +249,7 @@ $puedeImprimir = $user
                                 alt=""
                             >
                             Activos
-                        </a>
+                        </button>
 
                     <?php endif; ?>
 
@@ -242,9 +258,9 @@ $puedeImprimir = $user
                     ============================== -->
 
                     <?php if ($esSuper): ?>
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'stock.php' ? 'is-active' : '' ?>"
-                            href="stock.php"
+                            data-navegar="stock.php"
                         >
                             <img
                                 src="<?= e($assetsBase) ?>img/icons/stock-menu.png"
@@ -252,7 +268,7 @@ $puedeImprimir = $user
                                 alt=""
                             >
                             Stock
-                        </a>
+                        </button>
                     <?php endif; ?>
 
 
@@ -263,11 +279,11 @@ $puedeImprimir = $user
 
                     <?php if ($esSuper): ?>
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'adscripciones.php'
                                 ? 'is-active'
                                 : '' ?>"
-                            href="adscripciones.php"
+                            data-navegar="adscripciones.php"
                         >
                         <img
                             src="<?= e($assetsBase) ?>img/icons/adscripciones-menu.png"
@@ -275,7 +291,7 @@ $puedeImprimir = $user
                             alt=""
                         >
                             Adscripciones
-                        </a>
+                        </button>
 
                     <?php endif; ?>
 
@@ -285,11 +301,11 @@ $puedeImprimir = $user
 
                     <?php if ($puedeImprimir): ?>
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'vista_previa_resguardo.php'
                                 ? 'is-active'
                                 : '' ?>"
-                            href="vista_previa_resguardo.php"
+                            data-navegar="vista_previa_resguardo.php"
                             title="Imprimir y guardar resguardos"
                         >
                             <img
@@ -298,7 +314,7 @@ $puedeImprimir = $user
                                 alt=""
                             >
                             Impresión
-                        </a>
+                        </button>
 
                     <?php endif; ?>
 
@@ -312,11 +328,11 @@ $puedeImprimir = $user
                              IMPORTAR EXCEL
                         ========================== -->
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'importar_activos.php'
                                 ? 'is-active'
                                 : '' ?>"
-                            href="importar_activos.php"
+                            data-navegar="importar_activos.php"
                             title="Importar empleados y activos desde Excel"
                         >
                         <img
@@ -325,17 +341,17 @@ $puedeImprimir = $user
                             alt=""
                         >
                             Importar Excel
-                        </a>
+                        </button>
 
                         <!-- =========================
                              USUARIOS
                         ========================== -->
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'usuarios.php'
                                 ? 'is-active'
                                 : '' ?>"
-                            href="usuarios.php"
+                            data-navegar="usuarios.php"
                         >
                         <img
                             src="<?= e($assetsBase) ?>img/icons/llave-menu.png"
@@ -343,17 +359,17 @@ $puedeImprimir = $user
                             alt=""
                         >
                             Usuarios
-                        </a>
+                        </button>
 
                         <!-- =========================
                              ROLES
                         ========================== -->
 
-                        <a
+                        <button type="button"
                             class="nav__link nav--icono-animado <?= $current === 'roles.php'
                                 ? 'is-active'
                                 : '' ?>"
-                            href="roles.php"
+                            data-navegar="roles.php"
                         >
                         <img
                             src="<?= e($assetsBase) ?>img/icons/Roles.png"
@@ -361,7 +377,7 @@ $puedeImprimir = $user
                             alt=""
                         >
                             Roles
-                        </a>
+                        </button>
 
                     <?php endif; ?>
 
@@ -488,21 +504,21 @@ $puedeImprimir = $user
 
                         <!-- MI PERFIL -->
 
-                        <a
+                        <button type="button"
                             class="user-menu__item"
-                            href="perfil.php"
+                            data-navegar="perfil.php"
                         >
                             👤 Mi perfil
-                        </a>
+                        </button>
 
                         <!-- CERRAR SESIÓN -->
 
-                        <a
+                        <button type="button"
                             class="user-menu__item user-menu__item--danger"
-                            href="logout.php"
+                            data-navegar="logout.php"
                         >
                             🚪 Cerrar sesión
-                        </a>
+                        </button>
 
                     </div>
 

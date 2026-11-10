@@ -27,54 +27,37 @@ if (!isset($assetsBase)) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const enlace = document.querySelector('.nav--consulta-animada');
+    // Estos botones no tienen href: Edge/Chrome no muestran una URL al pasar el cursor.
+    // Solo se aplica al encabezado (menu, logo y menu de usuario).
+    document.querySelectorAll('.topbar button[data-navegar]').forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            const destino = boton.dataset.navegar;
+            if (!destino || boton.dataset.navegando === '1') return;
 
-    if (!enlace) return;
+            const animacionReducida = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    enlace.addEventListener('click', function (event) {
-        if (
-            event.button !== 0 ||
-            event.ctrlKey ||
-            event.metaKey ||
-            event.shiftKey ||
-            event.altKey
-        ) return;
+            // Mantener el GIF del Dashboard tal como funcionaba antes.
+            if (boton.classList.contains('nav--consulta-animada') && !animacionReducida) {
+                const icono = boton.querySelector('.nav__icon');
+                if (icono && icono.dataset.gif) {
+                    boton.dataset.navegando = '1';
+                    icono.src = icono.dataset.gif + '?play=' + Date.now();
+                    setTimeout(function () { window.location.assign(destino); }, 1250);
+                    return;
+                }
+            }
 
-        const icono = enlace.querySelector('.nav__icon');
+            // Mantener las animaciones de los iconos del resto del menu.
+            if (boton.classList.contains('nav--icono-animado') && !animacionReducida) {
+                boton.dataset.navegando = '1';
+                boton.classList.add('animando');
+                setTimeout(function () { window.location.assign(destino); }, 550);
+                return;
+            }
 
-        if (!icono || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            return;
-        }
-
-        event.preventDefault();
-
-        if (enlace.dataset.animando === '1') return;
-        enlace.dataset.animando = '1';
-
-        // Reproducir el GIF desde el inicio
-        icono.src = icono.dataset.gif + '?play=' + Date.now();
-
-        // Entrar al módulo después de la animación
-        setTimeout(function () {
-            window.location.href = enlace.href;
-        }, 1250);
+            window.location.assign(destino);
+        });
     });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('a.nav--icono-animado').forEach(enlace => {
-    enlace.addEventListener('click', event => {
-      if (event.defaultPrevented || event.button !== 0 ||
-          event.ctrlKey || event.metaKey || event.shiftKey || event.altKey ||
-          enlace.target === '_blank' ||
-          window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      event.preventDefault();
-      if (enlace.classList.contains('animando')) return;
-      enlace.classList.add('animando');
-      setTimeout(() => window.location.assign(enlace.href), 550);
-    });
-  });
 });
 </script>
 

@@ -290,6 +290,17 @@ textarea.form-control { min-height: 90px; resize: vertical; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* Tabla de inservibles: espacio suficiente para el botón de acciones.
+   Mantiene el desplazamiento horizontal del contenedor en pantallas pequeñas. */
+#panelInservibles .table {
+    min-width: 1100px;
+}
+#panelInservibles .table th:last-child,
+#panelInservibles .table td:last-child {
+    width: 210px;
+    text-overflow: clip;
+}
+
 .table th {
     background: var(--c-bg);
     color: var(--c-muted);

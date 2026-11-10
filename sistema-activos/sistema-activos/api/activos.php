@@ -26,14 +26,14 @@ try {
     switch ($method) {
         case 'GET':
             if ($id) {
-                $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.declarado_en AS fecha_inservible,
+                $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.numero_diagnostico, di.declarado_en AS fecha_inservible,
                                e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
                                ar.nombre AS area_nombre,
                                ad.id     AS adscripcion_id,
                                ad.nombre AS adscripcion_nombre,
                                ad.clave  AS adscripcion_clave
                         FROM activos a
-                        LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
+                        LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, numero_diagnostico, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
                         LEFT JOIN empleados e ON e.id = a.empleado_id
                         LEFT JOIN areas    ar ON ar.id = a.area_id
                         LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id
@@ -56,14 +56,14 @@ try {
                 json_response(['ok' => true, 'data' => $row]);
             }
 
-            $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.declarado_en AS fecha_inservible,
+            $sql = "SELECT a.*, di.ultimo_responsable_nombre, di.ultimo_area_nombre, di.motivo AS motivo_inservible, di.numero_diagnostico, di.declarado_en AS fecha_inservible,
                            e.numero_nomina, e.nombre AS empleado_nombre, e.cargo,
                            ar.nombre AS area_nombre,
                            ad.id     AS adscripcion_id,
                            ad.nombre AS adscripcion_nombre,
                            ad.clave  AS adscripcion_clave
                     FROM activos a
-                    LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
+                    LEFT JOIN LATERAL (SELECT ultimo_responsable_nombre, ultimo_area_nombre, motivo, numero_diagnostico, declarado_en FROM public.declaraciones_inservible WHERE activo_id=a.id ORDER BY id DESC LIMIT 1) di ON true
                     LEFT JOIN empleados e ON e.id = a.empleado_id
                     LEFT JOIN areas    ar ON ar.id = a.area_id
                     LEFT JOIN adscripciones ad ON ad.id = ar.adscripcion_id";
@@ -221,7 +221,15 @@ try {
             $inservible = ($input['estado_fisico'] ?? null) === 'INSERVIBLE';
             $declaracionNueva = $inservible && $anterior['estado_fisico'] !== 'INSERVIBLE';
             $motivoInservible = trim((string)($input['motivo_inservible'] ?? ''));
+            // Solo puede cambiar el diagnostico de un activo que ya era INSERVIBLE.
+            $actualizarNumeroDiagnostico = $inservible && $anterior['estado_fisico'] === 'INSERVIBLE'
+                && array_key_exists('numero_diagnostico', $input);
+            $numeroDiagnostico = $actualizarNumeroDiagnostico ? trim((string)($input['numero_diagnostico'] ?? '')) : '';
+            if ($actualizarNumeroDiagnostico && preg_match_all('/./us', $numeroDiagnostico) > 100) {
+                json_response(['ok'=>false,'error'=>'El número de diagnóstico no puede superar 100 caracteres.'],400);
+            }
             if ($declaracionNueva && ($motivoInservible === '' || strlen($motivoInservible) > 1000)) json_response(['ok'=>false,'error'=>'Indica el motivo de inservibilidad (máximo 1000 caracteres).'],400);
+            if ($inservible && $motivoInservible !== '' && strlen($motivoInservible) > 1000) json_response(['ok'=>false,'error'=>'El motivo de inservibilidad supera los 1000 caracteres.'],400);
             $empleadoId = normalizarEmpleadoId($input['empleado_id'] ?? null);
             if ($inservible && $anterior['situacion_inventario'] === 'STOCK') json_response(['ok'=>false,'error'=>'Primero retira el activo del stock antes de declararlo inservible.'],409);
             if ($anterior['situacion_inventario'] === 'STOCK' && $empleadoId !== null) {
@@ -281,7 +289,39 @@ try {
                 ':id'   => $id,
             ]);
 
-            if ($declaracionNueva) registrarInservible($pdo, $id, $ultimoEmpleadoId, $anterior['area_id'], $motivoInservible, $current);
+            if ($declaracionNueva) {
+                registrarInservible($pdo, $id, $ultimoEmpleadoId, $anterior['area_id'], $motivoInservible, $current);
+            } elseif ($inservible && ($motivoInservible !== '' || $actualizarNumeroDiagnostico)) {
+                // Actualizar unicamente los campos enviados, sin cambiar la fecha
+                // ni los datos del ultimo responsable y su area.
+                $camposDeclaracion = [];
+                $paramsDeclaracion = [':activo_id' => $id];
+                if ($motivoInservible !== '') {
+                    $camposDeclaracion[] = 'motivo = :motivo';
+                    $paramsDeclaracion[':motivo'] = $motivoInservible;
+                }
+                if ($actualizarNumeroDiagnostico) {
+                    $camposDeclaracion[] = 'numero_diagnostico = :numero_diagnostico';
+                    // Se permite borrar el numero dejandolo vacio.
+                    $paramsDeclaracion[':numero_diagnostico'] = $numeroDiagnostico !== '' ? $numeroDiagnostico : null;
+                }
+                $actualizarDeclaracion = $pdo->prepare('UPDATE public.declaraciones_inservible
+                    SET ' . implode(', ', $camposDeclaracion) . '
+                    WHERE id = (
+                        SELECT id FROM public.declaraciones_inservible
+                        WHERE activo_id = :activo_id ORDER BY id DESC LIMIT 1
+                    )');
+                $actualizarDeclaracion->execute($paramsDeclaracion);
+
+                // Los datos importados antiguos podrian no tener declaracion asociada.
+                if ($actualizarDeclaracion->rowCount() === 0) {
+                    if ($motivoInservible === '') {
+                        throw new DomainException('Es necesario indicar un motivo para documentar este inservible antes de guardar el diagnóstico.');
+                    }
+                    registrarInservible($pdo, $id, null, $anterior['area_id'], $motivoInservible, $current,
+                        $actualizarNumeroDiagnostico && $numeroDiagnostico !== '' ? $numeroDiagnostico : null);
+                }
+            }
             if ($oldImg && $nuevaImg && $oldImg !== $nuevaImg) {
                 $fullPath = __DIR__ . '/../' . $oldImg;
                 if (file_exists($fullPath)) {
@@ -356,6 +396,9 @@ try {
 
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    if ($e instanceof DomainException) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+    }
     logger("Error en activos: " . $e->getMessage(), 'ERROR');
     json_response(['ok' => false, 'error' => 'Error: ' . $e->getMessage()], 500);
 }
@@ -430,12 +473,12 @@ function obtenerAreaDelEmpleado(PDO $pdo, int $empleadoId): ?int
 }
 
 /** Guarda una instantánea independiente del empleado, para conservar el dato aunque se elimine. */
-function registrarInservible(PDO $pdo, int $activoId, ?int $empleadoId, ?int $areaId, string $motivo, array $usuario): void {
+function registrarInservible(PDO $pdo, int $activoId, ?int $empleadoId, ?int $areaId, string $motivo, array $usuario, ?string $numeroDiagnostico = null): void {
     $st=$pdo->prepare("SELECT e.nombre, ar.nombre AS area_nombre FROM empleados e LEFT JOIN areas ar ON ar.id=e.area_id WHERE e.id=:id");
     $st->execute([':id'=>$empleadoId]);
     $e=$empleadoId ? $st->fetch(PDO::FETCH_ASSOC) : false;
     $areaNombre=null;
     if ($areaId) { $ar=$pdo->prepare('SELECT nombre FROM areas WHERE id=:id'); $ar->execute([':id'=>$areaId]); $areaNombre=$ar->fetchColumn() ?: null; }
-    $st=$pdo->prepare("INSERT INTO public.declaraciones_inservible (activo_id,ultimo_responsable_id,ultimo_responsable_nombre,ultimo_area_nombre,motivo,usuario_id,usuario_nombre) VALUES (:aid,:eid,:nombre,:area,:motivo,:uid,:usr)");
-    $st->execute([':aid'=>$activoId,':eid'=>$empleadoId,':nombre'=>$e['nombre']??'Sin responsable anterior',':area'=>$e['area_nombre']??$areaNombre,':motivo'=>$motivo,':uid'=>$usuario['id'],':usr'=>$usuario['nombre_usuario']]);
+    $st=$pdo->prepare("INSERT INTO public.declaraciones_inservible (activo_id,ultimo_responsable_id,ultimo_responsable_nombre,ultimo_area_nombre,motivo,numero_diagnostico,usuario_id,usuario_nombre) VALUES (:aid,:eid,:nombre,:area,:motivo,:diagnostico,:uid,:usr)");
+    $st->execute([':aid'=>$activoId,':eid'=>$empleadoId,':nombre'=>$e['nombre']??'Sin responsable anterior',':area'=>$e['area_nombre']??$areaNombre,':motivo'=>$motivo,':diagnostico'=>$numeroDiagnostico,':uid'=>$usuario['id'],':usr'=>$usuario['nombre_usuario']]);
 }

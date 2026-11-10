@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Gestión de Activos Fijos';
 $page_js    = 'activos.js';
-$page_js_version = 'orden-precio-20261031-1';
+$page_js_version = 'diagnostico-inservibles-20261110-1';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_auth();
@@ -147,7 +147,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div id="statsDashboard"></div>
 </div>
 
-<style>#grupoMotivoInservible{padding:12px;border:1px solid #fca5a5;border-radius:10px;background:rgba(220,38,38,.04);margin-top:12px}</style>
+<style>#grupoMotivoInservible{padding:12px;border:1px solid #fca5a5;border-radius:10px;background:rgba(220,38,38,.04);margin-top:0}</style>
 <!-- ============ MODAL: ACTIVO ============ -->
 <div class="modal-backdrop" id="activoModal">
     <div class="modal">
@@ -224,13 +224,26 @@ require_once __DIR__ . '/../includes/header.php';
                             <option value="INSERVIBLE">
                                 INSERVIBLE
                             </option>
-                        </select><div id="grupoMotivoInservible" style="display:none"><label for="motivo_inservible">Motivo de declaración de inservibilidad <span class="req">*</span></label><textarea class="form-control" id="motivo_inservible" name="motivo_inservible" maxlength="1000" rows="3" placeholder="Explica por qué se declaró inservible"></textarea><small>Se retirará la asignación actual y se conservará el último responsable.</small></div>
+                        </select>
 
                         <span class="form-text">
                             Selecciona la condición física actual del bien.
                             Si el Excel dejó el estado pendiente, al editar puedes conservarlo vacío.
                         </span>
 
+                    </div>
+
+                    <!-- Motivo a todo el ancho, en una fila independiente. -->
+                    <div id="grupoMotivoInservible" class="form-group form-group--full" style="display:none">
+                        <label for="motivo_inservible">Motivo de declaración de inservibilidad <span class="req">*</span></label>
+                        <textarea class="form-control" id="motivo_inservible" name="motivo_inservible" maxlength="1000" rows="3" placeholder="Explica por qué se declaró inservible"></textarea>
+                        <small>Se retirará la asignación actual y se conservará el último responsable.</small>
+                        <!-- Solo visible al editar un bien que YA estaba declarado inservible. -->
+                        <div id="grupoNumeroDiagnostico" style="display:none; margin-top:12px; max-width:360px;">
+                            <label for="numero_diagnostico">N° de diagnóstico</label>
+                            <input type="text" id="numero_diagnostico" name="numero_diagnostico" class="form-control"
+                                   maxlength="100" placeholder="Ej. DIAG-2026-001" autocomplete="off">
+                        </div>
                     </div>
 
                     <div class="form-group">
