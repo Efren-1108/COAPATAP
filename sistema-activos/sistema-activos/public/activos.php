@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Gestión de Activos Fijos';
 $page_js    = 'activos.js';
-$page_js_version = 'stock-movimientos-rol-20261111';
+$page_js_version = 'lista-inservibles-impresion-20261111-corregido2';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_permission('activos');
@@ -138,7 +138,7 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <div class="tab-panel" id="panelInservibles" data-panel="inservibles">
-  <div class="card"><h2 class="card__title">🚫 Bienes declarados inservibles</h2>
+  <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2 class="card__title">🚫 Bienes declarados inservibles</h2><button type="button" class="btn btn--ghost" id="imprimirInservibles">📊 Descargar Excel</button></div>
   <p class="muted">Estos bienes se conservan en la base de datos, sin asignación activa.</p>
   <div class="table-wrap"><table class="table"><thead><tr><th>Activo</th><th>Último responsable</th><th>Última área</th><th>Motivo</th><th>Fecha</th><th>Acciones</th></tr></thead><tbody id="tablaInservibles"></tbody></table></div></div>
 </div>
@@ -318,4 +318,5 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<script src="../assets/js/exportar-lista-xlsx.js?v=20261111-corregido2"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

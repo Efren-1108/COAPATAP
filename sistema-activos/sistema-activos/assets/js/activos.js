@@ -525,7 +525,8 @@ function onAdscCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.adscId : null;
-
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-adsc' && inActions) return;
 
     switch (action) {
         case 'toggle-adsc':
@@ -677,7 +678,8 @@ function onAreaCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.areaId : null;
-
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-area' && inActions) return;
 
     switch (action) {
         case 'toggle-area':
@@ -794,7 +796,8 @@ function onEmpleadoCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.empId : null;
-
+    const inActions = e.target.closest('.area-card__actions');
+    if (action === 'toggle-emp' && inActions) return;
 
     switch (action) {
         case 'toggle-emp':
@@ -1328,6 +1331,8 @@ async function declararInservibleDesdeLista(id) {
     actualizarMotivoInservible();
     form.elements['motivo_inservible'].focus();
 }
+
+
 function renderInservibles() {
     const lista = activosCache.filter(a => a.estado_fisico === 'INSERVIBLE');
     document.getElementById('countInservibles').textContent = lista.length;
@@ -1341,6 +1346,20 @@ function renderInservibles() {
       <td><button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">${a.puede_modificar === false ? '👁️ Consultar' : '✏️ Consultar / editar'}</button></td>
     </tr>`).join('') : '<tr><td colspan="6">No hay bienes inservibles registrados.</td></tr>';
 }
+document.getElementById('imprimirInservibles').addEventListener('click', () => {
+    const camposOmitidos = new Set([
+        'empleado_id', 'ruta_imagen', 'area_id', 'usuario_id',
+        'clave_importacion', 'adscripcion_clave', 'adscripcion_id'
+    ]);
+    const lista = activosCache
+        .filter(a => a.estado_fisico === 'INSERVIBLE')
+        .map(a => Object.fromEntries(
+            Object.entries(a).filter(([campo]) => !camposOmitidos.has(campo))
+        ));
+    // Exportar todos los demás campos disponibles, sin afectar Stock.
+    exportarRegistrosCoapatap('Listado completo de bienes inservibles', lista,
+        'COAPATAP_Inservibles.xlsx');
+});
 document.getElementById('tablaInservibles').addEventListener('click', e => {
     const b=e.target.closest('[data-action="editar-activo"]');
     if(b) editarActivo(Number(b.dataset.id));

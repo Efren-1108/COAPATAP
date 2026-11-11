@@ -1,7 +1,7 @@
 <?php
 $page_title='Stock · Almacén general';
 $page_js='stock.js';
-$page_js_version='stock-movimientos-rol-20261111';
+$page_js_version='stock-lista-impresion-20261111-corregido2';
 require_once __DIR__.'/../config/config.php';
 require_once __DIR__.'/../includes/auth.php';
 $user=require_permission('stock');
@@ -11,7 +11,7 @@ require_once __DIR__.'/../includes/header.php';
 ?>
 <script>window.STOCK_CAN_MOVE = <?= $puedeMoverStock ? 'true' : 'false' ?>;</script>
 <section class="page-header"><div><h1>Stock — Almacén general</h1></div><?php if (has_action_permission('activos','crear')): ?><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a><?php endif; ?></section>
-<div class="toolbar"><input id="buscarStock" placeholder="Buscar descripción, inventario o marca" aria-label="Buscar activos en stock"></div>
+<div class="toolbar"><input id="buscarStock" placeholder="Buscar descripción, inventario o marca" aria-label="Buscar activos en stock"><button type="button" class="btn btn--ghost" id="imprimirStock">📊 Descargar Excel</button></div>
 <div id="resumenStock" class="stats"></div>
 <div class="table-wrap stock-table-wrap"><table class="table stock-table"><thead><tr><th>Activo</th><th>Situación</th><th>Entrada</th><th>Acciones</th></tr></thead><tbody id="stockTabla"></tbody></table></div>
 <style>
@@ -41,4 +41,5 @@ require_once __DIR__.'/../includes/header.php';
 .coapatap-dialog-history-row p{margin:6px 0 0}
 </style>
 
-<?php require_once __DIR__.'/../includes/footer.php'; ?>
+<script src="../assets/js/exportar-lista-xlsx.js?v=20261111-corregido2"></script>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

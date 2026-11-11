@@ -44,6 +44,8 @@ function fechaStockLegible(valor) {
     return texto;
 }
 
+
+
 const $=id=>document.getElementById(id); let bienes=[]; let empleados=[];
 const esc=s=>App.esc(String(s??''));
 const susp=a=>[true,'t','1',1].includes(a.suspendido);
@@ -76,6 +78,12 @@ if(b.dataset.action==='salida'){
 });
 
 $('buscarStock').addEventListener('input',pintar);
+$('imprimirStock').addEventListener('click', () => {
+    // Exportar todos los registros y campos del stock, no sólo las columnas visibles
+    // ni los resultados filtrados por el buscador.
+    exportarRegistrosCoapatap('Listado completo de bienes en stock', bienes,
+        'COAPATAP_Stock.xlsx');
+});
 // Al abrir la página y volver a ella, consultar datos actualizados.
 cargar();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)cargar();});
