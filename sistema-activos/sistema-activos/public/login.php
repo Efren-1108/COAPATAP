@@ -37,7 +37,7 @@ if (current_user() !== null) {
                 <label for="usuario">Usuario</label>
                 <input type="text" id="usuario" name="usuario" class="form-control"
                        required minlength="3" autocomplete="username"
-                       placeholder="ej. admin" autofocus>
+                       placeholder="usuario" autofocus>
             </div>
 
             <div class="form-group">
