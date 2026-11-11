@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Gestión de Roles';
 $page_js    = 'roles.js';
-$page_js_version = 'stock-movimientos-rol-20261111';
+$page_js_version = 'seleccion-todas-areas-20261111';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_permission('roles');
@@ -75,6 +75,11 @@ require_once __DIR__ . '/../includes/header.php';
                         <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="propia" checked> Solo el área asignada a cada usuario</label>
                         <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="seleccionadas"> Áreas específicas para todos los usuarios de este rol</label>
                         <div id="rolesAreasWrap" style="display:none" class="roles-areas-wrap">
+                            <div class="roles-areas-tools">
+                                <button type="button" class="btn btn--ghost btn--sm" id="rolesSeleccionarTodasAreas">Seleccionar todas</button>
+                                <button type="button" class="btn btn--ghost btn--sm" id="rolesDeseleccionarTodasAreas">Deseleccionar todas</button>
+                                <span class="roles-areas-count" id="rolesAreasContador" aria-live="polite">0 áreas seleccionadas</span>
+                            </div>
                             <div class="roles-areas" id="rolesAreas" role="group" aria-label="Áreas permitidas">Cargando áreas...</div>
                         </div>
                     </div>
@@ -105,6 +110,9 @@ require_once __DIR__ . '/../includes/header.php';
 .roles-modo-area {display:flex;align-items:center;gap:8px;margin:9px 0;cursor:pointer;font-size:.92rem;}
 .roles-modo-area input {width:17px;height:17px;accent-color:#2563eb;}
 .roles-areas-wrap {margin-top:12px;padding:12px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;max-height:280px;overflow-y:auto;}
+.roles-areas-tools {position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:2px 0 10px;margin-bottom:10px;background:var(--c-surface);border-bottom:1px solid var(--c-border);}
+.roles-areas-tools .btn {white-space:nowrap;}
+.roles-areas-count {margin-left:auto;color:var(--c-muted);font-size:.8rem;}
 .roles-areas {display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:8px;}
 .roles-area {display:flex;gap:8px;align-items:flex-start;font-size:.9rem;cursor:pointer;}
 .roles-area input {flex-shrink:0;width:17px;height:17px;margin-top:2px;accent-color:#2563eb;}

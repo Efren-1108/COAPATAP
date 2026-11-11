@@ -16,7 +16,29 @@ let modulosCache = [];
 const permisosBox = document.getElementById('rolesPermisos');
 const areasBox = document.getElementById('rolesAreas');
 const areasWrap = document.getElementById('rolesAreasWrap');
+const btnSeleccionarTodasAreas = document.getElementById('rolesSeleccionarTodasAreas');
+const btnDeseleccionarTodasAreas = document.getElementById('rolesDeseleccionarTodasAreas');
+const areasContador = document.getElementById('rolesAreasContador');
 let areasCache = [];
+
+function actualizarContadorAreas() {
+    const todas = areasBox.querySelectorAll('input[name="areas_rol"]');
+    const marcadas = areasBox.querySelectorAll('input[name="areas_rol"]:checked').length;
+    areasContador.textContent = `${marcadas} de ${todas.length} áreas seleccionadas`;
+    btnSeleccionarTodasAreas.disabled = !todas.length || marcadas === todas.length;
+    btnDeseleccionarTodasAreas.disabled = marcadas === 0;
+}
+function marcarTodasLasAreas(marcar) {
+    areasBox.querySelectorAll('input[name="areas_rol"]').forEach(casilla => {
+        casilla.checked = marcar;
+    });
+    actualizarContadorAreas();
+}
+btnSeleccionarTodasAreas.addEventListener('click', () => marcarTodasLasAreas(true));
+btnDeseleccionarTodasAreas.addEventListener('click', () => marcarTodasLasAreas(false));
+areasBox.addEventListener('change', e => {
+    if (e.target.matches('input[name="areas_rol"]')) actualizarContadorAreas();
+});
 function modoAreas() {
     return form.querySelector('input[name="alcance_areas"]:checked')?.value || 'propia';
 }
@@ -33,6 +55,7 @@ function pintarAreas(seleccionadas = []) {
             <input type="checkbox" name="areas_rol" value="${Number(a.id)}" ${ids.includes(Number(a.id)) ? 'checked' : ''}>
             <span>${App.esc(a.nombre)}<small>${App.esc(a.adscripcion_nombre || 'Sin adscripción')}</small></span>
         </label>`).join('') || '<span class="muted">No hay áreas activas.</span>';
+    actualizarContadorAreas();
 }
 form.querySelectorAll('input[name="alcance_areas"]').forEach(el =>
     el.addEventListener('change', actualizarVisibilidadAreas));

@@ -238,7 +238,7 @@ try {
                     ':pwd' => $hash,
                     ':aid' => $areaId,
                     ':rol' => $rolId,
-                    ':est' => $estado,
+                    ':est' => $estado ? 'true' : 'false',
                 ];
             } else {
                 $sql = "INSERT INTO usuarios
@@ -254,7 +254,7 @@ try {
                     ':pwd' => $hash,
                     ':aid' => $areaId,
                     ':rol' => $rolId,
-                    ':est' => $estado,
+                    ':est' => $estado ? 'true' : 'false',
                 ];
             }
 
@@ -371,7 +371,7 @@ try {
                     ':cor' => $correo !== '' ? $correo : null,
                     ':aid' => $areaId,
                     ':rol' => $rolId,
-                    ':est' => $estado,
+                    ':est' => $estado ? 'true' : 'false',
                     ':id'  => $id,
                 ];
             } else {
@@ -389,7 +389,7 @@ try {
                     ':cor' => $correo !== '' ? $correo : null,
                     ':aid' => $areaId,
                     ':rol' => $rolId,
-                    ':est' => $estado,
+                    ':est' => $estado ? 'true' : 'false',
                     ':id'  => $id,
                 ];
             }
@@ -581,7 +581,7 @@ function normalizarUsuario(array $u): array
     $u['id']     = (int)$u['id'];
     $u['rol_id'] = (int)$u['rol_id'];
     $u['area_id']= $u['area_id'] !== null ? (int)$u['area_id'] : null;
-    $u['estado'] = (bool)$u['estado'];
+    $u['estado'] = in_array($u['estado'], [true, 1, '1', 't', 'true'], true);
     return $u;
 }
 
