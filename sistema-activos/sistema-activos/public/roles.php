@@ -63,7 +63,7 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group form-group--full">
                         <label>Permisos de acceso a módulos</label>
-                        <p class="form-text" style="margin:0 0 8px">Para cada módulo, permite la consulta y, cuando corresponda, Crear, Modificar o Eliminar. En «Empleados y Áreas», las tres acciones se aplican a empleados. La gestión de áreas, los movimientos globales de Stock, Adscripciones e Importar Excel siguen reservados al Superusuario.</p>
+                        <p class="form-text" style="margin:0 0 8px">Para cada módulo, permite la consulta y, cuando corresponda, Crear, Modificar o Eliminar. En «Empleados y Áreas», las tres acciones se aplican a empleados. La gestión de áreas y los movimientos globales de Stock y Adscripciones siguen reservados al Superusuario. Importar Excel está disponible para todos los usuarios autenticados, limitado a su propia área.</p>
                         <div class="roles-permisos" id="rolesPermisos" role="group" aria-label="Permisos de acceso">
                             Cargando módulos...
                         </div>

@@ -213,6 +213,10 @@ function has_permission(string $modulo_clave): bool
     $u = current_user();
     if (!$u) return false;
     if ($u['es_superusuario']) return true;
+    // Importar Excel está disponible para todas las sesiones válidas.
+    // Las escrituras de usuarios comunes se restringen a su propia área
+    // en public/importar_activos.php (comprobación en servidor).
+    if ($modulo_clave === 'importar') return true;
 
     try {
         $pdo = db();
@@ -290,6 +294,7 @@ function default_module_page(): string
         'impresion' => 'vista_previa_resguardo.php',
         'usuarios' => 'usuarios.php',
         'roles' => 'roles.php',
+        'importar' => 'importar_activos.php',
     ];
     foreach ($pages as $key => $filename) {
         if (has_permission($key)) return $filename;

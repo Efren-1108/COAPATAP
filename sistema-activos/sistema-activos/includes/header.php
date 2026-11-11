@@ -9,7 +9,7 @@
  * - Activos
  * - Adscripciones (superusuario)
  * - Impresión de resguardos
- * - Importar Excel (superusuario)
+ * - Importar Excel (todos los usuarios autenticados)
  * - Usuarios (superusuario)
  * - Roles (superusuario)
  */
@@ -327,7 +327,7 @@ $puedeImprimir = $user
                     <?php endif; ?>
 
                     <!-- =============================
-                         OPCIONES DE SUPERUSUARIO
+                         OPCIONES ADMINISTRATIVAS E IMPORTACIÓN
                     ============================== -->
 
                     <?php if (has_any_permission(['importar', 'usuarios', 'roles'])): ?>

@@ -16,7 +16,6 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/importacion_celdas.php';
 
 $usuario = require_permission('importar');
-if (empty($usuario['es_superusuario'])) { http_response_code(403); exit('La importación masiva está reservada al Superusuario.'); }
 $page_title = 'Importar activos desde Excel';
 
 // ==========================================
@@ -98,6 +97,62 @@ function impDiferenciasEmpleado(array $excel, array $bd): array
         }
     }
     return $d;
+}
+
+/**
+ * Importación para todos los usuarios: los no superusuarios SOLO escriben en
+ * el área asignada a su cuenta. Esto no amplía los permisos de lectura del rol.
+ */
+function impAreaPropia(PDO $pdo, array $usuario): ?array
+{
+    if (!empty($usuario['es_superusuario'])) return null;
+    $areaId = (int)($usuario['area_id'] ?? 0);
+    if ($areaId < 1) {
+        throw new RuntimeException('Tu cuenta no tiene un área asignada. Solicita que te asignen una antes de importar.');
+    }
+    $st = $pdo->prepare('SELECT a.id, a.nombre AS area, ad.nombre AS adscripcion
+        FROM areas a JOIN adscripciones ad ON ad.id = a.adscripcion_id
+        WHERE a.id = :id AND a.activo IS TRUE AND ad.activo IS TRUE');
+    $st->execute([':id' => $areaId]);
+    $area = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$area) {
+        throw new RuntimeException('El área de tu usuario no está activa o no tiene adscripción válida.');
+    }
+    return $area;
+}
+
+/**
+ * Comprueba antes de analizar/confirmar cualquier fila del Excel. Rechaza
+ * lotes con registros de otras áreas (no importa el alcance de CONSULTA).
+ * Las nóminas existentes se verifican por su área real, no por el texto XLSX.
+ */
+function impValidarAreaLote(PDO $pdo, array $usuario, array $filas): void
+{
+    $area = impAreaPropia($pdo, $usuario);
+    if ($area === null) return;
+    $stNomina = $pdo->prepare('SELECT area_id FROM empleados WHERE numero_nomina = :n');
+    $nominas = [];
+    foreach ($filas as $fila) {
+        $nFila = (int)($fila['fila'] ?? 0);
+        $ubicacion = $nFila > 0 ? 'Fila ' . $nFila : 'Responsable ' . (string)($fila['nombre'] ?? 'sin identificar');
+        if (impN($fila['area'] ?? '') !== impN($area['area']) ||
+            impN($fila['adscripcion'] ?? '') !== impN($area['adscripcion'])) {
+            throw new RuntimeException($ubicacion . ': el Excel contiene una ubicación fuera de tu área. ' .
+                'Solo puedes importar información de ' . $area['area'] . '.');
+        }
+        $nomina = trim((string)($fila['nomina'] ?? ''));
+        if ($nomina !== '' && ctype_digit($nomina)) {
+            if (!array_key_exists($nomina, $nominas)) {
+                $stNomina->execute([':n' => (int)$nomina]);
+                $actual = $stNomina->fetchColumn();
+                $nominas[$nomina] = $actual === false ? null : (int)$actual;
+            }
+            if ($nominas[$nomina] !== null && $nominas[$nomina] !== (int)$area['id']) {
+                throw new RuntimeException($ubicacion . ': la nómina pertenece a otra área en la base de datos. ' .
+                    'No se pueden modificar ni importar sus registros.');
+            }
+        }
+    }
 }
 
 // ==========================================
@@ -1256,6 +1311,10 @@ function impResumenBD(PDO $pdo): array
         LEFT JOIN adscripciones ad
             ON ad.id = a.adscripcion_id
     ";
+    $u = current_user();
+    if ($u && empty($u['es_superusuario'])) {
+        $sql .= ' WHERE e.area_id = ' . (int)($u['area_id'] ?? 0);
+    }
 
     foreach ($pdo->query($sql) as $e) {
         if ($e['numero_nomina'] !== null) {
@@ -1276,7 +1335,8 @@ function impCoincidenciasSinNomina(PDO $pdo, array $c): array
         a.nombre AS area, ad.nombre AS adscripcion
         FROM empleados e
         JOIN areas a ON a.id = e.area_id
-        JOIN adscripciones ad ON ad.id = a.adscripcion_id');
+        JOIN adscripciones ad ON ad.id = a.adscripcion_id' .
+        (is_super() ? '' : ' WHERE e.area_id = ' . (int)(current_user()['area_id'] ?? 0)));
     $r = [];
     foreach ($st as $e) {
         if (impN($e['nombre']) === impN($c['nombre']) &&
@@ -1466,6 +1526,7 @@ function impCrearEmpleados(
     if (!$candidatos) {
         throw new RuntimeException('No hay responsables identificados.');
     }
+    impValidarAreaLote($pdo, $usuario, $candidatos);
     foreach ($candidatos as $e) {
         $n = trim((string) $e['nomina']);
         if ($n !== '' && !preg_match('/^[1-9][0-9]{0,8}$/', $n)) {
@@ -1505,7 +1566,7 @@ function impCrearEmpleados(
         $creados = 0; $existentes = 0; $areas = 0; $ads = 0;
         $resueltos = [];
         $stNomina = $pdo->prepare('SELECT id, nombre, area_id FROM empleados WHERE numero_nomina = :n FOR UPDATE');
-        $stId = $pdo->prepare('SELECT e.id, e.nombre, a.nombre AS area, ad.nombre AS adscripcion
+        $stId = $pdo->prepare('SELECT e.id, e.nombre, e.area_id, a.nombre AS area, ad.nombre AS adscripcion
             FROM empleados e JOIN areas a ON a.id = e.area_id
             JOIN adscripciones ad ON ad.id = a.adscripcion_id WHERE e.id = :id FOR UPDATE OF e');
         $insertar = $pdo->prepare('INSERT INTO empleados (numero_nomina, nombre, cargo, area_id)
@@ -1519,6 +1580,9 @@ function impCrearEmpleados(
                 $stNomina->execute([':n'=>(int)$nomina]);
                 $actual = $stNomina->fetch(PDO::FETCH_ASSOC);
                 if ($actual) {
+                    if (empty($usuario['es_superusuario']) && (int)$actual['area_id'] !== (int)$usuario['area_id']) {
+                        throw new RuntimeException('La nómina ' . $nomina . ' pertenece a otra área.');
+                    }
                     $resueltos[$e['clave']] = (int)$actual['id'];
                     $existentes++;
                     // Confirmar reutilización no cambia nombre, cargo ni ubicación de la BD.
@@ -1530,6 +1594,9 @@ function impCrearEmpleados(
             $ads += (int)$pdo->query('SELECT COUNT(*) FROM adscripciones')->fetchColumn() - $prevAds;
             $prevAreas = (int)$pdo->query('SELECT COUNT(*) FROM areas')->fetchColumn();
             $areaId = impEncontrarOcrearArea($pdo, $e['area'], $adsId);
+            if (empty($usuario['es_superusuario']) && $areaId !== (int)$usuario['area_id']) {
+                throw new RuntimeException('No puedes crear empleados en otra área.');
+            }
             $areas += (int)$pdo->query('SELECT COUNT(*) FROM areas')->fetchColumn() - $prevAreas;
             $nomina = trim((string) $e['nomina']);
             if ($nomina !== '') {
@@ -1551,7 +1618,9 @@ function impCrearEmpleados(
                     $idSolicitado = (int)substr($decision, 3);
                     $stId->execute([':id'=>$idSolicitado]);
                     $actual = $stId->fetch(PDO::FETCH_ASSOC);
-                    if (!$actual || impN($actual['nombre']) !== impN($e['nombre']) ||
+                    if (!$actual ||
+                        (empty($usuario['es_superusuario']) && (int)$actual['area_id'] !== (int)$usuario['area_id']) ||
+                        impN($actual['nombre']) !== impN($e['nombre']) ||
                         impN($actual['area']) !== impN($e['area']) ||
                         impN($actual['adscripcion']) !== impN($e['adscripcion'])) {
                         throw new RuntimeException('La selección de empleado no coincide con el Excel: ' . $e['nombre']);
@@ -1905,6 +1974,7 @@ function impGuardarActivos(
     bool $aceptaPendientes = false
 ): array {
     $bienes = $lote['bienes'] ?? [];
+    impValidarAreaLote($pdo, $usuario, is_array($bienes) ? $bienes : []);
 
     $huella = (string) (
         $lote['huella'] ?? ''
@@ -2126,6 +2196,10 @@ function impGuardarActivos(
                 }
             }
             $emp = $empleados[$ck];
+            if (empty($usuario['es_superusuario']) &&
+                (!$emp || (int)$emp['area_id'] !== (int)$usuario['area_id'])) {
+                throw new RuntimeException('Fila ' . $b['fila'] . ': el responsable pertenece a otra área.');
+            }
             $confirmadoIdentidad = in_array($claveResponsable,
                 $lote['identidades_confirmadas'] ?? [], true);
             if (!$emp || (!$confirmadoIdentidad && (
@@ -2395,6 +2469,8 @@ if (
             $candidatos = impEmpleadosCandidatos(
                 $datos['bloques']
             );
+            impValidarAreaLote(db(), $usuario, $candidatos);
+            impValidarAreaLote(db(), $usuario, $datos['bienes']);
 
             $empleadosBD = impResumenBD(db());
             foreach ($candidatos as $claveC => $cand) {
@@ -2536,6 +2612,7 @@ if (
             if (
                 $accion === 'confirmar_empleados'
             ) {
+                impValidarAreaLote(db(), $usuario, $lote['candidatos'] ?? []);
 
                 // Solo procesar responsables seguros; nunca asignar a una
                 // identidad con nómina duplicada o diferente de la BD.
@@ -2673,6 +2750,12 @@ if (
                 ],
                 $_SESSION['coapatap_importacion_previa']
             );
+            // No mostrar una vista previa de un lote que fue rechazado.
+            $datos = [];
+            $candidatos = [];
+            $empleadosBD = [];
+            $hojas = [];
+            $hoja = '';
         }
     }
 }
@@ -2693,6 +2776,9 @@ require_once __DIR__ . '/../includes/header.php';
         <div class="importacion-hero__contenido">
             <!-- <span class="importacion-hero__etiqueta">COAPATAP · Gestión de información</span> -->
             <h1>Importación de Excel</h1>
+            <?php if (empty($usuario['es_superusuario'])): ?>
+                <p class="form-text">Puedes importar empleados y activos de tu propia área. Los registros de otras áreas no se aceptarán, aunque tu rol pueda consultarlas.</p>
+            <?php endif; ?>
             <!-- <p>
                 Analiza los bienes, verifica sus datos y
                 confirma por separado el registro de

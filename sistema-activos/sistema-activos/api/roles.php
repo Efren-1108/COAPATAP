@@ -29,6 +29,9 @@ function catalogo_roles(PDO $pdo): array
             throw new RuntimeException('Falta configurar el catálogo de permisos. Ejecuta la migración SQL incluida.');
         }
         $map[$clave]['acciones_disponibles'] = acciones_disponibles_roles($clave);
+        if ($clave === 'importar') {
+            $map[$clave]['descripcion'] = 'Disponible para todos los usuarios autenticados; importación limitada al área propia.';
+        }
         $list[] = $map[$clave];
     }
     return $list;
@@ -47,6 +50,8 @@ function validar_modulos_roles(array $input, array $catalogo): array
         }
         $elegidos[$v] = true;
     }
+    // Importar Excel es un acceso universal, no una casilla revocable por rol.
+    $elegidos['importar'] = true;
     return array_keys($elegidos);
 }
 
@@ -186,6 +191,8 @@ try {
                 $row['permisos'] = $row['clave'] === 'superusuario'
                     ? array_column($catalogo, 'clave')
                     : $per->fetchAll(PDO::FETCH_COLUMN);
+                // Mostrar correctamente el permiso universal en roles antiguos.
+                $row['permisos'] = array_values(array_unique(array_merge($row['permisos'], ['importar'])));
                 $row['acciones'] = [];
                 $stAcc=$pdo->prepare('SELECT m.clave, rp.puede_crear, rp.puede_modificar, rp.puede_eliminar
                     FROM public.rol_permisos rp JOIN public.modulos m ON m.id=rp.modulo_id
