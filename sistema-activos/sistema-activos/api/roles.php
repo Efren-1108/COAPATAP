@@ -29,6 +29,9 @@ function catalogo_roles(PDO $pdo): array
             throw new RuntimeException('Falta configurar el catálogo de permisos. Ejecuta la migración SQL incluida.');
         }
         $map[$clave]['acciones_disponibles'] = acciones_disponibles_roles($clave);
+        if ($clave === 'stock') {
+            $map[$clave]['descripcion'] = 'Consultar el almacén general; los movimientos de entrada y salida se autorizan por rol.';
+        }
         if ($clave === 'importar') {
             $map[$clave]['descripcion'] = 'Disponible para todos los usuarios autenticados; importación limitada al área propia.';
         }
@@ -58,6 +61,7 @@ function validar_modulos_roles(array $input, array $catalogo): array
 /** Acciones de escritura permitidas en módulos que disponen de CRUD delegado. */
 function acciones_disponibles_roles(string $clave): array
 {
+    if ($clave === 'stock') return ['modificar']; // Permiso para realizar entradas y salidas.
     return in_array($clave, ['empleados','activos','usuarios','roles'], true)
         ? ['crear','modificar','eliminar'] : [];
 }

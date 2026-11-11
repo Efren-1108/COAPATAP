@@ -23,7 +23,6 @@ $q      = isset($_GET['q']) ? trim($_GET['q']) : null;
 
 $current = require_permission_csrf('activos');
 $isSuper = $current['es_superusuario'];
-$areaId  = $current['area_id'];
 
 try {
     $pdo = db();
@@ -58,9 +57,10 @@ try {
                     json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
                 }
 
-                $puedeOperarArea = $isSuper || ($areaId !== null && $row['area_id'] !== null && (int)$row['area_id'] === (int)$areaId);
+                $puedeOperarArea = can_write_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current);
                 $row['puede_modificar'] = $puedeOperarArea && has_action_permission('activos', 'modificar');
                 $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('activos', 'eliminar');
+                $row['puede_enviar_stock'] = $puedeOperarArea && has_action_permission('stock', 'modificar');
                 json_response(['ok' => true, 'data' => $row]);
             }
 
@@ -108,9 +108,10 @@ try {
             $stmt->execute($params);
             $filas = $stmt->fetchAll();
             foreach ($filas as &$fila) {
-                $puedeOperarArea = $isSuper || ($areaId !== null && $fila['area_id'] !== null && (int)$fila['area_id'] === (int)$areaId);
+                $puedeOperarArea = can_write_area($fila['area_id'] !== null ? (int)$fila['area_id'] : null, $current);
                 $fila['puede_modificar'] = $puedeOperarArea && has_action_permission('activos', 'modificar');
                 $fila['puede_eliminar'] = $puedeOperarArea && has_action_permission('activos', 'eliminar');
+                $fila['puede_enviar_stock'] = $puedeOperarArea && has_action_permission('stock', 'modificar');
             }
             unset($fila);
             json_response(['ok' => true, 'data' => $filas]);
@@ -128,23 +129,35 @@ try {
             $motivoInservible = trim((string)($input['motivo_inservible'] ?? ''));
             if ($inservible && ($motivoInservible === '' || strlen($motivoInservible) > 1000)) json_response(['ok'=>false,'error'=>'Indica el motivo de inservibilidad (máximo 1000 caracteres).'],400);
             if ($inservible && !empty($input['crear_en_stock'])) json_response(['ok'=>false,'error'=>'Un bien inservible no puede registrarse como disponible en stock.'],400);
-            $pdo->beginTransaction();
             $stockNuevo = !empty($input['crear_en_stock']);
-            if ($stockNuevo && !$isSuper) json_response(['ok'=>false,'error'=>'Solo el superusuario puede registrar bienes en stock.'],403);
+            if ($stockNuevo && !has_action_permission('stock', 'modificar')) {
+                json_response(['ok'=>false,'error'=>'Tu rol no tiene permiso para registrar bienes directamente en Stock.'],403);
+            }
+            if ($stockNuevo && !$isSuper && !read_area_ids($current)) {
+                json_response(['ok'=>false,'error'=>'Tu rol necesita al menos un área autorizada para registrar bienes en Stock.'],403);
+            }
+            $pdo->beginTransaction();
             $empleadoId = $stockNuevo ? null : normalizarEmpleadoId($input['empleado_id'] ?? null);
-            $newAreaId = $isSuper
-                ? (isset($input['area_id']) && $input['area_id'] !== '' ? (int)$input['area_id'] : null)
-                : $areaId;
+            $newAreaId = isset($input['area_id']) && $input['area_id'] !== ''
+                ? (int)$input['area_id'] : ($current['area_id'] !== null ? (int)$current['area_id'] : null);
             if ($empleadoId !== null) {
                 // El área del activo debe coincidir con la de su responsable.
                 $areaEmpleado = obtenerAreaDelEmpleado($pdo, $empleadoId);
                 if ($areaEmpleado === null) {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin área.'], 400);
                 }
-                if (!$isSuper && (int)$areaEmpleado !== (int)$areaId) {
+                if (!can_write_area((int)$areaEmpleado, $current)) {
                     json_response(['ok' => false, 'error' => 'No puedes asignar empleados de otra área.'], 403);
                 }
                 $newAreaId = $areaEmpleado;
+            }
+            if (!$stockNuevo && $newAreaId !== null) {
+                $validarArea=$pdo->prepare('SELECT 1 FROM public.areas WHERE id=:id AND activo IS TRUE');
+                $validarArea->execute([':id'=>$newAreaId]);
+                if (!$validarArea->fetchColumn()) json_response(['ok'=>false,'error'=>'El área seleccionada no existe o está inactiva'],400);
+            }
+            if (!$stockNuevo && !$isSuper && ($newAreaId === null || !can_write_area((int)$newAreaId, $current))) {
+                json_response(['ok'=>false,'error'=>'Selecciona un área autorizada para registrar el activo'],403);
             }
 
             $ultimoEmpleadoId = $inservible ? $empleadoId : null;
@@ -213,10 +226,11 @@ try {
             }
 
             if (!$isSuper) {
-                $own = $pdo->prepare("SELECT id FROM activos WHERE id = :id AND area_id = :aid");
-                $own->execute([':id' => $id, ':aid' => $areaId]);
-                if (!$own->fetch()) {
-                    json_response(['ok' => false, 'error' => 'No tienes permisos para editar este activo (pertenece a otra área).'], 403);
+                $own = $pdo->prepare('SELECT area_id FROM activos WHERE id=:id');
+                $own->execute([':id'=>$id]);
+                $idAreaActual = $own->fetchColumn();
+                if ($idAreaActual === false || !can_write_area($idAreaActual !== null ? (int)$idAreaActual : null, $current)) {
+                    json_response(['ok'=>false,'error'=>'No puedes modificar activos fuera de las áreas autorizadas'],403);
                 }
             }
 
@@ -226,6 +240,9 @@ try {
             $anterior = $existe->fetch(PDO::FETCH_ASSOC);
             if (!$anterior) {
                 json_response(['ok' => false, 'error' => 'Activo no encontrado'], 404);
+            }
+            if (!can_write_area($anterior['area_id'] !== null ? (int)$anterior['area_id'] : null, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes editar un activo fuera de tus áreas autorizadas'],403);
             }
             $oldImg = $anterior['ruta_imagen'];
 
@@ -251,12 +268,21 @@ try {
             // Si el activo cambia de empleado, actualizar también su área.
             // Si queda No asignado, preservar el área que ya tenía.
             $nuevaAreaId = $anterior['area_id'];
+            if ($anterior['situacion_inventario'] !== 'STOCK' && $empleadoId === null
+                && isset($input['area_id']) && $input['area_id'] !== '') {
+                $nuevaAreaId = (int)$input['area_id'];
+                $validarArea=$pdo->prepare('SELECT 1 FROM public.areas WHERE id=:id AND activo IS TRUE');
+                $validarArea->execute([':id'=>$nuevaAreaId]);
+                if (!$validarArea->fetchColumn() || !can_write_area($nuevaAreaId, $current)) {
+                    json_response(['ok'=>false,'error'=>'No puedes trasladar el activo a un área inactiva o no autorizada'],403);
+                }
+            }
             if ($empleadoId !== null) {
                 $areaEmpleado = obtenerAreaDelEmpleado($pdo, $empleadoId);
                 if ($areaEmpleado === null) {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin área.'], 400);
                 }
-                if (!$isSuper && (int)$areaEmpleado !== (int)$areaId) {
+                if (!can_write_area((int)$areaEmpleado, $current)) {
                     json_response(['ok' => false, 'error' => 'No puedes asignar empleados de otra área.'], 403);
                 }
                 $nuevaAreaId = $areaEmpleado;
@@ -362,19 +388,15 @@ try {
                 json_response(['ok' => false, 'error' => 'ID requerido'], 400);
             }
 
-            if (!$isSuper) {
-                $own = $pdo->prepare("SELECT id FROM activos WHERE id = :id AND area_id = :aid");
-                $own->execute([':id' => $id, ':aid' => $areaId]);
-                if (!$own->fetch()) {
-                    json_response(['ok' => false, 'error' => 'No tienes permisos para eliminar este activo.'], 403);
-                }
-            }
-
-            $stmt = $pdo->prepare("SELECT ruta_imagen, descripcion FROM activos WHERE id = :id");
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("SELECT ruta_imagen, descripcion, area_id FROM activos WHERE id = :id FOR UPDATE");
             $stmt->execute([':id' => $id]);
             $row = $stmt->fetch();
             if (!$row) {
                 json_response(['ok' => false, 'error' => 'Activo no encontrado'], 404);
+            }
+            if (!can_write_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes eliminar activos fuera de tus áreas autorizadas'],403);
             }
 
             $estado = $pdo->prepare("SELECT estado_fisico FROM activos WHERE id=:id");
@@ -396,8 +418,9 @@ try {
                 ':det' => "Activo eliminado: {$row['descripcion']}",
                 ':usr' => $current['nombre_usuario'],
                 ':uid' => $current['id'],
-                ':aid' => $isSuper ? null : $areaId,
+                ':aid' => $row['area_id'] ?? null,
             ]);
+            $pdo->commit();
             logger("Activo eliminado: id={$id} por usuario_id={$current['id']}");
             json_response(['ok' => true, 'message' => 'Activo eliminado']);
             break;

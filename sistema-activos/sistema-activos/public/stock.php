@@ -1,13 +1,16 @@
 <?php
 $page_title='Stock · Almacén general';
 $page_js='stock.js';
-$page_js_version='stock-fechas-legibles-20261029-1';
+$page_js_version='stock-movimientos-rol-20261111';
 require_once __DIR__.'/../config/config.php';
 require_once __DIR__.'/../includes/auth.php';
 $user=require_permission('stock');
+// Los usuarios sin área pueden consultar Stock, pero no mover bienes.
+$puedeMoverStock = has_action_permission('stock', 'modificar') && (!empty($user['es_superusuario']) || !empty($user['area_id']));
 require_once __DIR__.'/../includes/header.php';
 ?>
-<section class="page-header"><div><h1>Stock — Almacén general</h1></div><?php if (has_permission('activos')): ?><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a><?php endif; ?></section>
+<script>window.STOCK_CAN_MOVE = <?= $puedeMoverStock ? 'true' : 'false' ?>;</script>
+<section class="page-header"><div><h1>Stock — Almacén general</h1></div><?php if (has_action_permission('activos','crear')): ?><a class="btn btn--primary" href="activos.php">➕ Registrar activo</a><?php endif; ?></section>
 <div class="toolbar"><input id="buscarStock" placeholder="Buscar descripción, inventario o marca" aria-label="Buscar activos en stock"></div>
 <div id="resumenStock" class="stats"></div>
 <div class="table-wrap stock-table-wrap"><table class="table stock-table"><thead><tr><th>Activo</th><th>Situación</th><th>Entrada</th><th>Acciones</th></tr></thead><tbody id="stockTabla"></tbody></table></div>

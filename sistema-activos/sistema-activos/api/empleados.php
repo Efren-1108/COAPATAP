@@ -29,7 +29,6 @@ $current = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
     ? require_any_permission(['empleados', 'activos', 'stock', 'usuarios', 'consulta', 'impresion'])
     : require_permission_csrf('empleados');
 $isSuper = $current['es_superusuario'];
-$areaId  = $current['area_id'];
 
 try {
     $pdo = db();
@@ -64,7 +63,7 @@ try {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin acceso'], 404);
                 }
                 $row['tiene_usuario'] = (bool)($row['tiene_usuario'] ?? false);
-                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$row['area_id'] === (int)$areaId);
+                $puedeOperarArea = can_write_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current);
                 $row['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
                 $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
@@ -98,7 +97,7 @@ try {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin acceso'], 404);
                 }
                 $row['tiene_usuario'] = (bool)($row['tiene_usuario'] ?? false);
-                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$row['area_id'] === (int)$areaId);
+                $puedeOperarArea = can_write_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current);
                 $row['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
                 $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
@@ -143,7 +142,7 @@ try {
 
             foreach ($rows as &$r) {
                 $r['tiene_usuario'] = (bool)($r['tiene_usuario'] ?? false);
-                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$r['area_id'] === (int)$areaId);
+                $puedeOperarArea = can_write_area($r['area_id'] !== null ? (int)$r['area_id'] : null, $current);
                 $r['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
                 $r['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
             }
@@ -176,16 +175,12 @@ try {
                 }
             }
 
-            if ($isSuper) {
-                $newAreaId = normalizarAreaId($input['area_id'] ?? null);
-                if ($newAreaId !== null && !validarAreaExiste($pdo, $newAreaId)) {
-                    json_response(['ok' => false, 'error' => 'El área especificada no existe'], 400);
-                }
-            } else {
-                $newAreaId = $areaId;
-                if ($newAreaId === null) {
-                    json_response(['ok' => false, 'error' => 'Tu usuario no tiene área asignada'], 400);
-                }
+            $newAreaId = normalizarAreaId($input['area_id'] ?? null);
+            if ($newAreaId === null || !validarAreaExiste($pdo, $newAreaId)) {
+                json_response(['ok'=>false,'error'=>'Selecciona un área activa para el empleado'],400);
+            }
+            if (!can_write_area($newAreaId, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes crear empleados en el área seleccionada'],403);
             }
 
             $stmt = $pdo->prepare("INSERT INTO empleados (numero_nomina, nombre, cargo, area_id)
@@ -238,7 +233,7 @@ try {
             if (!$empActual) {
                 json_response(['ok' => false, 'error' => 'Empleado no encontrado'], 404);
             }
-            if (!$isSuper && (int)$empActual['area_id'] !== (int)$areaId) {
+            if (!can_write_area($empActual['area_id'] !== null ? (int)$empActual['area_id'] : null, $current)) {
                 json_response(['ok' => false, 'error' => 'No tienes permisos para editar este empleado (pertenece a otra área).'], 403);
             }
 
@@ -265,12 +260,13 @@ try {
                 }
             }
 
-            $nuevoAreaId = $empActual['area_id'];
-            if ($isSuper && array_key_exists('area_id', $input)) {
-                $nuevoAreaId = normalizarAreaId($input['area_id']);
-                if ($nuevoAreaId !== null && !validarAreaExiste($pdo, $nuevoAreaId)) {
-                    json_response(['ok' => false, 'error' => 'El área especificada no existe'], 400);
-                }
+            $nuevoAreaId = array_key_exists('area_id', $input)
+                ? normalizarAreaId($input['area_id']) : ($empActual['area_id'] !== null ? (int)$empActual['area_id'] : null);
+            if ($nuevoAreaId === null || !validarAreaExiste($pdo, $nuevoAreaId)) {
+                json_response(['ok'=>false,'error'=>'Selecciona un área activa para el empleado'],400);
+            }
+            if (!can_write_area($nuevoAreaId, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes trasladar el empleado a un área sin autorización'],403);
             }
 
             $stmt = $pdo->prepare("UPDATE empleados
@@ -323,7 +319,7 @@ try {
                 $pdo->rollBack();
                 json_response(['ok' => false, 'error' => 'Empleado no encontrado'], 404);
             }
-            if (!$isSuper && (int)$emp['area_id'] !== (int)$areaId) {
+            if (!can_write_area($emp['area_id'] !== null ? (int)$emp['area_id'] : null, $current)) {
                 $pdo->rollBack();
                 json_response(['ok' => false, 'error' => 'No tienes permisos para eliminar este empleado.'], 403);
             }

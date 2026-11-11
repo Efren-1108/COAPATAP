@@ -1,7 +1,7 @@
 <?php
 $page_title = 'Gestión de Activos Fijos';
 $page_js    = 'activos.js';
-$page_js_version = 'diagnostico-inservibles-20261110-1';
+$page_js_version = 'stock-movimientos-rol-20261111';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_permission('activos');
@@ -263,6 +263,13 @@ require_once __DIR__ . '/../includes/header.php';
                     <div class="form-group form-group--full" id="grupoCrearStock">
                         <label><input type="checkbox" id="crear_en_stock" name="crear_en_stock" value="1"> 📦 Registrar directamente en stock (Almacén general)</label>
                         <span class="form-text">Solo para activos nuevos. No se asignará empleado ni área.</span>
+                    </div>
+                    <div class="form-group" id="grupoAreaActivo">
+                        <label for="area_id_activo">Área del activo</label>
+                        <select name="area_id" id="area_id_activo" class="form-control">
+                            <option value="">— Selecciona un área autorizada —</option>
+                        </select>
+                        <span class="form-text">Para bienes sin resguardante. Si seleccionas un empleado, se utilizará automáticamente su área.</span>
                     </div>
                     <div class="form-group">
                         <label>Asignado a (Resguardante)</label>

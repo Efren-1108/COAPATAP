@@ -43,6 +43,7 @@ const filtroArea      = document.getElementById('filtroArea');
 const filtroEmpleado  = document.getElementById('filtroEmpleado');
 const filtroSituacion = document.getElementById('filtroSituacion');
 const selectEmp       = document.getElementById('empleado_id');
+const selectAreaActivo = document.getElementById('area_id_activo');
 const hintAdscActivo  = document.getElementById('hintAdscActivo');
 const imgInput        = document.getElementById('imagen');
 const imgPreview      = document.getElementById('imagenPreview');
@@ -99,6 +100,7 @@ async function cargarTodo() {
 
         llenarFiltros();
         llenarSelectEmpleados();
+        llenarSelectAreasActivo();
         renderTodo();
         renderInservibles();
     } catch (err) {
@@ -178,10 +180,14 @@ function wireEvents() {
 
     form.addEventListener('submit', onSubmitActivo);
 
-    selectEmp.addEventListener('change', actualizarHintAdscActivo);
+    selectEmp.addEventListener('change', () => {
+        actualizarHintAdscActivo();
+        sincronizarAreaActivo();
+    });
     document.getElementById('crear_en_stock').addEventListener('change', function() {
         if (this.checked) selectEmp.value = '';
         selectEmp.disabled = this.checked;
+        sincronizarAreaActivo();
         actualizarHintAdscActivo();
     });
 
@@ -242,7 +248,7 @@ function botonSituacion(a) {
 }
 
 function botonStock(a) {
-    if (a.puede_modificar === false) return '';
+    if (a.puede_enviar_stock !== true) return '';
     if (a.estado_fisico === 'INSERVIBLE') return '';
     if (a.situacion_inventario === 'STOCK') return '<span class="badge">📦 En stock</span>';
     return `<button type="button" class="btn btn--ghost btn--sm" data-action="enviar-stock" data-id="${Number(a.id)}">📦 Enviar a stock</button>`;
@@ -294,6 +300,19 @@ function llenarSelectEmpleados() {
             .sort((a, b) => a.nombre.localeCompare(b.nombre))
             .map(e => `<option value="${e.id}">[${e.numero_nomina}] ${App.esc(e.nombre)} — ${App.esc(e.cargo)}</option>`));
     selectEmp.innerHTML = opts.join('');
+}
+
+function llenarSelectAreasActivo() {
+    selectAreaActivo.innerHTML = '<option value="">— Selecciona un área autorizada —</option>' +
+        areasCache.slice().sort((a,b) => a.nombre.localeCompare(b.nombre))
+        .map(a => `<option value="${a.id}">${App.esc(a.nombre)}${a.adscripcion_nombre ? ' — '+App.esc(a.adscripcion_nombre) : ''}</option>`).join('');
+}
+function sincronizarAreaActivo() {
+    const emp = empleadosCache.find(e => Number(e.id) === Number(selectEmp.value));
+    if (emp) selectAreaActivo.value = String(emp.area_id || '');
+    const stock = document.getElementById('crear_en_stock').checked;
+    document.getElementById('grupoAreaActivo').style.display = stock ? 'none' : '';
+    selectAreaActivo.disabled = stock || !!emp;
 }
 
 function actualizarHintAdscActivo() {
@@ -1069,9 +1088,11 @@ function abrirModalActivo() {
     form.elements['id'].value = '';
     form.dataset.estadoOriginal = '';
     actualizarMotivoInservible();
-    document.getElementById('grupoCrearStock').style.display = '';
+    document.getElementById('grupoCrearStock').style.display = window.canRoleAction('stock','modificar') ? '' : 'none';
     document.getElementById('crear_en_stock').checked = false;
     selectEmp.disabled = false;
+    selectAreaActivo.value = '';
+    sincronizarAreaActivo();
     form.elements['ruta_imagen'].value = '';
     form.elements['observaciones'].value = '';
     form.elements['costo'].required = true;
@@ -1090,6 +1111,8 @@ async function editarActivo(id) {
         if (!res.ok) throw new Error(res.error);
         const a = res.data;
         App.fillForm(form, a);
+        selectAreaActivo.value = a.area_id == null ? '' : String(a.area_id);
+        sincronizarAreaActivo();
         form.dataset.estadoOriginal = a.estado_fisico || '';
         form.elements['motivo_inservible'].value = a.motivo_inservible || '';
         form.elements['numero_diagnostico'].value = a.numero_diagnostico || '';
@@ -1241,6 +1264,10 @@ async function onSubmitActivo(e) {
     }
 
     const empleadoTexto = texto('empleado_id');
+    const crearEnStock = !esEdicion && document.getElementById('crear_en_stock').checked;
+    if (!esEdicion && !crearEnStock && !empleadoTexto && !texto('area_id')) {
+        return mostrarError('Selecciona el área para el activo sin resguardante.');
+    }
     const data = {
         descripcion: desc,
         num_inventario: ni,
@@ -1256,6 +1283,7 @@ async function onSubmitActivo(e) {
         costo: costo,
         observaciones: texto('observaciones'),
         empleado_id: empleadoTexto && !document.getElementById('crear_en_stock').checked ? Number(empleadoTexto) : null,
+        area_id: texto('area_id') || null,
         crear_en_stock: !esEdicion && document.getElementById('crear_en_stock').checked,
         ruta_imagen: rutaImagen
     };

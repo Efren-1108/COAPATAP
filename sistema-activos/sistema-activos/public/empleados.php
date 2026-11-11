@@ -191,9 +191,4 @@ require_once __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php if (empty($user['es_superusuario'])): ?>
-<style>
-#btnNuevaArea, #btnNuevaAreaInline, [data-action="editar-area"], [data-action="eliminar-area"] {display:none !important;}
-</style>
-<?php endif; ?>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

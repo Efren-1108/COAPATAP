@@ -1,7 +1,7 @@
 <?php
 /**
  * API: Gestión de áreas / departamentos
- * Acceso: solo superusuario
+ * Escritura: permisos Crear/Modificar/Eliminar del módulo Empleados y Áreas.
  *
  * Jerarquía: Adscripción → Área → Empleado → Activo
  *
@@ -17,9 +17,12 @@ require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
-$user = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+if ($method === 'POST') require_action_permission('empleados', 'crear');
+if ($method === 'PUT') require_action_permission('empleados', 'modificar');
+if ($method === 'DELETE') require_action_permission('empleados', 'eliminar');
+$user = $method === 'GET'
     ? require_any_permission(['empleados','activos','adscripciones','usuarios','stock','importar'])
-    : require_super_csrf(); // Los cambios de áreas globales siguen reservados al Superusuario.
+    : require_permission_csrf('empleados');
 
 try {
     $pdo = db();
@@ -47,6 +50,8 @@ try {
                 $stmtEmp->execute([':id' => $row['id']]);
                 $row['empleados_count'] = (int)$stmtEmp->fetchColumn();
 
+                $row['puede_modificar'] = can_write_area((int)$row['id'], $user) && has_action_permission('empleados', 'modificar');
+                $row['puede_eliminar'] = can_write_area((int)$row['id'], $user) && has_action_permission('empleados', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
             }
             $rows = $pdo->query("
@@ -65,6 +70,11 @@ try {
             if (empty($user['es_superusuario'])) {
                 $rows = array_values(array_filter($rows, fn($r) => can_read_area((int)$r['id'], $user)));
             }
+            foreach ($rows as &$area) {
+                $area['puede_modificar'] = can_write_area((int)$area['id'], $user) && has_action_permission('empleados', 'modificar');
+                $area['puede_eliminar'] = can_write_area((int)$area['id'], $user) && has_action_permission('empleados', 'eliminar');
+            }
+            unset($area);
             json_response(['ok' => true, 'data' => $rows]);
             break;
 
@@ -93,12 +103,20 @@ try {
                 json_response(['ok' => false, 'error' => 'La adscripción seleccionada no existe o está inactiva'], 400);
             }
 
+            // Crear un área nueva solo dentro de una adscripción que ya contenga
+            // alguna de las áreas autorizadas al rol; nunca una adscripción ajena.
+            if (empty($user['es_superusuario']) &&
+                ($adscripcionId === null || !adscripcion_autorizada_para_area($pdo, $adscripcionId, $user))) {
+                json_response(['ok'=>false,'error'=>'Solo puedes crear áreas en una adscripción autorizada para tu rol'],403);
+            }
+
             $chk = $pdo->prepare("SELECT id FROM areas WHERE LOWER(clave) = LOWER(:c)");
             $chk->execute([':c' => $clave]);
             if ($chk->fetch()) {
                 json_response(['ok' => false, 'error' => 'Ya existe un área con esa clave'], 409);
             }
 
+            $pdo->beginTransaction();
             $stmt = $pdo->prepare("
                 INSERT INTO areas (clave, nombre, descripcion, activo, adscripcion_id)
                 VALUES (:c, :n, :d, :a, :ad)
@@ -112,13 +130,32 @@ try {
             $stmt->execute();
 
             $newId = (int)$stmt->fetchColumn();
+            // En el modo de áreas seleccionadas, la nueva área pasa a ser gestionable
+            // por los usuarios de este mismo rol. En modo propia se mantiene la regla
+            // de solo el área personal, sin ampliarla automáticamente.
+            $accesoAutomatico = !empty($user['es_superusuario']);
+            if (empty($user['es_superusuario'])) {
+                $alcance = $pdo->prepare('SELECT alcance_areas FROM public.roles WHERE id=:id');
+                $alcance->execute([':id'=>(int)$user['rol_id']]);
+                if ($alcance->fetchColumn() === 'seleccionadas') {
+                    $accesoAutomatico = true;
+                    $pdo->prepare('INSERT INTO public.rol_areas(rol_id,area_id) VALUES (:r,:a) ON CONFLICT DO NOTHING')
+                        ->execute([':r'=>(int)$user['rol_id'], ':a'=>$newId]);
+                }
+            }
+            $pdo->commit();
             logger("area creada: id={$newId} clave={$clave} adscripcion={$adscripcionId}");
-            json_response(['ok' => true, 'id' => $newId, 'message' => 'Área registrada correctamente'], 201);
+            $mensaje = $accesoAutomatico ? 'Área registrada correctamente' :
+                'Área registrada. Para verla y administrarla, el Superusuario debe incluirla en las áreas seleccionadas de tu rol.';
+            json_response(['ok' => true, 'id' => $newId, 'message' => $mensaje], 201);
             break;
         }
 
         case 'PUT': {
             if (!$id) json_response(['ok' => false, 'error' => 'ID requerido'], 400);
+            if (!area_existente_y_editable($pdo, $id, $user)) {
+                json_response(['ok'=>false,'error'=>'No tienes permiso para modificar esta área'],403);
+            }
             $input   = json_input();
             $nombre  = trim((string)($input['nombre']  ?? ''));
             $desc    = trim((string)($input['descripcion'] ?? ''));
@@ -133,6 +170,11 @@ try {
 
             if ($adscripcionId !== null && !validarAdscripcionExiste($pdo, $adscripcionId)) {
                 json_response(['ok' => false, 'error' => 'La adscripción seleccionada no existe o está inactiva'], 400);
+            }
+
+            if (empty($user['es_superusuario']) &&
+                ($adscripcionId === null || !adscripcion_autorizada_para_area($pdo, $adscripcionId, $user))) {
+                json_response(['ok'=>false,'error'=>'No puedes mover el área a una adscripción fuera de tu alcance'],403);
             }
 
             $stmt = $pdo->prepare("
@@ -157,6 +199,9 @@ try {
 
         case 'DELETE':
             if (!$id) json_response(['ok' => false, 'error' => 'ID requerido'], 400);
+            if (!area_existente_y_editable($pdo, $id, $user)) {
+                json_response(['ok'=>false,'error'=>'No tienes permiso para eliminar esta área'],403);
+            }
 
             $stmtCnt = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE area_id = :id");
             $stmtCnt->execute([':id' => $id]);
@@ -196,6 +241,7 @@ try {
             json_response(['ok' => false, 'error' => 'Método no permitido'], 405);
     }
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
     logger("areas error: " . $e->getMessage(), 'ERROR');
     json_response(['ok' => false, 'error' => 'Error: ' . $e->getMessage()], 500);
 }
@@ -209,4 +255,21 @@ function validarAdscripcionExiste(PDO $pdo, int $adscripcionId): bool
     $stmt = $pdo->prepare("SELECT 1 FROM adscripciones WHERE id = :id AND activo = TRUE LIMIT 1");
     $stmt->execute([':id' => $adscripcionId]);
     return (bool)$stmt->fetchColumn();
+}
+/** Operaciones de área solo si pertenece al alcance del rol. */
+function area_existente_y_editable(PDO $pdo, int $areaId, array $user): bool
+{
+    $st=$pdo->prepare('SELECT id FROM public.areas WHERE id=:id');
+    $st->execute([':id'=>$areaId]);
+    return (bool)$st->fetchColumn() && can_write_area($areaId, $user);
+}
+
+/** Permite crear un área dentro de una adscripción que ya contiene áreas autorizadas. */
+function adscripcion_autorizada_para_area(PDO $pdo, int $adscripcionId, array $user): bool
+{
+    if (!empty($user['es_superusuario'])) return true;
+    $st=$pdo->prepare('SELECT 1 FROM public.areas a WHERE a.adscripcion_id=:ad AND '
+        . read_area_condition('a.id', $user) . ' LIMIT 1');
+    $st->execute([':ad'=>$adscripcionId]);
+    return (bool)$st->fetchColumn();
 }

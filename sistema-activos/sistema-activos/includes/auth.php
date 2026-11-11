@@ -307,8 +307,8 @@ function default_module_page(): string
 /**
  * Áreas visibles por el rol. NULL = Superusuario (todas); [] = ninguna.
  * Por defecto, los roles existentes conservan el área propia de cada usuario.
- * No determina las áreas donde se puede crear/editar/eliminar: esas operaciones
- * siguen protegidas por la lógica previa del área del usuario.
+ * También delimita las operaciones de escritura cuando el rol tiene el permiso
+ * CRUD correspondiente; la lectura sola nunca concede escritura.
  */
 function read_area_ids(?array $user = null): ?array
 {
@@ -358,6 +358,12 @@ function can_read_area(?int $areaId, ?array $user = null): bool
     return $ids === null || ($areaId !== null && in_array($areaId, $ids, true));
 }
 
+/** Áreas en las que puede operar: además hace falta el permiso CRUD del módulo. */
+function can_write_area(?int $areaId, ?array $user = null): bool
+{
+    return can_read_area($areaId, $user);
+}
+
 /** Matriz de operaciones concedidas al rol actual. FALLA EN CERRADO. */
 function role_action_matrix(?array $user = null): array
 {
@@ -366,7 +372,7 @@ function role_action_matrix(?array $user = null): array
     if (!$user) return [];
     $key = (int)$user['id'] . ':' . (int)$user['rol_id'];
     if (isset($cache[$key])) return $cache[$key];
-    $crud = ['activos', 'empleados', 'usuarios', 'roles'];
+    $crud = ['activos', 'empleados', 'usuarios', 'roles', 'stock'];
     if (!empty($user['es_superusuario'])) {
         $matrix = [];
         foreach ($crud as $module) $matrix[$module] = ['crear'=>true, 'modificar'=>true, 'eliminar'=>true];

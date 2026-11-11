@@ -141,8 +141,8 @@ try {
 
                 // Los administradores delegados no pueden resetear cuentas fuera de su área ni superusuarios.
                 if (!$esSuper) {
-                    $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND u.area_id=:area AND r.clave<>'superusuario'");
-                    $gate->execute([':id'=>$resetId,':area'=>(int)$current['area_id']]);
+                    $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND " . read_area_condition('u.area_id', $current) . " AND r.clave<>'superusuario'");
+                    $gate->execute([':id'=>$resetId]);
                     if (!$gate->fetch()) json_response(['ok'=>false,'error'=>'Sin permiso sobre este usuario'],403);
                 }
                 // Verificar que el usuario exista
@@ -183,8 +183,11 @@ try {
                 json_response(['ok' => false, 'error' => 'El rol seleccionado no existe o está inactivo'], 400);
             }
 
-            if (!$esSuper && ($rol['clave'] === 'superusuario' || $areaId !== (int)$current['area_id'])) {
-                json_response(['ok'=>false,'error'=>'Solo puedes gestionar usuarios de tu área y no superusuarios'],403);
+            if (!$esSuper && ($rol['clave'] === 'superusuario' || !can_write_area($areaId, $current))) {
+                json_response(['ok'=>false,'error'=>'No puedes crear usuarios fuera de las áreas autorizadas ni asignar Superusuario'],403);
+            }
+            if (!$esSuper && !puede_asignar_rol_delegado($pdo, $rolId, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes asignar un rol con privilegios o áreas superiores a los tuyos'],403);
             }
             // Validaciones generales
             $err = validarUsuario($nombre, $user, $rol['clave'], $nomina, $pwd, true);
@@ -283,7 +286,7 @@ try {
             if (!$actual) {
                 json_response(['ok' => false, 'error' => 'Usuario no encontrado'], 404);
             }
-            if (!$esSuper && ($actual['rol_clave']==='superusuario' || (int)$actual['area_id'] !== (int)$current['area_id'])) {
+            if (!$esSuper && ($actual['rol_clave']==='superusuario' || !can_write_area($actual['area_id'] !== null ? (int)$actual['area_id'] : null, $current))) {
                 json_response(['ok'=>false,'error'=>'Sin permisos sobre este usuario'],403);
             }
 
@@ -303,8 +306,11 @@ try {
                 json_response(['ok' => false, 'error' => 'El rol seleccionado no existe o está inactivo'], 400);
             }
 
-            if (!$esSuper && ($rol['clave']==='superusuario' || $areaId !== (int)$current['area_id'])) {
-                json_response(['ok'=>false,'error'=>'No puedes asignar ese rol ni cambiar el área'],403);
+            if (!$esSuper && ($rol['clave']==='superusuario' || !can_write_area($areaId, $current))) {
+                json_response(['ok'=>false,'error'=>'No puedes asignar Superusuario ni usar un área no autorizada'],403);
+            }
+            if (!$esSuper && !puede_asignar_rol_delegado($pdo, $rolId, $current)) {
+                json_response(['ok'=>false,'error'=>'No puedes asignar un rol con privilegios o áreas superiores a los tuyos'],403);
             }
             // Validaciones generales (sin password obligatoria en PUT)
             $err = validarUsuario($nombre, $user, $rol['clave'], $nomina, null, false);
@@ -422,8 +428,8 @@ try {
             }
 
             if (!$esSuper) {
-                $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND u.area_id=:area AND r.clave<>'superusuario'");
-                $gate->execute([':id'=>$id,':area'=>(int)$current['area_id']]);
+                $gate=$pdo->prepare("SELECT u.id FROM usuarios u JOIN roles r ON r.id=u.rol_id WHERE u.id=:id AND " . read_area_condition('u.area_id', $current) . " AND r.clave<>'superusuario'");
+                $gate->execute([':id'=>$id]);
                 if (!$gate->fetch()) json_response(['ok'=>false,'error'=>'Sin permiso para eliminar este usuario'],403);
             }
             // No eliminar al último superusuario
@@ -598,4 +604,33 @@ function logUsuario(PDO $pdo, string $accion, int $registroId, string $detalle, 
         ':uid' => $current['id'],
         ':aid' => $areaId,
     ]);
+}
+/** Impide que un administrador delegado conceda un rol superior al suyo. */
+function puede_asignar_rol_delegado(PDO $pdo, int $rolId, array $editor): bool
+{
+    if (!empty($editor['es_superusuario'])) return true;
+    $st=$pdo->prepare('SELECT clave, alcance_areas FROM public.roles WHERE id=:id AND activo IS TRUE');
+    $st->execute([':id'=>$rolId]);
+    $rol=$st->fetch(PDO::FETCH_ASSOC);
+    if (!$rol || $rol['clave']==='superusuario') return false;
+    $permitidas=read_area_ids($editor);
+    if ($rol['alcance_areas']==='seleccionadas') {
+        $st=$pdo->prepare('SELECT area_id FROM public.rol_areas WHERE rol_id=:id');
+        $st->execute([':id'=>$rolId]);
+        foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $area) {
+            if (!in_array((int)$area, $permitidas ?? [], true)) return false;
+        }
+    } else if ($rol['alcance_areas']!=='propia') return false;
+
+    $st=$pdo->prepare('SELECT m.clave, rp.concedido, rp.puede_crear, rp.puede_modificar, rp.puede_eliminar FROM public.rol_permisos rp JOIN public.modulos m ON m.id=rp.modulo_id WHERE rp.rol_id=:id');
+    $st->execute([':id'=>$rolId]);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $perm) {
+        if (!in_array($perm['concedido'],[true,1,'1','t','true'],true)) continue;
+        if (!has_permission($perm['clave'])) return false;
+        foreach (['crear','modificar','eliminar'] as $accion) {
+            if (in_array($perm['puede_'.$accion],[true,1,'1','t','true'],true)
+                && !has_action_permission($perm['clave'],$accion)) return false;
+        }
+    }
+    return true;
 }

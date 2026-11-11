@@ -1,6 +1,7 @@
 <?php
 $page_title = 'Gestión de Roles';
 $page_js    = 'roles.js';
+$page_js_version = 'stock-movimientos-rol-20261111';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 $user = require_permission('roles');
@@ -63,14 +64,14 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group form-group--full">
                         <label>Permisos de acceso a módulos</label>
-                        <p class="form-text" style="margin:0 0 8px">Para cada módulo, permite la consulta y, cuando corresponda, Crear, Modificar o Eliminar. En «Empleados y Áreas», las tres acciones se aplican a empleados. La gestión de áreas y los movimientos globales de Stock y Adscripciones siguen reservados al Superusuario.</p>
+                        <p class="form-text" style="margin:0 0 8px">Para cada módulo, permite la consulta y, cuando corresponda, Crear, Modificar o Eliminar. En «Empleados y Áreas», Crear, Modificar y Eliminar se aplican tanto a empleados como a áreas. Los permisos de escritura se limitan a las áreas autorizadas en este rol; los cambios de Adscripciones continúan reservados al Superusuario. En Stock puedes autorizar las entradas y salidas por rol.</p>
                         <div class="roles-permisos" id="rolesPermisos" role="group" aria-label="Permisos de acceso">
                             Cargando módulos...
                         </div>
                     </div>
                     <div class="form-group form-group--full">
-                        <label>Áreas que podrá consultar este rol</label>
-                        <p class="form-text" style="margin:0 0 10px">Elige el alcance de lectura. Los permisos para modificar información continúan limitados al área propia del usuario.</p>
+                        <label>Áreas autorizadas para este rol</label>
+                        <p class="form-text" style="margin:0 0 10px">Las áreas seleccionadas podrán consultarse. Para crear, modificar o eliminar dentro de ellas también debes activar la acción correspondiente de cada módulo. Las áreas no seleccionadas permanecerán restringidas.</p>
                         <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="propia" checked> Solo el área asignada a cada usuario</label>
                         <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="seleccionadas"> Áreas específicas para todos los usuarios de este rol</label>
                         <div id="rolesAreasWrap" style="display:none" class="roles-areas-wrap">

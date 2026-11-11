@@ -73,7 +73,7 @@ function pintarPermisos(seleccionados = [], acciones = {}) {
             ${disponible.length ? `<div class="roles-permiso__acciones">${disponible.map(a => `
                 <label><input type="checkbox" name="acciones_rol" value="${App.esc(a)}"
                     ${permitido && (acciones[m.clave] || []).includes(a) ? 'checked' : ''} ${permitido ? '' : 'disabled'}>
-                    ${a === 'crear' ? 'Crear' : a === 'modificar' ? 'Modificar' : 'Eliminar'}</label>`).join('')}</div>`
+                    ${m.clave === 'stock' && a === 'modificar' ? 'Realizar movimientos (entradas y salidas)' : a === 'crear' ? 'Crear' : a === 'modificar' ? 'Modificar' : 'Eliminar'}</label>`).join('')}</div>`
                 : `<small style="display:block;margin:7px 0 0 28px">Módulo de consulta o sin operaciones de escritura delegables.</small>`}
         </div>`;
     }).join('');

@@ -62,10 +62,8 @@ try {
         json_response(['ok' => false, 'error' => 'El activo ya no existe.'], 404);
     }
 
-    // La administración ordinaria solo puede modificar activos de su propia área.
-    if (empty($usuario['es_superusuario']) &&
-        ($usuario['area_id'] === null ||
-         (int) $activo['area_id'] !== (int) $usuario['area_id'])) {
+    // Exigir permiso de edición y pertenencia a las áreas concedidas al rol.
+    if (!can_write_area($activo['area_id'] !== null ? (int)$activo['area_id'] : null, $usuario)) {
         $pdo->rollBack();
         json_response(['ok' => false, 'error' => 'Este activo no pertenece a tu área.'], 403);
     }

@@ -90,7 +90,7 @@ function activarTab(nombre) {
 
 // ============ EVENTOS ============
 function wireEvents() {
-    if (!window.IS_SUPERUSER) {
+    if (!window.canRoleAction('empleados','crear')) {
         btnNuevaArea.style.display = 'none';
         btnNuevaAreaInline.style.display = 'none';
     }
@@ -226,8 +226,8 @@ function renderAreaCard(area) {
                 </div>
                 <div class="area-card__actions" data-action="stop">
                     ${window.canRoleAction('empleados','crear') ? `<button class="btn btn--primary btn--sm" data-action="nuevo-empleado-area" data-area-id="${area.id}" title="Agregar empleado a esta área">➕ Empleado</button>` : ''}
-                    ${window.IS_SUPERUSER ? `<button class="btn btn--ghost btn--sm" data-action="editar-area" data-id="${area.id}" title="Editar área">✏️</button>` : ''}
-                    ${window.IS_SUPERUSER && area.clave !== 'general'
+                    ${area.puede_modificar === true ? `<button class="btn btn--ghost btn--sm" data-action="editar-area" data-id="${area.id}" title="Editar área">✏️</button>` : ''}
+                    ${area.puede_eliminar === true && area.clave !== 'general'
                         ? `<button class="btn btn--danger btn--sm" data-action="eliminar-area" data-id="${area.id}" data-nombre="${App.esc(area.nombre)}" title="Eliminar área">🗑️</button>`
                         : ''}
                     <button class="area-card__toggle" data-action="toggle-area" title="Expandir/Contraer">▾</button>
@@ -574,12 +574,15 @@ async function onSubmitAreaInline(e) {
         const res = await App.api('areas.php', { method: 'POST', body: data });
         if (!res.ok) throw new Error(res.error);
 
-        App.toast('Área creada. Ahora puedes asignarla.', 'success');
+        App.toast(res.message || 'Área creada correctamente.', 'success', 7000);
         App.closeModal('areaInlineModal');
 
         await cargarTodo();
         // Seleccionar el área nueva en el modal de empleado
         llenarSelectAreas(res.id);
+        if (!areasCache.some(a => Number(a.id) === Number(res.id))) {
+            App.toast('La nueva área todavía no está incluida en las áreas consultables de este rol.', 'warning', 7000);
+        }
         actualizarHintAdscEmpleado();
     } catch (err) {
         mostrarErrorAreaInline(err.message);

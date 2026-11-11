@@ -47,13 +47,14 @@ function fechaStockLegible(valor) {
 const $=id=>document.getElementById(id); let bienes=[]; let empleados=[];
 const esc=s=>App.esc(String(s??''));
 const susp=a=>[true,'t','1',1].includes(a.suspendido);
+const puedeMoverStock = window.STOCK_CAN_MOVE === true;
 async function cargar(){try{
-const [a,e]=await Promise.all([App.api('stock.php'),App.api('empleados.php')]);
-if(!a.ok)throw Error(a.error); bienes=a.data; empleados=e.ok?e.data:[]; pintar();
+const [a,e]=await Promise.all([App.api('stock.php'), puedeMoverStock ? App.api('stock.php?empleados=1') : Promise.resolve({ok:true,data:[]})]);
+if(!a.ok)throw Error(a.error); if(!e.ok)throw Error(e.error); bienes=a.data; empleados=e.data; pintar();
 }catch(err){App.toast(err.message,'error')}}
 function pintar(){const q=$('buscarStock').value.toLowerCase(); const lista=bienes.filter(a=>[a.descripcion,a.num_inventario,a.marca].some(v=>String(v||'').toLowerCase().includes(q)));
 $('resumenStock').textContent=`En stock: ${bienes.length} | Disponibles: ${bienes.filter(a=>!susp(a)).length} | Suspendidos: ${bienes.filter(susp).length}`;
-$('stockTabla').innerHTML=lista.map(a=>`<tr><td>${esc(a.descripcion)}</td><td>${susp(a)?'⏸ Suspendido':'✅ Disponible'}</td><td>${esc(fechaStockLegible(a.fecha_ingreso_stock))}</td><td><div class="stock-actions"><button class="btn btn--ghost btn--sm" data-action="historial" data-id="${Number(a.id)}">📋 Historial</button>${susp(a)?'<span title="Primero reactiva desde Activos">⏸ No asignable</span>':window.IS_SUPERUSER?`<button class="btn btn--primary btn--sm" data-action="salida" data-id="${Number(a.id)}">👤 Asignar</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="4">No hay activos en stock.</td></tr>';
+$('stockTabla').innerHTML=lista.map(a=>`<tr><td>${esc(a.descripcion)}</td><td>${susp(a)?'⏸ Suspendido':'✅ Disponible'}</td><td>${esc(fechaStockLegible(a.fecha_ingreso_stock))}</td><td><div class="stock-actions"><button class="btn btn--ghost btn--sm" data-action="historial" data-id="${Number(a.id)}">📋 Historial</button>${susp(a)?'<span title="Primero reactiva desde Activos">⏸ No asignable</span>':puedeMoverStock?`<button class="btn btn--primary btn--sm" data-action="salida" data-id="${Number(a.id)}">👤 Asignar</button>`:''}</div></td></tr>`).join('')||'<tr><td colspan="4">No hay activos en stock.</td></tr>';
 }
 async function mover(data){try{const r=await App.api('stock.php',{method:'POST',body:data});if(!r.ok)throw Error(r.error);App.toast(r.message,'success');await cargar()}catch(err){App.toast(err.message,'error')}}
 $('stockTabla').addEventListener('click',async e=>{const b=e.target.closest('button[data-action]');if(!b)return;const id=Number(b.dataset.id);
