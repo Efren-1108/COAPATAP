@@ -252,8 +252,6 @@ function onAreaCardClick(e) {
     const areaCard = e.target.closest('.area-card');
     const areaId = areaCard ? parseInt(areaCard.dataset.areaId, 10) : null;
 
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-area' && inActions) return;
 
     switch (action) {
         case 'toggle-area':

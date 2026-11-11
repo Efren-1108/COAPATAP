@@ -525,8 +525,7 @@ function onAdscCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.adscId : null;
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-adsc' && inActions) return;
+
 
     switch (action) {
         case 'toggle-adsc':
@@ -678,8 +677,7 @@ function onAreaCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.areaId : null;
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-area' && inActions) return;
+
 
     switch (action) {
         case 'toggle-area':
@@ -796,8 +794,7 @@ function onEmpleadoCardClick(e) {
     const action = target.dataset.action;
     const card = e.target.closest('.area-card');
     const idRaw = card ? card.dataset.empId : null;
-    const inActions = e.target.closest('.area-card__actions');
-    if (action === 'toggle-emp' && inActions) return;
+
 
     switch (action) {
         case 'toggle-emp':

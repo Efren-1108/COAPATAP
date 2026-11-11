@@ -244,8 +244,7 @@ listaAdsc.addEventListener('click', (e) => {
     const adscId = card ? parseInt(card.dataset.adscId, 10) : null;
 
     // Si el click fue en las acciones del header, no togglear
-    const inActions = e.target.closest('.adsc-card__actions');
-    if (action === 'toggle-adsc' && inActions) return;
+
 
     switch (action) {
         case 'toggle-adsc':
