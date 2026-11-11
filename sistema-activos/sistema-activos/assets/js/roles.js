@@ -61,20 +61,20 @@ permisosBox.addEventListener('change', e => {
     if (container && e.target.name === 'modulos') actualizarAccionesModulo(container);
 });
 function pintarPermisos(seleccionados = [], acciones = {}) {
-    permisosBox.innerHTML = modulosCache.map(m => {
+    // Importar Excel está disponible para todos: no se configura por rol.
+    permisosBox.innerHTML = modulosCache.filter(m => m.clave !== 'importar').map(m => {
         const disponible = Array.isArray(m.acciones_disponibles) ? m.acciones_disponibles : [];
-        const universal = m.clave === 'importar';
-        const permitido = universal || seleccionados.includes(m.clave);
+        const permitido = seleccionados.includes(m.clave);
         return `<div class="roles-permiso" data-modulo="${App.esc(m.clave)}">
             <label class="roles-permiso__titulo">
-                <input type="checkbox" name="modulos" value="${App.esc(m.clave)}" ${permitido ? 'checked' : ''} ${universal ? 'disabled' : ''}>
+                <input type="checkbox" name="modulos" value="${App.esc(m.clave)}" ${permitido ? 'checked' : ''}>
                 <span><strong>${App.esc(m.nombre)}</strong><small>${App.esc(m.descripcion || '')}</small></span>
             </label>
             ${disponible.length ? `<div class="roles-permiso__acciones">${disponible.map(a => `
                 <label><input type="checkbox" name="acciones_rol" value="${App.esc(a)}"
                     ${permitido && (acciones[m.clave] || []).includes(a) ? 'checked' : ''} ${permitido ? '' : 'disabled'}>
                     ${a === 'crear' ? 'Crear' : a === 'modificar' ? 'Modificar' : 'Eliminar'}</label>`).join('')}</div>`
-                : `<small style="display:block;margin:7px 0 0 28px">${universal ? 'Disponible para todos los usuarios. Solo se importa en su propia área.' : 'Módulo de consulta o sin operaciones de escritura delegables.'}</small>`}
+                : `<small style="display:block;margin:7px 0 0 28px">Módulo de consulta o sin operaciones de escritura delegables.</small>`}
         </div>`;
     }).join('');
 }
