@@ -1,4 +1,3 @@
-
 <?php
 /**
  * SISTEMA DE CONTROL DE ACTIVOS FIJOS - COAPATAP
@@ -22,7 +21,12 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-$user = require_permission('impresion');
+$user = require_auth();
+
+if (!has_permission('activos')) {
+    http_response_code(403);
+    exit('No tienes permiso para consultar resguardos.');
+}
 
 // ==========================================
 // 2. FUNCIONES AUXILIARES
@@ -155,11 +159,11 @@ $nombreEntrega = mb_substr(
 );
 
 $nombreAutoriza = mb_substr(
-    $nombreAutoriza,
-    0,
-    150,
-    'UTF-8'
+    $nombreAutoriza, 0, 150, 'UTF-8'
 );
+$nominaAutoriza = trim((string)($_GET['nomina_autoriza'] ?? ''));
+$cargoAutoriza = '';
+
 
 // ==========================================
 // 5. VARIABLES GENERALES
@@ -202,7 +206,12 @@ try {
 
     if (!$esSuper) {
 
-        $sqlAdscripciones .= ' AND ' . read_area_condition('ar.id', $user);
+        $sqlAdscripciones .= "
+            AND ar.id = :area_usuario
+        ";
+
+        $paramsAdscripciones[':area_usuario'] =
+            $areaUsuario;
     }
 
     $sqlAdscripciones .= "
@@ -238,7 +247,12 @@ try {
 
     if (!$esSuper) {
 
-        $sqlAreas .= ' AND ' . read_area_condition('ar.id', $user);
+        $sqlAreas .= "
+            AND ar.id = :area_usuario
+        ";
+
+        $paramsAreas[':area_usuario'] =
+            $areaUsuario;
     }
 
     $sqlAreas .= "
@@ -261,6 +275,7 @@ try {
         SELECT
             e.numero_nomina,
             e.nombre,
+            e.cargo,
             e.area_id,
             ar.adscripcion_id
         FROM empleados e
@@ -273,7 +288,12 @@ try {
 
     if (!$esSuper) {
 
-        $sqlEmpleados .= ' AND ' . read_area_condition('e.area_id', $user);
+        $sqlEmpleados .= "
+            AND e.area_id = :area_usuario
+        ";
+
+        $paramsEmpleados[':area_usuario'] =
+            $areaUsuario;
     }
 
     $sqlEmpleados .= "
@@ -327,7 +347,12 @@ try {
 
             if (!$esSuper) {
 
-                $sql .= ' AND ' . read_area_condition('e.area_id', $user);
+                $sql .= "
+                    AND e.area_id = :area_usuario
+                ";
+
+                $params[':area_usuario'] =
+                    $areaUsuario;
             }
 
             // Verificar adscripción seleccionada
@@ -371,6 +396,25 @@ try {
                     . 'seleccionadas o permitidas.';
 
             } else {
+                // La autoridad es elegida manualmente entre los empleados
+                // de la misma adscripción del resguardante.
+                $autorizantesPermitidos = array_values(array_filter(
+                    $empleados,
+                    static fn($persona) =>
+                        (int)($persona['adscripcion_id'] ?? 0) > 0
+                        && (int)$persona['adscripcion_id'] === (int)$empleado['adscripcion_id']
+                ));
+                $autoridadSeleccionada = null;
+                foreach ($autorizantesPermitidos as $persona) {
+                    if ($nominaAutoriza !== '' &&
+                        (string)$persona['numero_nomina'] === $nominaAutoriza) {
+                        $autoridadSeleccionada = $persona;
+                        break;
+                    }
+                }
+                // No aceptar nombres arbitrarios o de otras adscripciones.
+                $nombreAutoriza = $autoridadSeleccionada['nombre'] ?? '';
+                $cargoAutoriza = $autoridadSeleccionada['cargo'] ?? '';
 
                 // ==============================
                 // 6.5 CONSULTAR ACTIVOS
@@ -400,7 +444,12 @@ try {
 
                 if (!$esSuper) {
 
-                    $sqlBienes .= ' AND ' . read_area_condition('a.area_id', $user);
+                    $sqlBienes .= "
+                        AND a.area_id = :area_usuario
+                    ";
+
+                    $paramsBienes[':area_usuario'] =
+                        $areaUsuario;
                 }
 
                 $sqlBienes .= "
@@ -547,6 +596,487 @@ $totalCosto = array_sum(
 );
 
 $fechaEmision = date('d/m/Y');
+
+// ==========================================
+// 8.1 EXPORTAR RESGUARDO A EXCEL (.XLSX)
+// ==========================================
+/**
+ * El Excel replica la vista previa / PDF:
+ *  - Una hoja por cada página de la vista previa (8 bienes máximo),
+ *    cada una con su encabezado, logotipos, leyenda, firmas e imagen
+ *    inferior, separadas con saltos de página manuales.
+ *  - Los logotipos se insertan con su tamaño real (proporción
+ *    conservada) y NO se estiran a las celdas.
+ *  - Mismos textos que la vista previa ("—" en campos vacíos,
+ *    estado físico completo, fechas dd/mm/aaaa, costo en pesos).
+ *  - Altura de cada renglón calculada según el texto para que
+ *    nada se corte.
+ *  - Escala de impresión calculada para que cada página
+ *    quepa completa en una hoja A4 horizontal.
+ */
+if (($_GET['exportar'] ?? '') === 'excel') {
+    if (!$empleado || !$bienes || $error !== '') {
+        http_response_code(400);
+        exit('No hay un resguardo válido con activos para descargar.');
+    }
+    if (!class_exists('ZipArchive')) {
+        http_response_code(500);
+        exit('Habilita la extensión ZIP de PHP en XAMPP.');
+    }
+    @set_time_limit(60);
+    @ini_set('memory_limit', '256M');
+
+    // ---------- Helpers ----------
+    $escXml = static function ($v): string {
+        $texto = (string)($v ?? '');
+        if (function_exists('mb_convert_encoding')) {
+            $texto = mb_convert_encoding($texto, 'UTF-8', 'UTF-8');
+        } elseif (function_exists('iconv')) {
+            $texto = iconv('UTF-8', 'UTF-8//IGNORE', $texto) ?: '';
+        }
+        $texto = preg_replace(
+            '/[\x{0000}-\x{0008}\x{000B}\x{000C}\x{000E}-\x{001F}\x{FFFE}\x{FFFF}]/u',
+            '',
+            $texto
+        ) ?? '';
+        return htmlspecialchars($texto, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    };
+    $refCol = static function (int $n): string {
+        $s = '';
+        while ($n > 0) { $s = chr(65 + ($n - 1) % 26) . $s; $n = intdiv($n - 1, 26); }
+        return $s;
+    };
+
+    // ---------- Estilos (nombre => [fuente, relleno, borde, horiz, vert, ajustar, formato]) ----------
+    // Fuentes: 0 normal | 1 azul bold | 2 azul normal | 3 azul bold 14 | 4 rojo bold 16
+    //          5 bold | 6 blanco bold 9 | 7 normal 8 | 8 normal 7.5 | 9 bold 9 | 10 rojo bold 9 | 11 bold 8
+    $styleDefs = [
+        'base'      => [0, 0, 0, 'left',    'center', 0, 0],
+        'inst'      => [1, 0, 0, 'left',    'center', 0, 0],
+        'inst2'     => [2, 0, 0, 'left',    'center', 0, 0],
+        'nomina'    => [4, 0, 0, 'center',  'center', 0, 0],
+        'rotulo'    => [5, 0, 0, 'center',  'center', 0, 0],
+        'fecha'     => [0, 0, 0, 'center',  'center', 0, 0],
+        'titulo'    => [3, 0, 0, 'center',  'center', 0, 0],
+        'pagina'    => [1, 0, 0, 'center',  'center', 0, 0],
+        'uma'       => [10, 0, 0, 'right',  'center', 0, 0],
+        'etq'       => [1, 0, 0, 'left',    'center', 1, 0],
+        'val'       => [1, 0, 0, 'center',  'center', 1, 0],
+        'th'        => [6, 2, 1, 'center',  'center', 1, 0],
+        'tdL'       => [7, 0, 1, 'left',    'center', 1, 0],
+        'tdC'       => [7, 0, 1, 'center',  'center', 1, 0],
+        'tdM'       => [7, 0, 1, 'center',  'center', 1, 164],
+        'ley'       => [8, 0, 0, 'justify', 'center', 1, 0],
+        'fTit'      => [9, 0, 0, 'center',  'center', 0, 0],
+        'fNom'      => [9, 0, 2, 'center',  'top',    1, 0],
+        'fCargo'    => [7, 0, 0, 'center',  'top',    1, 0],
+        'totLbl'    => [9, 0, 0, 'right',   'center', 0, 0],
+        'totVal'    => [5, 0, 1, 'center',  'center', 0, 164],
+    ];
+    $S = array_flip(array_keys($styleDefs));
+
+    // ---------- Anchos de columna (A y M: márgenes) ----------
+    $cols = [4.29, 42.86, 12.14, 12.14, 13.00, 15.00, 20.00, 9.00, 12.00, 11.00, 11.00, 28.00, 4.29];
+    $anchoCol = static function (int $c) use ($cols): float { return $cols[$c - 1]; };
+    $pxCol    = static function (int $c) use ($cols): float { return $cols[$c - 1] * 7 + 5; };
+
+    // ---------- Construcción de filas ----------
+    $filas = []; $alturas = []; $combinadas = [];
+    $celda = static function (int $c, int $r, mixed $v, int $style, bool $num = false) use ($escXml, $refCol): string {
+        $p = $refCol($c) . $r;
+        if ($num && $v !== null && is_numeric($v)) {
+            return '<c r="' . $p . '" s="' . $style . '"><v>' . $escXml((float)$v) . '</v></c>';
+        }
+        if ($v === null || $v === '') {
+            return '<c r="' . $p . '" s="' . $style . '"/>';
+        }
+        return '<c r="' . $p . '" s="' . $style . '" t="inlineStr"><is><t xml:space="preserve">'
+            . $escXml($v) . '</t></is></c>';
+    };
+    // Celda (posiblemente combinada): escribe el valor en la primera columna
+    // y rellena el resto con el mismo estilo para que bordes y fondo salgan completos.
+    $rango = static function (int $r, int $c1, int $c2, mixed $v, string $est, bool $num = false)
+        use ($celda, $S, &$combinadas, $refCol): array {
+        $out = [$c1 => $celda($c1, $r, $v, $S[$est], $num)];
+        for ($c = $c1 + 1; $c <= $c2; $c++) { $out[$c] = $celda($c, $r, null, $S[$est]); }
+        if ($c2 > $c1) { $combinadas[] = '<mergeCell ref="' . $refCol($c1) . $r . ':' . $refCol($c2) . $r . '"/>'; }
+        return $out;
+    };
+    $fila = static function (int $r, array $porCol, float $alto) use (&$filas, &$alturas): void {
+        ksort($porCol);
+        $filas[$r] = '<row r="' . $r . '" ht="' . $alto . '" customHeight="1">' . implode('', $porCol) . '</row>';
+        $alturas[$r] = $alto;
+    };
+    // Número de renglones que ocupa un texto en una celda (para la altura de fila).
+    $lineas = static function (string $txt, float $ancho): int {
+        $txt = trim($txt);
+        if ($txt === '') { return 1; }
+        $porLinea = max(1, (int)floor($ancho * 1.25));
+        $n = 0;
+        foreach (preg_split('/\R/u', $txt) as $parte) {
+            $n += max(1, (int)ceil(mb_strlen($parte, 'UTF-8') / $porLinea));
+        }
+        return $n;
+    };
+
+    // ---------- Imágenes institucionales (con su tamaño real) ----------
+    $imgs = []; $logoParts = []; $drawingRels = [];
+    $baseProyecto = realpath(dirname(__DIR__)) ?: dirname(__DIR__);
+    foreach (['coapatap', 'tapachula', 'inferior'] as $tipo) {
+        $url = (string)($imagenesResguardo[$tipo] ?? '');
+        if ($url === '') continue;
+        $path = (string)(parse_url($url, PHP_URL_PATH) ?? '');
+        if (!preg_match('~(/?assets/img/resguardos/historial/[a-f0-9]{32}\.(png|jpg|webp))$~i', $path, $m)) {
+            logger('Logo descartado por ruta no válida: ' . $url, 'ERROR');
+            continue;
+        }
+        $rel = ltrim($m[1], '/');
+        $candidatos = [
+            $baseProyecto . '/' . $rel,
+            dirname(__DIR__) . '/' . $rel,
+            __DIR__ . '/../' . $rel,
+            ($_SERVER['DOCUMENT_ROOT'] ?? '') . '/' . $rel,
+        ];
+        $physical = '';
+        foreach ($candidatos as $cand) {
+            if ($cand !== '' && is_file($cand)) { $physical = $cand; break; }
+        }
+        if ($physical === '') { logger('Logo no encontrado en disco: ' . $rel, 'ERROR'); continue; }
+        $ext  = strtolower($m[2]);
+        $data = @file_get_contents($physical);
+        if ($data === false) continue;
+        if ($ext === 'webp') {
+            if (!function_exists('imagecreatefromwebp') || !function_exists('imagepng')) continue;
+            $im = @imagecreatefromwebp($physical);
+            if (!$im) continue;
+            ob_start(); imagepng($im); $data = ob_get_clean(); imagedestroy($im);
+            $ext = 'png';
+        }
+        $tam = @getimagesizefromstring($data);
+        if (!$tam || $tam[0] < 1 || $tam[1] < 1) continue;
+        $id = count($logoParts) + 1;
+        $name = 'logo' . $id . '.' . $ext;
+        $logoParts[] = ['name' => $name, 'ext' => $ext, 'bytes' => $data];
+        $drawingRels[] = '<Relationship Id="rId' . $id . '" '
+            . 'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+            . 'Target="../media/' . $name . '"/>';
+        $imgs[$tipo] = ['rid' => $id, 'w' => (int)$tam[0], 'h' => (int)$tam[1]];
+    }
+    $drawingAnchors = []; $picId = 1;
+    // Coloca una imagen dentro de una caja (px) sin deformarla, anclada a una celda.
+    $ponerImagen = static function (string $tipo, int $col0, int $fila0, float $cajaW, float $cajaH,
+                                    float $offX, float $offY) use (&$drawingAnchors, &$picId, $imgs): void {
+        if (!isset($imgs[$tipo])) return;
+        $i = $imgs[$tipo];
+        $esc = min($cajaW / $i['w'], $cajaH / $i['h']);
+        $w = max(1, (int)round($i['w'] * $esc));
+        $h = max(1, (int)round($i['h'] * $esc));
+        $offX += ($cajaW - $w) / 2;   // centrada dentro de su caja
+        $offY += ($cajaH - $h) / 2;
+        $drawingAnchors[] = '<xdr:oneCellAnchor>'
+            . '<xdr:from><xdr:col>' . $col0 . '</xdr:col><xdr:colOff>' . (int)round($offX * 9525) . '</xdr:colOff>'
+            . '<xdr:row>' . $fila0 . '</xdr:row><xdr:rowOff>' . (int)round($offY * 9525) . '</xdr:rowOff></xdr:from>'
+            . '<xdr:ext cx="' . ($w * 9525) . '" cy="' . ($h * 9525) . '"/>'
+            . '<xdr:pic>'
+            . '<xdr:nvPicPr><xdr:cNvPr id="' . ($picId + 1) . '" name="Imagen' . $picId . '"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>'
+            . '<xdr:blipFill><a:blip r:embed="rId' . $i['rid'] . '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>'
+            . '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . ($w * 9525) . '" cy="' . ($h * 9525) . '"/></a:xfrm>'
+            . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>'
+            . '</xdr:pic><xdr:clientData/></xdr:oneCellAnchor>';
+        $picId++;
+    };
+    $ptAPx = static function (float $pt): float { return $pt / 0.75; };
+
+    // ---------- Textos fijos ----------
+    $leyendaExcel = 'BIENES CON LOS QUE PARTICIPO EN MI TRABAJO, POR LO TANTO, ME '
+        . 'RESPONSABILIZO A CONSERVAR, CUIDAR, VIGILAR Y RESGUARDAR LOS BIENES MUEBLES '
+        . 'QUE TENGO ASIGNADOS, EXCLUSIVAMENTE PARA EL DESEMPEÑO DE MIS ACTIVIDADES, '
+        . 'Y DEVOLVER EL "MOBILIARIO, EQUIPO, HERRAMIENTAS Y APARATOS" CUANDO EL '
+        . 'ORGANISMO ASI ME LO REQUIERA, EN CASO DE NO HACERLO, ME COMPROMETO A PAGAR '
+        . 'SU REPOSICIÓN, DAÑOS O EN SU DEFECTO EL "COMITÉ DE AGUA POTABLE Y '
+        . 'ALCANTARILLADO DEL MUNICIPIO DE TAPACHULA", TOMARA LAS MEDIDAS QUE CONSIDERE '
+        . 'NECESARIAS PARA REQUERIRME LO QUE EN ESTE MOMENTO RECIBO EN RESGUARDO, '
+        . 'CON FUNDAMENTO EN LA (LEY FEDERAL DEL TRABAJO, LEY DEL PATRIMONIO DEL ESTADO '
+        . 'DE CHIAPAS, LEY DE DESARROLLO CONSTITUCIONAL EN MATERIA DE GOBIERNO Y '
+        . 'ADMINISTRACION MUNICIPAL DEL ESTADO DE CHIAPAS, CODIGO PENAL PARA EL ESTADO '
+        . 'DE CHIAPAS, LEY DE RESPONSABILIDADES ADMINISTRATIVAS PARA EL ESTADO DE CHIAPAS).';
+
+    $cabeceras = [
+        'DESCRIPCIÓN', 'ECO. O INVENT.', 'MARCA', 'MODELO', 'SERIE', 'MATERIAL',
+        'STATUS', 'FECHA ADQUIS.', 'NÚMERO FACTURA', 'COSTO ADQUIS.', 'OBSERVACIONES',
+    ];
+    $guion = static function ($v): string {
+        $v = trim((string)($v ?? ''));
+        return $v !== '' ? $v : '—';
+    };
+    $estadosPermitidos = ['BUENO', 'NUEVO', 'REGULAR', 'INSERVIBLE'];
+
+    // ---------- Una hoja (bloque) por cada página de la vista previa ----------
+    $r = 1; $saltos = []; $maxBloque = 0.0; $totalPag = count($paginas);
+    foreach ($paginas as $indicePag => $paginaBienes) {
+        $inicio = $r;
+
+        // --- Encabezado: logo izquierdo | texto | logo Tapachula | nómina y fecha ---
+        $filaEnc = $r;
+        $fila($r, $rango($r, 12, 12, $empleado['numero_nomina'] ?? '', 'nomina'), 24); $r++;
+        $c = $rango($r, 3, 9, 'COMITÉ DE AGUA POTABLE Y ALCANTARILLADO DEL MUNICIPIO DE TAPACHULA, CHIAPAS.', 'inst');
+        $c += $rango($r, 12, 12, 'NÚMERO DE NÓMINA:', 'rotulo');
+        $fila($r, $c, 18); $r++;
+        $fila($r, $rango($r, 3, 9, 'DIRECCIÓN ADMINISTRATIVA.- DEPARTAMENTO DE RECURSOS MATERIALES', 'inst2'), 18); $r++;
+        $fila($r, $rango($r, 3, 9, 'Y SERVICIOS.- OFICINA DE ACTIVO FIJO Y SERVICIOS GENERALES.', 'inst2'), 18); $r++;
+        $c = $rango($r, 3, 9, 'RESGUARDO: MOBILIARIO, EQUIPO, HERRAMIENTAS Y APARATOS.', 'inst2');
+        $c += $rango($r, 12, 12, 'FECHA DE EMISIÓN:', 'rotulo');
+        $fila($r, $c, 18); $r++;
+        $fila($r, $rango($r, 12, 12, $fechaEmision, 'fecha'), 18); $r++;
+        $altoEnc = array_sum(array_slice($alturas, $filaEnc - 1, 6, true));
+        $altoEncPx = $ptAPx((float)$altoEnc);
+        // Logo COAPATAP: columna B. Logo Tapachula: columnas J-K.
+        $ponerImagen('coapatap', 1, $filaEnc - 1, $pxCol(2) - 14, $altoEncPx - 8, 7, 4);
+        $ponerImagen('tapachula', 9, $filaEnc - 1, $pxCol(10) + $pxCol(11) - 14, $altoEncPx - 24, 7, 8);
+
+        $fila($r, [], 6); $r++;
+
+        // --- Título y número de página ---
+        $c = $rango($r, 2, 11, 'RESGUARDO TOTAL DE BIENES', 'titulo');
+        $c += $rango($r, 12, 12, 'Página ' . ($indicePag + 1) . ' de ' . $totalPag, 'pagina');
+        $fila($r, $c, 24); $r++;
+        $fila($r, $rango($r, 9, 12, 'PERTENECE AL ACTIVO (IGUAL O MENOS A 70 UMA)', 'uma'), 16); $r++;
+        $fila($r, [], 6); $r++;
+
+        // --- Área / adscripción / resguardante ---
+        $c = $rango($r, 2, 4, 'BIENES CON LOS QUE CUENTA EL:', 'etq');
+        $c += $rango($r, 5, 7, $guion($empleado['area_nombre'] ?? '') === '—' ? 'SIN ÁREA' : $empleado['area_nombre'], 'val');
+        $c += $rango($r, 8, 10, 'AREA DE ADSCRIPCIÓN:', 'etq');
+        $c += $rango($r, 11, 12, $guion($empleado['adscripcion_nombre'] ?? '') === '—' ? 'SIN ADSCRIPCIÓN' : $empleado['adscripcion_nombre'], 'val');
+        $areaTxt = (string)($empleado['area_nombre'] ?? '');
+        $adsTxt  = (string)($empleado['adscripcion_nombre'] ?? '');
+        $altoArea = max(
+            $lineas($areaTxt, $anchoCol(5) + $anchoCol(6) + $anchoCol(7)),
+            $lineas($adsTxt, $anchoCol(11) + $anchoCol(12))
+        ) * 13 + 8;
+        $fila($r, $c, max(22, $altoArea)); $r++;
+        $c = $rango($r, 2, 3, 'RESGUARDANTE:', 'etq');
+        $c += $rango($r, 4, 12, $empleado['nombre'] ?? '', 'etq');
+        $fila($r, $c, 18); $r++;
+        $fila($r, [], 6); $r++;
+
+        // --- Cabecera de tabla ---
+        $c = [];
+        foreach ($cabeceras as $i => $v) { $c += $rango($r, $i + 2, $i + 2, $v, 'th'); }
+        $fila($r, $c, 30); $r++;
+
+        // --- Bienes de la página ---
+        foreach ($paginaBienes as $bien) {
+            $estado = strtoupper(trim((string)($bien['estado_fisico'] ?? '')));
+            $valores = [
+                $bien['descripcion'] ?? '',
+                $bien['num_inventario'] ?? '',
+                $guion($bien['marca'] ?? ''),
+                $guion($bien['modelo'] ?? ''),
+                $guion($bien['serie'] ?? ''),
+                $guion($bien['material'] ?? ''),
+                in_array($estado, $estadosPermitidos, true) ? $estado : '—',
+                resguardoFecha($bien['fecha_adq'] ?? null),
+                $guion($bien['factura'] ?? ''),
+                $bien['costo'] ?? null,
+                $guion($bien['observaciones'] ?? ''),
+            ];
+            $c = []; $maxLin = 1;
+            foreach ($valores as $i => $v) {
+                $esCosto = ($i === 9);
+                $esNum = $esCosto && $v !== null && is_numeric($v);
+                if ($esCosto && !$esNum) { $v = '—'; }
+                $est = $i === 0 ? 'tdL' : ($esNum ? 'tdM' : 'tdC');
+                $c += $rango($r, $i + 2, $i + 2, $v, $est, $esNum);
+                if (!$esNum) { $maxLin = max($maxLin, $lineas((string)$v, $anchoCol($i + 2) - 1)); }
+            }
+            $fila($r, $c, max(24.0, $maxLin * 11.0 + 6));
+            $r++;
+        }
+
+        // --- Leyenda legal ---
+        $fila($r, [], 6); $r++;
+        $fila($r, $rango($r, 2, 12, $leyendaExcel, 'ley'), 48); $r++;
+        $fila($r, [], 6); $r++;
+
+        // --- Firmas: dejar la columna E libre para separar las líneas ---
+        $c = $rango($r, 2, 4, 'ENTREGÓ', 'fTit');
+        $c += $rango($r, 6, 8, 'RECIBÍ (RESGUARDANTE)', 'fTit');
+        $c += $rango($r, 10, 12, 'AUTORIZÓ', 'fTit');
+        $fila($r, $c, 16); $r++;
+        $fila($r, [], 34); $r++;                         // espacio para firmar
+        $c = $rango($r, 2, 4, $nombreEntrega, 'fNom');
+        $c += $rango($r, 6, 8, $empleado['nombre'] ?? '', 'fNom');
+        $c += $rango($r, 10, 12, $nombreAutoriza, 'fNom');
+        $fila($r, $c, 20); $r++;
+        $c = $rango($r, 2, 4, 'JEFE DE OFICINA DE ACTIVO FIJO', 'fCargo');
+        $c += $rango($r, 6, 8, $empleado['cargo'] ?? '', 'fCargo');
+        $c += $rango($r, 10, 12, $cargoAutoriza, 'fCargo');
+        $fila($r, $c, 16); $r++;
+
+        // --- Imagen inferior; no mostrar total registrado en Excel ---
+        $filaPie = $r;
+        $fila($r, [], 20); $r++;
+        $fila($r, [], 17); $r++;
+        $fila($r, [], 17); $r++;
+        $anchoEH = 0.0; for ($k = 6; $k <= 8; $k++) { $anchoEH += $pxCol($k); }
+        $ponerImagen('inferior', 5, $filaPie - 1, min($anchoEH - 10, 162), 52, 5 + max(0, ($anchoEH - 10 - 162) / 2), 4);
+
+        $fin = $r - 1;
+        $maxBloque = max($maxBloque, (float)array_sum(array_slice($alturas, $inicio - 1, $fin - $inicio + 1, true)));
+        if ($indicePag < $totalPag - 1) { $saltos[] = $fin; }
+    }
+    $ultimaFila = $r - 1;
+    ksort($filas);
+
+    // ---------- Escala de impresión: cada página cabe completa en A4 horizontal ----------
+    $anchoTotalPt = 0.0; foreach ($cols as $w) { $anchoTotalPt += ($w * 7 + 5) * 0.75; }
+    $utilAncho = 841.9 - 2 * 0.25 * 72;     // márgenes izq/der 0.25"
+    $utilAlto  = 595.3 - 2 * 0.35 * 72;     // márgenes sup/inf 0.35"
+    $escala = (int)floor(min($utilAncho / $anchoTotalPt, $utilAlto / max(1.0, $maxBloque)) * 100);
+    $escala = max(30, min(100, $escala - 1));
+
+    $colXml = '';
+    foreach ($cols as $i => $width) {
+        $colXml .= '<col min="' . ($i + 1) . '" max="' . ($i + 1) . '" width="' . $width . '" customWidth="1"/>';
+    }
+    $brk = '';
+    foreach ($saltos as $s) { $brk .= '<brk id="' . $s . '" max="16383" man="1"/>'; }
+
+    // ---------- sheet1.xml ----------
+    $hoja = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        . '<sheetViews><sheetView workbookViewId="0" showGridLines="0" zoomScale="85" zoomScaleNormal="85"/></sheetViews>'
+        . '<sheetFormatPr defaultRowHeight="15"/>'
+        . '<cols>' . $colXml . '</cols>'
+        . '<sheetData>' . implode('', $filas) . '</sheetData>'
+        . '<mergeCells count="' . count($combinadas) . '">' . implode('', $combinadas) . '</mergeCells>'
+        . '<printOptions horizontalCentered="1"/>'
+        . '<pageMargins left="0.25" right="0.25" top="0.35" bottom="0.35" header="0.1" footer="0.1"/>'
+        . '<pageSetup paperSize="9" scale="' . $escala . '" orientation="landscape"/>'
+        . ($saltos ? '<rowBreaks count="' . count($saltos) . '" manualBreakCount="' . count($saltos) . '">' . $brk . '</rowBreaks>' : '')
+        . ($drawingAnchors ? '<drawing r:id="rId1"/>' : '')
+        . '</worksheet>';
+
+    // ---------- styles.xml ----------
+    $xfs = '';
+    foreach ($styleDefs as $d) {
+        [$font, $fill, $border, $h, $v, $wrap, $num] = $d;
+        $xfs .= '<xf numFmtId="' . $num . '" fontId="' . $font . '" fillId="' . $fill
+            . '" borderId="' . $border . '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"'
+            . ($num ? ' applyNumberFormat="1"' : '') . '>'
+            . '<alignment horizontal="' . $h . '" vertical="' . $v . '"' . ($wrap ? ' wrapText="1"' : '') . '/>'
+            . '</xf>';
+    }
+    $f = static fn(string $extra, string $sz, string $color = '') =>
+        '<font>' . $extra . '<sz val="' . $sz . '"/>' . ($color ? '<color rgb="' . $color . '"/>' : '') . '<name val="Arial"/></font>';
+    $estilos = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        . '<numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0.00"/></numFmts>'
+        . '<fonts count="12">'
+        . $f('', '10')                              // 0 normal
+        . $f('<b/>', '10', 'FF14376D')              // 1 azul bold
+        . $f('', '10', 'FF14376D')                  // 2 azul normal
+        . $f('<b/>', '14', 'FF14376D')              // 3 azul bold 14 (título)
+        . $f('<b/>', '16', 'FFC00000')              // 4 rojo bold 16 (nómina)
+        . $f('<b/>', '10')                          // 5 bold
+        . $f('<b/>', '9', 'FFFFFFFF')               // 6 blanco bold 9 (cabecera)
+        . $f('', '8')                               // 7 datos 8
+        . $f('', '7.5')                             // 8 leyenda
+        . $f('<b/>', '9')                           // 9 bold 9
+        . $f('<b/>', '9', 'FFC00000')               // 10 rojo bold 9 (UMA)
+        . $f('<b/>', '8')                           // 11 bold 8
+        . '</fonts>'
+        . '<fills count="3">'
+        . '<fill><patternFill patternType="none"/></fill>'
+        . '<fill><patternFill patternType="gray125"/></fill>'
+        . '<fill><patternFill patternType="solid"><fgColor rgb="FF8A190F"/><bgColor indexed="64"/></patternFill></fill>'
+        . '</fills>'
+        . '<borders count="3">'
+        . '<border><left/><right/><top/><bottom/><diagonal/></border>'
+        . '<border><left style="thin"><color rgb="FF595959"/></left><right style="thin"><color rgb="FF595959"/></right>'
+        . '<top style="thin"><color rgb="FF595959"/></top><bottom style="thin"><color rgb="FF595959"/></bottom><diagonal/></border>'
+        . '<border><left/><right/><top style="thin"><color rgb="FF000000"/></top><bottom/><diagonal/></border>'
+        . '</borders>'
+        . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        . '<cellXfs count="' . count($styleDefs) . '">' . $xfs . '</cellXfs>'
+        . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+        . '</styleSheet>';
+
+    // ---------- Empaquetar XLSX ----------
+    $temp = tempnam(sys_get_temp_dir(), 'coapatap_xlsx_');
+    if ($temp === false) { http_response_code(500); exit('No se pudo crear el archivo temporal.'); }
+    $zip = new ZipArchive();
+    if ($zip->open($temp, ZipArchive::OVERWRITE) !== true) {
+        @unlink($temp); http_response_code(500); exit('No se pudo preparar el Excel.');
+    }
+    $contentTypes = '<?xml version="1.0" encoding="UTF-8"?>'
+        . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        . '<Default Extension="xml" ContentType="application/xml"/>'
+        . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        . ($drawingAnchors ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : '');
+    foreach (array_unique(array_column($logoParts, 'ext')) as $ext) {
+        $contentTypes .= '<Default Extension="' . $ext . '" ContentType="image/' . ($ext === 'jpg' ? 'jpeg' : $ext) . '"/>';
+    }
+    $contentTypes .= '</Types>';
+
+    $zip->addFromString('[Content_Types].xml', $contentTypes);
+    $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?>'
+        . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        . '</Relationships>');
+    $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?>'
+        . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        . '<sheets><sheet name="Resguardo" sheetId="1" r:id="rId1"/></sheets>'
+        . '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">Resguardo!$A$1:$M$' . $ultimaFila . '</definedName></definedNames>'
+        . '</workbook>');
+    $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?>'
+        . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+        . '</Relationships>');
+    $zip->addFromString('xl/worksheets/sheet1.xml', $hoja);
+    $zip->addFromString('xl/styles.xml', $estilos);
+    if ($drawingAnchors) {
+        $zip->addFromString('xl/worksheets/_rels/sheet1.xml.rels',
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
+            . '</Relationships>');
+        $zip->addFromString('xl/drawings/drawing1.xml',
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
+            . 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . implode('', $drawingAnchors) . '</xdr:wsDr>');
+        $zip->addFromString('xl/drawings/_rels/drawing1.xml.rels',
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . implode('', $drawingRels) . '</Relationships>');
+        foreach ($logoParts as $p) {
+            $zip->addFromString('xl/media/' . $p['name'], $p['bytes']);
+        }
+    }
+    $zip->close();
+
+    $filename = 'COAPATAP_Resguardo_Nomina_'
+        . preg_replace('/[^0-9]/', '', (string)($empleado['numero_nomina'] ?? ''))
+        . '_' . date('Ymd') . '.xlsx';
+
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . filesize($temp));
+    header('Cache-Control: private, no-store, max-age=0');
+    readfile($temp);
+    @unlink($temp);
+    exit;
+}
 
 // ==========================================
 // 9. LEYENDA DEL RESGUARDO
@@ -848,30 +1378,25 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="imp-firmante-control">
 
                 <label for="impBuscarAutoriza">
-                    Autorizó — Director General
+                    Autorizó — Seleccionar empleado de la adscripción
                 </label>
-
-                <input
-                    type="text"
-                    id="impBuscarAutoriza"
-                    list="impListaEmpleadosFirmantes"
-                    placeholder="Buscar empleado o escribir nombre"
-                    maxlength="150"
-                    autocomplete="off"
-                >
-
-                <input
-                    type="hidden"
-                    id="impNombreAutoriza"
-                    name="nombre_autoriza"
-                    value="<?= resguardoEsc(
-                        $nombreAutoriza
-                    ) ?>"
-                >
-
+                <select id="impBuscarAutoriza" name="nomina_autoriza"
+                        class="form-control">
+                    <option value="">Seleccionar quién autoriza</option>
+                    <?php foreach ($empleados as $persona): ?>
+                    <option
+                        value="<?= resguardoEsc($persona['numero_nomina']) ?>"
+                        data-adscripcion="<?= (int)($persona['adscripcion_id'] ?? 0) ?>"
+                        data-nombre="<?= resguardoEsc($persona['nombre']) ?>"
+                        data-cargo="<?= resguardoEsc($persona['cargo'] ?? '') ?>"
+                        <?= $nominaAutoriza !== '' && $nominaAutoriza === (string)$persona['numero_nomina'] ? 'selected' : '' ?>
+                    ><?= resguardoEsc($persona['numero_nomina'] . ' — ' . $persona['nombre']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <input type="hidden" id="impNombreAutoriza" name="nombre_autoriza"
+                       value="<?= resguardoEsc($nombreAutoriza) ?>">
                 <small class="imp-firmante-ayuda">
-                    Selecciona un empleado registrado
-                    o escribe un nombre manualmente.
+                    El nombre y cargo se toman del empleado seleccionado.
                 </small>
 
             </div>
@@ -988,6 +1513,15 @@ require_once __DIR__ . '/../includes/header.php';
                 >
                     🖨️ Imprimir / Guardar como PDF
                 </button>
+
+                <a
+                    class="imp-btn imp-btn-primario"
+                    id="impDescargarExcel"
+                    href="<?= resguardoEsc('vista_previa_resguardo.php?' . http_build_query(array_merge($_GET, ['exportar' => 'excel']))) ?>"
+                    style="text-decoration:none; display:inline-flex; align-items:center; justify-content:center;"
+                >
+                    Descargar Excel (.xlsx)
+                </a>
 
             </div>
 
@@ -1413,8 +1947,8 @@ require_once __DIR__ . '/../includes/header.php';
                                 : '&nbsp;' ?>
                         </b>
 
-                        <small>
-                            DIRECTOR GENERAL
+                        <small data-cargo-autoriza>
+                            <?= resguardoEsc($cargoAutoriza) ?>
                         </small>
 
                     </div>
@@ -1701,8 +2235,7 @@ require_once __DIR__ . '/../includes/header.php';
         const empleadoEntrega =
             buscarEmpleado(buscarEntrega.value);
 
-        const empleadoAutoriza =
-            buscarEmpleado(buscarAutoriza.value);
+        const empleadoAutoriza = null;
 
         const preferencias = {
 
@@ -1713,12 +2246,7 @@ require_once __DIR__ . '/../includes/header.php';
                     : null
             },
 
-            autoriza: {
-                texto: buscarAutoriza.value.trim(),
-                nomina: empleadoAutoriza
-                    ? empleadoAutoriza.nomina
-                    : null
-            }
+            autoriza: null
 
         };
 
@@ -1786,10 +2314,8 @@ require_once __DIR__ . '/../includes/header.php';
             nombreEntrega.value
         );
 
-        buscarAutoriza.value = recuperarSeleccion(
-            preferencias.autoriza,
-            nombreAutoriza.value
-        );
+        // La autoridad no se restaura desde otra adscripción.
+        buscarAutoriza.value = <?= json_encode($nominaAutoriza) ?>;
     }
 
     // ======================================
@@ -1801,11 +2327,27 @@ require_once __DIR__ . '/../includes/header.php';
         const entrega =
             obtenerNombre(buscarEntrega.value);
 
-        const autoriza =
-            obtenerNombre(buscarAutoriza.value);
+        const seleccion = buscarAutoriza.selectedOptions[0];
+        const autoriza = seleccion && seleccion.value
+            ? (seleccion.dataset.nombre || '') : '';
+        const cargo = seleccion && seleccion.value
+            ? (seleccion.dataset.cargo || '') : '';
 
         nombreEntrega.value = entrega;
         nombreAutoriza.value = autoriza;
+        document.querySelectorAll('[data-cargo-autoriza]').forEach(function (elemento) {
+            elemento.textContent = cargo || '\\u00A0';
+        });
+        const enlaceExcel = document.getElementById('impDescargarExcel');
+        if (enlaceExcel) {
+            const url = new URL(enlaceExcel.href);
+            if (seleccion && seleccion.value) {
+                url.searchParams.set('nomina_autoriza', seleccion.value);
+            } else {
+                url.searchParams.delete('nomina_autoriza');
+            }
+            enlaceExcel.href = url.toString();
+        }
 
         document.querySelectorAll(
             '[data-firma-entrega]'
@@ -1844,10 +2386,7 @@ require_once __DIR__ . '/../includes/header.php';
         procesarCambio
     );
 
-    buscarAutoriza.addEventListener(
-        'input',
-        procesarCambio
-    );
+
 
     buscarAutoriza.addEventListener(
         'change',
@@ -1873,12 +2412,50 @@ require_once __DIR__ . '/../includes/header.php';
         );
     }
 
+    // Sincronizar el autorizante con la adscripción elegida en el filtro,
+    // incluso antes de consultar el resguardo.
+    const filtroAdscripcion = document.getElementById('impAdscripcion');
+    const filtroArea = document.getElementById('impArea');
+    const filtroNomina = document.getElementById('impNomina');
+
+    function actualizarAutorizantes() {
+        let adscripcionActual = filtroAdscripcion ? filtroAdscripcion.value : '';
+        if (!adscripcionActual && filtroArea && filtroArea.selectedOptions[0]) {
+            adscripcionActual = filtroArea.selectedOptions[0].dataset.adscripcion || '';
+        }
+        if (!adscripcionActual && filtroNomina && filtroNomina.selectedOptions[0]) {
+            adscripcionActual = filtroNomina.selectedOptions[0].dataset.adscripcion || '';
+        }
+        // Si no se ha elegido una adscripción, no se muestran autorizantes.
+        Array.from(buscarAutoriza.options).forEach(function (opcion) {
+            if (!opcion.value) return;
+            const visible = Boolean(adscripcionActual) &&
+                opcion.dataset.adscripcion === adscripcionActual;
+            opcion.hidden = !visible;
+            opcion.disabled = !visible;
+        });
+        if (buscarAutoriza.selectedOptions[0]?.disabled) {
+            buscarAutoriza.value = '';
+        }
+        actualizarFirmas();
+    }
+
+    if (filtroAdscripcion) {
+        filtroAdscripcion.addEventListener('change', actualizarAutorizantes);
+    }
+    if (filtroArea) {
+        filtroArea.addEventListener('change', actualizarAutorizantes);
+    }
+    if (filtroNomina) {
+        filtroNomina.addEventListener('change', actualizarAutorizantes);
+    }
+
     // ======================================
     // INICIAR
     // ======================================
 
     restaurarPreferencias();
-    actualizarFirmas();
+    actualizarAutorizantes();
 
 })();
 </script>
