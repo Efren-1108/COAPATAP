@@ -853,7 +853,7 @@ function renderActivoFila(a, mostrarAdsc = false) {
             <div class="activo-fila__acciones">
                 ${botonSituacion(a)}
                 ${botonStock(a)}
-                <button class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar'}">${a.puede_modificar === false ? '👁️' : '✏️'}</button>
+                <button class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar'}">${a.puede_modificar === false ? '<img src="../assets/img/icons/ojo2.png" alt="Consultar" style="width:15px;height:20px;object-fit:contain;vertical-align:middle;">' : '✏️'}</button>
                 ${a.puede_eliminar === false ? '' : `<button class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar">🗑️</button>`}
             </div>
         </div>
@@ -945,13 +945,14 @@ function renderTablaTodos(activosFiltrados = null) {
                         : `<div class="table__noimg">S/F</div>`}
                 </td>
                 <td class="acciones-celda">
-                    ${a.puede_modificar === false && a.puede_eliminar === false ? `<button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">👁️ Consultar</button>` : `<details class="acciones-menu">
+                    ${a.puede_modificar === false && a.puede_eliminar === false ? `<button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}"> '<img src="../assets/img/icons/ojo2.png" alt="Consultar" style="width:15px;height:20px;object-fit:contain;vertical-align:middle;">'
+                         Consultar</button>` : `<details class="acciones-menu">
                         <summary class="btn btn--ghost btn--sm" title="Mostrar todas las acciones">⚙️ Acciones ▾</summary>
                         <div class="acciones-menu__opciones">
                             ${botonSituacion(a)}
                             ${botonStock(a)}
                             ${a.puede_modificar !== false && a.estado_fisico !== 'INSERVIBLE' ? `<button type="button" class="btn btn--danger btn--sm" data-action="declarar-inservible" data-id="${a.id}">🚫 Declarar inservible</button>` : ''}
-                            <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar activo'}">${a.puede_modificar === false ? '👁️ Consultar' : '✏️ Editar'}</button>
+                            <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar activo'}">${a.puede_modificar === false ? '<img src="../assets/img/icons/ojo2.png" alt="Consultar" style="width:15px;height:20px;object-fit:contain;vertical-align:middle;">' : '✏️ Editar'}</button>
                             ${a.puede_eliminar !== false ? `<button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️ Eliminar</button>` : ''}
                         </div>
                     </details>`}
@@ -999,28 +1000,36 @@ function renderEstadisticas(activosFiltrados = null) {
     const html = `
         <div class="stats">
             <div class="stat">
-                <span class="stat__icon">📦</span>
+                <span class="stat__icon">
+                <img src="../assets/img/stats/caja.png" alt="" class="stat__icon-img">
+                </span>
                 <div>
                     <div class="stat__num">${total}</div>
                     <div class="stat__lbl">Activos en inventario (incluye suspendidos)</div>
                 </div>
             </div>
             <div class="stat">
-                <span class="stat__icon">💰</span>
+                <span class="stat__icon">
+                    <img src="../assets/img/stats/dinero.png" alt="" class="stat__icon-img">
+                    </span>
                 <div>
                     <div class="stat__num">${App.money(totalCosto)}</div>
                     <div class="stat__lbl">Valor total</div>
                 </div>
             </div>
             <div class="stat">
-                <span class="stat__icon">👤</span>
+                <span class="stat__icon">
+                    <img src="../assets/img/stats/empleados.png" alt="" class="stat__icon-img">
+                </span>
                 <div>
                     <div class="stat__num">${asignados}</div>
                     <div class="stat__lbl">Asignados</div>
                 </div>
             </div>
             <div class="stat">
-                <span class="stat__icon">⚠️</span>
+                <span class="stat__icon">
+                    <img src="../assets/img/stats/cuidado.png" alt="" class="stat__icon-img">
+                </span>
                 <div>
                     <div class="stat__num">${sinAsignar}</div>
                     <div class="stat__lbl">Sin asignar</div>
@@ -1126,7 +1135,9 @@ async function editarActivo(id) {
         form.elements['costo'].required = false;
         form.elements['estado_fisico'].required = false;
         if (imgInput) imgInput.value = '';
-        modalTitle.textContent = a.puede_modificar === false ? '👁️ Consultar activo' : '✏️ Editar activo';
+        modalTitle.innerHTML = a.puede_modificar === false
+            ? '<img src="../assets/img/icons/ojo2.png" alt="" style="width:15px;height:20px;object-fit:contain;vertical-align:middle;"> Consultar activo'
+            : '✏️ Editar activo';
         if (a.ruta_imagen) {
             imgPreview.innerHTML = `<img src="${App.esc(a.ruta_imagen)}" alt="Foto actual">`;
         } else {
