@@ -188,9 +188,9 @@ function render(lista) {
                 <td class="u-ultimo">${ultimo}</td>
                 <td class="table__col-actions">
                     <div class="table__actions">
-                        <button class="btn btn--ghost btn--sm" onclick="editar(${u.id})" title="Editar">✏️</button>
-                        <button class="btn btn--danger-outline btn--sm" onclick="abrirReset(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Restablecer contraseña">🔑</button>
-                        <button class="btn btn--danger btn--sm" onclick="eliminar(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
+                        ${window.canRoleAction('usuarios','modificar') ? `<button class="btn btn--ghost btn--sm" onclick="editar(${u.id})" title="Editar">✏️</button>` : ''}
+                        ${window.canRoleAction('usuarios','modificar') ? `<button class="btn btn--danger-outline btn--sm" onclick="abrirReset(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Restablecer contraseña">🔑</button>` : ''}
+                        ${window.canRoleAction('usuarios','eliminar') ? `<button class="btn btn--danger btn--sm" onclick="eliminar(${u.id}, '${App.esc(u.nombre_completo).replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>` : ''}
                     </div>
                 </td>
             </tr>
@@ -225,6 +225,7 @@ busqueda.addEventListener('input', () => {
     render(filtrados);
 });
 
+if (!window.canRoleAction('usuarios','crear')) btnNuevo.style.display = 'none';
 btnNuevo.addEventListener('click', () => {
     form.reset();
     form.id.value = '';

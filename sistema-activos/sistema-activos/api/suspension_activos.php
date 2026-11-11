@@ -18,7 +18,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);
 }
 
-$usuario = require_permission_csrf('activos');
+$usuario = require_action_permission('activos', 'modificar');
 if (!has_permission('activos')) {
     json_response(['ok' => false, 'error' => 'No tienes permiso para administrar activos.'], 403);
 }

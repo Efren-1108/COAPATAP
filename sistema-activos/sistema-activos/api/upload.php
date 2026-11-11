@@ -15,6 +15,9 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 require_permission_csrf('activos');
+if (!has_action_permission('activos', 'crear') && !has_action_permission('activos', 'modificar')) {
+    json_response(['ok'=>false,'error'=>'No tienes permiso para subir imágenes de activos'],403);
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['ok' => false, 'error' => 'Método no permitido'], 405);

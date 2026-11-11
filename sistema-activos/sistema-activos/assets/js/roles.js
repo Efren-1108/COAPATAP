@@ -14,23 +14,78 @@ const statsBox   = document.getElementById('stats');
 let rolesCache = [];
 let modulosCache = [];
 const permisosBox = document.getElementById('rolesPermisos');
+const areasBox = document.getElementById('rolesAreas');
+const areasWrap = document.getElementById('rolesAreasWrap');
+let areasCache = [];
+function modoAreas() {
+    return form.querySelector('input[name="alcance_areas"]:checked')?.value || 'propia';
+}
+function actualizarVisibilidadAreas() {
+    areasWrap.style.display = modoAreas() === 'seleccionadas' ? '' : 'none';
+}
+function areasSeleccionadas() {
+    return [...areasBox.querySelectorAll('input[name="areas_rol"]:checked')].map(input => Number(input.value));
+}
+function pintarAreas(seleccionadas = []) {
+    const ids = seleccionadas.map(Number);
+    areasBox.innerHTML = areasCache.map(a => `
+        <label class="roles-area">
+            <input type="checkbox" name="areas_rol" value="${Number(a.id)}" ${ids.includes(Number(a.id)) ? 'checked' : ''}>
+            <span>${App.esc(a.nombre)}<small>${App.esc(a.adscripcion_nombre || 'Sin adscripción')}</small></span>
+        </label>`).join('') || '<span class="muted">No hay áreas activas.</span>';
+}
+form.querySelectorAll('input[name="alcance_areas"]').forEach(el =>
+    el.addEventListener('change', actualizarVisibilidadAreas));
 
 function permisosSeleccionados() {
     return [...permisosBox.querySelectorAll('input[name="modulos"]:checked')].map(el => el.value);
 }
-function pintarPermisos(seleccionados = []) {
-    permisosBox.innerHTML = modulosCache.map(m => `
-        <label class="roles-permiso">
-            <input type="checkbox" name="modulos" value="${App.esc(m.clave)}" ${seleccionados.includes(m.clave) ? 'checked' : ''}>
-            <span><strong>${App.esc(m.nombre)}</strong><small>${App.esc(m.descripcion || '')}</small></span>
-        </label>
-    `).join('');
+function accionesSeleccionadas() {
+    const data = {};
+    permisosBox.querySelectorAll('[data-modulo]').forEach(container => {
+        const clave = container.dataset.modulo;
+        if (!container.querySelector('input[name="modulos"]')?.checked) return;
+        data[clave] = [...container.querySelectorAll('input[name="acciones_rol"]:checked')].map(el => el.value);
+    });
+    return data;
+}
+function actualizarAccionesModulo(container) {
+    const acceso = container.querySelector('input[name="modulos"]').checked;
+    container.querySelectorAll('input[name="acciones_rol"]').forEach(el => {
+        el.disabled = !acceso;
+        if (!acceso) el.checked = false;
+    });
+}
+permisosBox.addEventListener('change', e => {
+    const container = e.target.closest('[data-modulo]');
+    if (container && e.target.name === 'modulos') actualizarAccionesModulo(container);
+});
+function pintarPermisos(seleccionados = [], acciones = {}) {
+    permisosBox.innerHTML = modulosCache.map(m => {
+        const disponible = Array.isArray(m.acciones_disponibles) ? m.acciones_disponibles : [];
+        const permitido = seleccionados.includes(m.clave);
+        return `<div class="roles-permiso" data-modulo="${App.esc(m.clave)}">
+            <label class="roles-permiso__titulo">
+                <input type="checkbox" name="modulos" value="${App.esc(m.clave)}" ${permitido ? 'checked' : ''}>
+                <span><strong>${App.esc(m.nombre)}</strong><small>${App.esc(m.descripcion || '')}</small></span>
+            </label>
+            ${disponible.length ? `<div class="roles-permiso__acciones">${disponible.map(a => `
+                <label><input type="checkbox" name="acciones_rol" value="${App.esc(a)}"
+                    ${permitido && (acciones[m.clave] || []).includes(a) ? 'checked' : ''} ${permitido ? '' : 'disabled'}>
+                    ${a === 'crear' ? 'Crear' : a === 'modificar' ? 'Modificar' : 'Eliminar'}</label>`).join('')}</div>`
+                : '<small style="display:block;margin:7px 0 0 28px">Solo consulta o funciones reservadas al Superusuario.</small>'}
+        </div>`;
+    }).join('');
 }
 async function cargarCatalogo() {
     const res = await App.api('roles.php?catalogo=1');
     if (!res.ok) throw new Error(res.error);
     modulosCache = res.data;
     pintarPermisos();
+    const rAreas = await App.api('roles.php?catalogo_areas=1');
+    if (!rAreas.ok) throw new Error(rAreas.error);
+    areasCache = rAreas.data;
+    pintarAreas();
 }
 
 
@@ -88,8 +143,8 @@ function render(lista) {
                 <td>${estadoBadge}</td>
                 <td>
                     <div class="table__actions">
-                        ${r.clave === 'superusuario' ? '<span class="muted">Acceso total</span>' : `<button class="btn btn--ghost btn--sm" onclick="editar(${r.id})" title="Editar rol y permisos">✏️</button>`}
-                        ${esSistema ? '' : `<button class="btn btn--danger btn--sm" onclick="eliminar(${r.id}, '${App.esc(r.nombre).replace(/'/g, "\\'")}')">🗑️</button>`}
+                        ${r.clave === 'superusuario' ? '<span class="muted">Acceso total</span>' : window.canRoleAction('roles','modificar') ? `<button class="btn btn--ghost btn--sm" onclick="editar(${r.id})" title="Editar rol y permisos">✏️</button>` : ''}
+                        ${esSistema || !window.canRoleAction('roles','eliminar') ? '' : `<button class="btn btn--danger btn--sm" onclick="eliminar(${r.id}, '${App.esc(r.nombre).replace(/'/g, "\\'")}')">🗑️</button>`}
                     </div>
                 </td>
             </tr>
@@ -105,11 +160,14 @@ busqueda.addEventListener('input', () => {
     ));
 });
 
+if (!window.canRoleAction('roles','crear')) btnNuevo.style.display = 'none';
 btnNuevo.addEventListener('click', () => {
     form.reset();
     form.elements['id'].value = '';
     form.activo.checked = true;
     pintarPermisos();
+    pintarAreas();
+    actualizarVisibilidadAreas();
     modalTitle.textContent = '➕ Nuevo rol';
     formError.style.display = 'none';
     App.openModal('rolModal');
@@ -119,10 +177,18 @@ window.editar = async (id) => {
     try {
         const res = await App.api(`roles.php?id=${id}`);
         if (!res.ok) throw new Error(res.error);
-        App.fillForm(form, res.data);
+        // No usar fillForm: también sobrescribe el value de los radios de alcance.
+        form.elements['clave'].value = res.data.clave || '';
+        form.elements['nombre'].value = res.data.nombre || '';
+        form.elements['descripcion'].value = res.data.descripcion || '';
         form.elements['id'].value = id;
         form.activo.checked = [true, 't', '1', 1].includes(res.data.activo);
-        pintarPermisos(res.data.permisos || []);
+        pintarPermisos(res.data.permisos || [], res.data.acciones || {});
+        const modo = res.data.alcance_areas === 'seleccionadas' ? 'seleccionadas' : 'propia';
+        const radio = form.querySelector(`input[name="alcance_areas"][value="${modo}"]`);
+        if (radio) radio.checked = true;
+        pintarAreas(res.data.areas || []);
+        actualizarVisibilidadAreas();
         modalTitle.textContent = '✏️ Editar rol';
         formError.style.display = 'none';
         App.openModal('rolModal');
@@ -152,9 +218,14 @@ form.addEventListener('submit', async (e) => {
         descripcion: form.descripcion.value.trim(),
         activo:      form.activo.checked,
         permisos:    permisosSeleccionados(),
+        acciones:    accionesSeleccionadas(),
+        alcance_areas: modoAreas(),
+        areas:       areasSeleccionadas(),
     };
     if (data.clave.length < 2)  return mostrarError('La clave es obligatoria (mín. 2 caracteres)');
     if (data.nombre.length < 2) return mostrarError('El nombre es obligatorio');
+    if (data.alcance_areas === 'seleccionadas' && data.areas.length === 0)
+        return mostrarError('Selecciona al menos un área para este rol');
 
     const method = id ? 'PUT' : 'POST';
     const url    = id ? `roles.php?id=${id}` : 'roles.php';

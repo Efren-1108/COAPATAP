@@ -16,6 +16,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+// Acciones independientes del permiso para consultar el módulo.
+if ($method === 'POST') require_action_permission('empleados', 'crear');
+if ($method === 'PUT') require_action_permission('empleados', 'modificar');
+if ($method === 'DELETE') require_action_permission('empleados', 'eliminar');
+
 $id     = isset($_GET['id'])     ? (int)$_GET['id']     : null;
 $nomina = isset($_GET['nomina']) ? (int)$_GET['nomina'] : null;
 $q      = isset($_GET['q'])      ? trim($_GET['q'])     : null;
@@ -49,8 +54,7 @@ try {
                 $params = [':id' => $id];
 
                 if (!$isSuper) {
-                    $sql .= " AND e.area_id = :__scope_area";
-                    $params[':__scope_area'] = $areaId;
+                    $sql .= ' AND ' . read_area_condition('e.area_id', $current);
                 }
 
                 $stmt = $pdo->prepare($sql);
@@ -60,6 +64,9 @@ try {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin acceso'], 404);
                 }
                 $row['tiene_usuario'] = (bool)($row['tiene_usuario'] ?? false);
+                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$row['area_id'] === (int)$areaId);
+                $row['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
+                $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
             }
 
@@ -81,8 +88,7 @@ try {
                 $params = [':nomina' => $nomina];
 
                 if (!$isSuper) {
-                    $sql .= " AND e.area_id = :__scope_area";
-                    $params[':__scope_area'] = $areaId;
+                    $sql .= ' AND ' . read_area_condition('e.area_id', $current);
                 }
 
                 $stmt = $pdo->prepare($sql);
@@ -92,6 +98,9 @@ try {
                     json_response(['ok' => false, 'error' => 'Empleado no encontrado o sin acceso'], 404);
                 }
                 $row['tiene_usuario'] = (bool)($row['tiene_usuario'] ?? false);
+                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$row['area_id'] === (int)$areaId);
+                $row['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
+                $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
             }
 
@@ -120,8 +129,7 @@ try {
             }
 
             if (!$isSuper) {
-                $where[] = "e.area_id = :__scope_area";
-                $params[':__scope_area'] = $areaId;
+                $where[] = read_area_condition('e.area_id', $current);
             }
 
             if ($where) {
@@ -135,6 +143,9 @@ try {
 
             foreach ($rows as &$r) {
                 $r['tiene_usuario'] = (bool)($r['tiene_usuario'] ?? false);
+                $puedeOperarArea = $isSuper || ($areaId !== null && (int)$r['area_id'] === (int)$areaId);
+                $r['puede_modificar'] = $puedeOperarArea && has_action_permission('empleados', 'modificar');
+                $r['puede_eliminar'] = $puedeOperarArea && has_action_permission('empleados', 'eliminar');
             }
             unset($r);
 

@@ -67,8 +67,7 @@ try {
     $params = [':identificador' => $identificador];
 
     if (!$isSuper) {
-        $sql .= " AND e.area_id = :__scope_area";
-        $params[':__scope_area'] = $areaId;
+        $sql .= ' AND ' . read_area_condition('e.area_id', $current);
     }
 
     $stmt = $pdo->prepare($sql);
@@ -114,8 +113,7 @@ try {
     $paramsAct = [':eid' => $emp['id']];
 
     if (!$isSuper) {
-        $sqlAct .= " AND a.area_id = :__scope_area";
-        $paramsAct[':__scope_area'] = $areaId;
+        $sqlAct .= ' AND ' . read_area_condition('a.area_id', $current);
     }
 
     $sqlAct .= " ORDER BY a.num_inventario ASC";

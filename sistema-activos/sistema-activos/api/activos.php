@@ -12,6 +12,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+// Acciones independientes del permiso para consultar el módulo.
+if ($method === 'POST') require_action_permission('activos', 'crear');
+if ($method === 'PUT') require_action_permission('activos', 'modificar');
+if ($method === 'DELETE') require_action_permission('activos', 'eliminar');
+
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $empId  = isset($_GET['empleado_id']) ? (int)$_GET['empleado_id'] : null;
 $q      = isset($_GET['q']) ? trim($_GET['q']) : null;
@@ -49,12 +54,13 @@ try {
                 // El permiso de Activos permite consultar bienes del área del usuario,
                 // no solamente los que estén asignados a su empleado.
                 // Si la cuenta no tiene área, se deniega por seguridad.
-                if (!$isSuper) {
-                    if ($areaId === null || $row['area_id'] === null || (int)$row['area_id'] !== (int)$areaId) {
-                        json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
-                    }
+                if (!can_read_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current)) {
+                    json_response(['ok' => false, 'error' => 'Activo no encontrado o sin acceso'], 404);
                 }
 
+                $puedeOperarArea = $isSuper || ($areaId !== null && $row['area_id'] !== null && (int)$row['area_id'] === (int)$areaId);
+                $row['puede_modificar'] = $puedeOperarArea && has_action_permission('activos', 'modificar');
+                $row['puede_eliminar'] = $puedeOperarArea && has_action_permission('activos', 'eliminar');
                 json_response(['ok' => true, 'data' => $row]);
             }
 
@@ -90,12 +96,7 @@ try {
             // asignados a otro empleado, sin asignar e inservibles del área.
             // No se permite el acceso global a roles distintos de Superusuario.
             if (!$isSuper) {
-                if ($areaId === null) {
-                    $where[] = "1 = 0";
-                } else {
-                    $where[] = "a.area_id = :scope_area";
-                    $params[':scope_area'] = (int)$areaId;
-                }
+                $where[] = read_area_condition('a.area_id', $current);
             }
 
             if ($where) {
@@ -105,7 +106,14 @@ try {
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
-            json_response(['ok' => true, 'data' => $stmt->fetchAll()]);
+            $filas = $stmt->fetchAll();
+            foreach ($filas as &$fila) {
+                $puedeOperarArea = $isSuper || ($areaId !== null && $fila['area_id'] !== null && (int)$fila['area_id'] === (int)$areaId);
+                $fila['puede_modificar'] = $puedeOperarArea && has_action_permission('activos', 'modificar');
+                $fila['puede_eliminar'] = $puedeOperarArea && has_action_permission('activos', 'eliminar');
+            }
+            unset($fila);
+            json_response(['ok' => true, 'data' => $filas]);
             break;
 
         case 'POST':

@@ -33,8 +33,16 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
+$input = json_input();
+// Un restablecimiento de contraseña es Modificar, no Crear.
+if ($method === 'POST') {
+    $accionPrevia = $input['accion'] ?? null;
+    require_action_permission('usuarios', $accionPrevia === 'reset_password' ? 'modificar' : 'crear');
+}
+if ($method === 'PUT') require_action_permission('usuarios', 'modificar');
+if ($method === 'DELETE') require_action_permission('usuarios', 'eliminar');
+
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
-$input  = json_input();
 $accion = $input['accion'] ?? null;
 $q      = isset($_GET['q']) ? trim((string)$_GET['q']) : null;
 
@@ -67,7 +75,7 @@ try {
                 ");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row || (!$esSuper && (int)$row['area_id'] !== (int)$current['area_id'])) {
+                if (!$row || !can_read_area($row['area_id'] !== null ? (int)$row['area_id'] : null, $current)) {
                     json_response(['ok' => false, 'error' => 'Usuario no encontrado'], 404);
                 }
                 $row = normalizarUsuario($row);
@@ -87,8 +95,7 @@ try {
             ";
             $params = [];
             if (!$esSuper) {
-                $sql .= " WHERE u.area_id = :__area AND r.clave <> 'superusuario'";
-                $params[':__area'] = (int)$current['area_id'];
+                $sql .= " WHERE " . read_area_condition('u.area_id', $current) . " AND r.clave <> 'superusuario'";
             }
             if ($q) {
                 $sql .= ($esSuper ? ' WHERE ' : ' AND ') . "(LOWER(u.nombre_completo) LIKE :q

@@ -37,8 +37,7 @@ try {
     $params = [':texto' => $q];
 
     if (!$current['es_superusuario']) {
-        $sql .= ' AND e.area_id = :area_usuario';
-        $params[':area_usuario'] = (int) $current['area_id'];
+        $sql .= ' AND ' . read_area_condition('e.area_id', $current);
     }
     $sql .= ' ORDER BY e.nombre ASC, e.id ASC LIMIT 21';
     $stmt = $pdo->prepare($sql);

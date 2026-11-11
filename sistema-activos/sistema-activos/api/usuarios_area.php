@@ -14,7 +14,7 @@ if ($areaId <= 0) {
 }
 
 $current = require_any_permission(['empleados', 'usuarios']);
-if (empty($current['es_superusuario']) && $areaId !== (int)$current['area_id']) {
+if (!can_read_area($areaId, $current)) {
     json_response(['ok' => false, 'error' => 'Sin permiso para consultar usuarios de esta área'], 403);
 }
 

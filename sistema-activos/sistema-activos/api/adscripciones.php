@@ -22,13 +22,9 @@ $user = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
 
 try {
     $pdo = db();
-    $adscPermitida = null;
-    if (empty($user['es_superusuario'])) {
-        $st = $pdo->prepare('SELECT adscripcion_id FROM areas WHERE id = :aid');
-        $st->execute([':aid' => (int)$user['area_id']]);
-        $adscPermitida = $st->fetchColumn();
-        if (!$adscPermitida) $adscPermitida = -1;
-    }
+    // Para lectura, una adscripción es visible si contiene al menos un área
+    // consultable por este rol. Sus conteos también se limitan a esas áreas.
+    $scopeAreas = read_area_condition('ar.id', $user);
 
     switch ($method) {
         // ============================================================
@@ -39,17 +35,23 @@ try {
                 $stmt = $pdo->prepare("SELECT * FROM adscripciones WHERE id = :id");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row || ($adscPermitida !== null && (int)$row['id'] !== (int)$adscPermitida)) {
+                if (!$row) {
                     json_response(['ok' => false, 'error' => 'Adscripción no encontrada'], 404);
+                }
+
+                if (empty($user['es_superusuario'])) {
+                    $visible = $pdo->prepare('SELECT 1 FROM areas ar WHERE ar.adscripcion_id = :id AND ' . $scopeAreas . ' LIMIT 1');
+                    $visible->execute([':id' => $id]);
+                    if (!$visible->fetchColumn()) json_response(['ok' => false, 'error' => 'Adscripción no encontrada'], 404);
                 }
 
                 // Conteo de áreas y empleados asociados
                 $stmtCount = $pdo->prepare("
                     SELECT
-                        (SELECT COUNT(*) FROM areas WHERE adscripcion_id = :id)::int AS areas_count,
+                        (SELECT COUNT(*) FROM areas ar WHERE ar.adscripcion_id = :id AND " . $scopeAreas . ")::int AS areas_count,
                         (SELECT COUNT(*) FROM empleados e
-                            JOIN areas a ON a.id = e.area_id
-                            WHERE a.adscripcion_id = :id)::int AS empleados_count
+                            JOIN areas ar ON ar.id = e.area_id
+                            WHERE ar.adscripcion_id = :id AND " . $scopeAreas . ")::int AS empleados_count
                 ");
                 $stmtCount->execute([':id' => $id]);
                 $counts = $stmtCount->fetch();
@@ -61,27 +63,29 @@ try {
 
             $sql = "
                 SELECT a.*,
-                       (SELECT COUNT(*) FROM areas ar WHERE ar.adscripcion_id = a.id)::int AS areas_count,
+                       (SELECT COUNT(*) FROM areas ar WHERE ar.adscripcion_id = a.id AND " . $scopeAreas . ")::int AS areas_count,
                        (SELECT COUNT(*) FROM empleados e
                             JOIN areas ar ON ar.id = e.area_id
-                            WHERE ar.adscripcion_id = a.id)::int AS empleados_count
+                            WHERE ar.adscripcion_id = a.id AND " . $scopeAreas . ")::int AS empleados_count
                 FROM adscripciones a
             ";
             $params = [];
+            $condiciones = [];
             if ($q) {
-                $sql .= " WHERE LOWER(a.nombre) LIKE :q OR LOWER(a.clave) LIKE :q
+                $condiciones[] = "(LOWER(a.nombre) LIKE :q OR LOWER(a.clave) LIKE :q
                           OR LOWER(COALESCE(a.descripcion,'')) LIKE :q
-                          OR LOWER(COALESCE(a.direccion,'')) LIKE :q";
+                          OR LOWER(COALESCE(a.direccion,'')) LIKE :q)";
                 $params[':q'] = '%' . strtolower($q) . '%';
             }
+            if (empty($user['es_superusuario'])) {
+                $condiciones[] = "EXISTS (SELECT 1 FROM areas ar WHERE ar.adscripcion_id = a.id AND " . $scopeAreas . ")";
+            }
+            if ($condiciones) $sql .= ' WHERE ' . implode(' AND ', $condiciones);
             $sql .= " ORDER BY a.activo DESC, a.nombre ASC";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $rows = $stmt->fetchAll();
-            if ($adscPermitida !== null) {
-                $rows = array_values(array_filter($rows, fn($r) => (int)$r['id'] === (int)$adscPermitida));
-            }
             json_response(['ok' => true, 'data' => $rows]);
             break;
 

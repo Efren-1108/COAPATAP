@@ -122,6 +122,10 @@ $puedeImprimir = $user
         window.CSRF_TOKEN =
             <?= json_encode(csrf_token()) ?>;
         window.IS_SUPERUSER = <?= $esSuper ? 'true' : 'false' ?>;
+        window.ROLE_ACTIONS = <?= json_encode(role_action_matrix($user), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        window.canRoleAction = function(module, action) {
+            return window.IS_SUPERUSER || window.ROLE_ACTIONS?.[module]?.[action] === true;
+        };
 
     </script>
 

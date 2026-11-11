@@ -297,3 +297,120 @@ function default_module_page(): string
     // Siempre disponible: Mi perfil / cambiar contraseña.
     return 'perfil.php';
 }
+
+
+/**
+ * Áreas visibles por el rol. NULL = Superusuario (todas); [] = ninguna.
+ * Por defecto, los roles existentes conservan el área propia de cada usuario.
+ * No determina las áreas donde se puede crear/editar/eliminar: esas operaciones
+ * siguen protegidas por la lógica previa del área del usuario.
+ */
+function read_area_ids(?array $user = null): ?array
+{
+    static $cache = [];
+    $user = $user ?? current_user();
+    if (!$user) return [];
+    if (!empty($user['es_superusuario'])) return null;
+    $key = (string)$user['rol_id'] . ':' . (string)($user['area_id'] ?? '');
+    if (array_key_exists($key, $cache)) return $cache[$key];
+
+    try {
+        $pdo = db();
+        $st = $pdo->prepare('SELECT alcance_areas FROM public.roles WHERE id = :id');
+        $st->execute([':id' => $user['rol_id']]);
+        $modo = $st->fetchColumn();
+        if ($modo === 'seleccionadas') {
+            $st = $pdo->prepare('SELECT ra.area_id FROM public.rol_areas ra
+                JOIN public.areas a ON a.id = ra.area_id AND a.activo IS TRUE
+                WHERE ra.rol_id = :id ORDER BY ra.area_id');
+            $st->execute([':id' => $user['rol_id']]);
+            return $cache[$key] = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+        }
+        if ($modo !== 'propia') return $cache[$key] = []; // Si no se ejecutó la migración, denegar.
+        return $cache[$key] = ($user['area_id'] === null ? [] : [(int)$user['area_id']]);
+    } catch (Throwable $e) {
+        logger('auth.read_area_ids: ' . $e->getMessage(), 'ERROR');
+        return $cache[$key] = [];
+    }
+}
+
+/** Condición SQL sin interpolación de entradas HTTP; IDs tipados desde BD. */
+function read_area_condition(string $column, ?array $user = null): string
+{
+    // El nombre de columna solo puede provenir del código del servidor.
+    if (!preg_match('/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)?$/i', $column)) {
+        throw new InvalidArgumentException('Columna de área no válida');
+    }
+    $ids = read_area_ids($user);
+    if ($ids === null) return '1=1';
+    if (!$ids) return '1=0';
+    return $column . ' IN (' . implode(',', array_map('intval', $ids)) . ')';
+}
+
+function can_read_area(?int $areaId, ?array $user = null): bool
+{
+    $ids = read_area_ids($user);
+    return $ids === null || ($areaId !== null && in_array($areaId, $ids, true));
+}
+
+/** Matriz de operaciones concedidas al rol actual. FALLA EN CERRADO. */
+function role_action_matrix(?array $user = null): array
+{
+    static $cache = [];
+    $user = $user ?? current_user();
+    if (!$user) return [];
+    $key = (int)$user['id'] . ':' . (int)$user['rol_id'];
+    if (isset($cache[$key])) return $cache[$key];
+    $crud = ['activos', 'empleados', 'usuarios', 'roles'];
+    if (!empty($user['es_superusuario'])) {
+        $matrix = [];
+        foreach ($crud as $module) $matrix[$module] = ['crear'=>true, 'modificar'=>true, 'eliminar'=>true];
+        return $cache[$key] = $matrix;
+    }
+    try {
+        $pdo = db();
+        $st = $pdo->prepare('SELECT m.clave, rp.concedido, rp.puede_crear, rp.puede_modificar, rp.puede_eliminar
+            FROM public.rol_permisos rp JOIN public.modulos m ON m.id=rp.modulo_id
+            WHERE rp.rol_id = :rol');
+        $st->execute([':rol'=>(int)$user['rol_id']]);
+        $matrix = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!in_array($row['clave'], $crud, true)) continue;
+            $enabled = in_array($row['concedido'], [true, 1, '1', 't', 'true'], true);
+            $matrix[$row['clave']] = [];
+            foreach (['crear','modificar','eliminar'] as $action) {
+                $matrix[$row['clave']][$action] = $enabled &&
+                    in_array($row['puede_'.$action], [true, 1, '1', 't', 'true'], true);
+            }
+        }
+        return $cache[$key] = $matrix;
+    } catch (Throwable $e) {
+        logger('auth.role_action_matrix error: ' . $e->getMessage(), 'ERROR');
+        return $cache[$key] = [];
+    }
+}
+
+function has_action_permission(string $module, string $action): bool
+{
+    if (!in_array($action, ['crear','modificar','eliminar'], true)) return false;
+    $u = current_user();
+    if (!$u) return false;
+    if (!has_permission($module)) return false;
+    if (!empty($u['es_superusuario'])) return true;
+    $matrix = role_action_matrix($u);
+    return $matrix[$module][$action] ?? false;
+}
+
+/** Los permisos de escritura se comprueban en el servidor, no solo en botones. */
+function require_action_permission(string $module, string $action): array
+{
+    $u = require_permission_csrf($module);
+    if (!has_action_permission($module, $action)) {
+        if (is_ajax_request()) {
+            json_response(['ok'=>false,'error'=>"Tu rol no tiene permiso para $action en este módulo"],403);
+        }
+        http_response_code(403);
+        exit('<h1>403 — Operación no autorizada</h1>');
+    }
+    return $u;
+}

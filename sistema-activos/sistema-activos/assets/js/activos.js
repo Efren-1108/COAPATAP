@@ -125,6 +125,7 @@ function activarTab(nombre) {
 
 // ============ EVENTOS ============
 function wireEvents() {
+    if (!window.canRoleAction('activos','crear')) btnNuevo.style.display='none';
     btnNuevo.addEventListener('click', () => abrirModalActivo());
 
     busqueda.addEventListener('input', renderTodo);
@@ -232,6 +233,7 @@ function esSuspendido(a) {
 }
 
 function botonSituacion(a) {
+    if (a.puede_modificar === false) return '';
     const susp = esSuspendido(a);
     const accion = susp ? 'reactivar-activo' : 'suspender-activo';
     const rotulo = susp ? '▶️ Reactivar' : '⏸️ Suspender';
@@ -240,6 +242,7 @@ function botonSituacion(a) {
 }
 
 function botonStock(a) {
+    if (a.puede_modificar === false) return '';
     if (a.estado_fisico === 'INSERVIBLE') return '';
     if (a.situacion_inventario === 'STOCK') return '<span class="badge">📦 En stock</span>';
     return `<button type="button" class="btn btn--ghost btn--sm" data-action="enviar-stock" data-id="${Number(a.id)}">📦 Enviar a stock</button>`;
@@ -831,8 +834,8 @@ function renderActivoFila(a, mostrarAdsc = false) {
             <div class="activo-fila__acciones">
                 ${botonSituacion(a)}
                 ${botonStock(a)}
-                <button class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar">✏️</button>
-                <button class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar">🗑️</button>
+                <button class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar'}">${a.puede_modificar === false ? '👁️' : '✏️'}</button>
+                ${a.puede_eliminar === false ? '' : `<button class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar">🗑️</button>`}
             </div>
         </div>
     `;
@@ -923,16 +926,16 @@ function renderTablaTodos(activosFiltrados = null) {
                         : `<div class="table__noimg">S/F</div>`}
                 </td>
                 <td class="acciones-celda">
-                    <details class="acciones-menu">
+                    ${a.puede_modificar === false && a.puede_eliminar === false ? `<button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">👁️ Consultar</button>` : `<details class="acciones-menu">
                         <summary class="btn btn--ghost btn--sm" title="Mostrar todas las acciones">⚙️ Acciones ▾</summary>
                         <div class="acciones-menu__opciones">
                             ${botonSituacion(a)}
                             ${botonStock(a)}
-                            ${a.estado_fisico !== 'INSERVIBLE' ? `<button type="button" class="btn btn--danger btn--sm" data-action="declarar-inservible" data-id="${a.id}">🚫 Declarar inservible</button>` : ''}
-                            <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="Editar activo">✏️ Editar</button>
-                            <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️ Eliminar</button>
+                            ${a.puede_modificar !== false && a.estado_fisico !== 'INSERVIBLE' ? `<button type="button" class="btn btn--danger btn--sm" data-action="declarar-inservible" data-id="${a.id}">🚫 Declarar inservible</button>` : ''}
+                            <button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}" title="${a.puede_modificar === false ? 'Consultar' : 'Editar activo'}">${a.puede_modificar === false ? '👁️ Consultar' : '✏️ Editar'}</button>
+                            ${a.puede_eliminar !== false ? `<button type="button" class="btn btn--danger btn--sm" data-action="eliminar-activo" data-id="${a.id}" data-desc="${App.esc(a.descripcion)}" title="Eliminar activo">🗑️ Eliminar</button>` : ''}
                         </div>
-                    </details>
+                    </details>`}
                 </td>
             </tr>
         `;
@@ -1052,7 +1055,16 @@ function renderEstadisticas(activosFiltrados = null) {
 }
 
 // ============ MODAL ACTIVO ============
+function modoConsultaActivo(soloLectura) {
+    form.dataset.soloLectura = soloLectura ? '1' : '0';
+    form.querySelectorAll('input:not([type="hidden"]),select,textarea').forEach(el => {
+        el.disabled = soloLectura;
+    });
+    form.querySelector('button[type="submit"]').style.display = soloLectura ? 'none' : '';
+    form.querySelector('.modal__footer button[type="button"]').textContent = soloLectura ? 'Cerrar' : 'Cancelar';
+}
 function abrirModalActivo() {
+    modoConsultaActivo(false);
     form.reset();
     form.elements['id'].value = '';
     form.dataset.estadoOriginal = '';
@@ -1084,13 +1096,14 @@ async function editarActivo(id) {
         actualizarMotivoInservible();
         document.getElementById('grupoCrearStock').style.display = 'none';
         document.getElementById('crear_en_stock').checked = false;
-        selectEmp.disabled = a.situacion_inventario === 'STOCK';
+        modoConsultaActivo(a.puede_modificar === false);
+        if (a.puede_modificar !== false) selectEmp.disabled = a.situacion_inventario === 'STOCK';
         // Estos dos datos pueden ser NULL si proceden de un Excel incompleto.
         // No obligamos a inventarlos para modificar otra propiedad del activo.
         form.elements['costo'].required = false;
         form.elements['estado_fisico'].required = false;
         if (imgInput) imgInput.value = '';
-        modalTitle.textContent = '✏️ Editar activo';
+        modalTitle.textContent = a.puede_modificar === false ? '👁️ Consultar activo' : '✏️ Editar activo';
         if (a.ruta_imagen) {
             imgPreview.innerHTML = `<img src="${App.esc(a.ruta_imagen)}" alt="Foto actual">`;
         } else {
@@ -1167,6 +1180,7 @@ async function eliminarActivo(id, desc) {
 
 async function onSubmitActivo(e) {
     e.preventDefault();
+    if (form.dataset.soloLectura === '1') return;
 
     // Leer SOLO los controles existentes en el formulario.
     const campo = nombre => form.elements.namedItem(nombre);
@@ -1288,7 +1302,7 @@ function renderInservibles() {
       <td>${App.esc(a.ultimo_area_nombre || '—')}</td>
       <td>${App.esc(a.motivo_inservible || 'Registro anterior sin motivo documentado')}</td>
       <td>${App.esc(a.fecha_inservible ? new Date(a.fecha_inservible).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'}) : '—')}</td>
-      <td><button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">✏️ Consultar / editar</button></td>
+      <td><button type="button" class="btn btn--ghost btn--sm" data-action="editar-activo" data-id="${a.id}">${a.puede_modificar === false ? '👁️ Consultar' : '✏️ Consultar / editar'}</button></td>
     </tr>`).join('') : '<tr><td colspan="6">No hay bienes inservibles registrados.</td></tr>';
 }
 document.getElementById('tablaInservibles').addEventListener('click', e => {

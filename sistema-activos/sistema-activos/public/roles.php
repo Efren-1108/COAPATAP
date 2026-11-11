@@ -63,9 +63,18 @@ require_once __DIR__ . '/../includes/header.php';
                     </div>
                     <div class="form-group form-group--full">
                         <label>Permisos de acceso a módulos</label>
-                        <p class="form-text" style="margin:0 0 8px">Marca los módulos que podrá abrir este rol. Las operaciones globales de Stock, Adscripciones e Importar Excel siguen reservadas al Superusuario.</p>
+                        <p class="form-text" style="margin:0 0 8px">Para cada módulo, permite la consulta y, cuando corresponda, Crear, Modificar o Eliminar. En «Empleados y Áreas», las tres acciones se aplican a empleados. La gestión de áreas, los movimientos globales de Stock, Adscripciones e Importar Excel siguen reservados al Superusuario.</p>
                         <div class="roles-permisos" id="rolesPermisos" role="group" aria-label="Permisos de acceso">
                             Cargando módulos...
+                        </div>
+                    </div>
+                    <div class="form-group form-group--full">
+                        <label>Áreas que podrá consultar este rol</label>
+                        <p class="form-text" style="margin:0 0 10px">Elige el alcance de lectura. Los permisos para modificar información continúan limitados al área propia del usuario.</p>
+                        <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="propia" checked> Solo el área asignada a cada usuario</label>
+                        <label class="roles-modo-area"><input type="radio" name="alcance_areas" value="seleccionadas"> Áreas específicas para todos los usuarios de este rol</label>
+                        <div id="rolesAreasWrap" style="display:none" class="roles-areas-wrap">
+                            <div class="roles-areas" id="rolesAreas" role="group" aria-label="Áreas permitidas">Cargando áreas...</div>
                         </div>
                     </div>
                     <div class="form-group form-group--full">
@@ -86,11 +95,25 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 
 <style>
-.roles-permisos {display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;}
+.roles-permisos {display:grid;grid-template-columns:1fr;gap:10px;}
 .roles-permiso {display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--c-border);border-radius:10px;cursor:pointer;background:var(--c-surface);}
 .roles-permiso:hover {border-color:var(--c-primary,#2563eb);}
 .roles-permiso input {width:18px;height:18px;flex:none;margin-top:2px;accent-color:#2563eb;}
 .roles-permiso strong {display:block;font-size:.92rem;}
 .roles-permiso small {display:block;color:var(--c-muted);font-size:.8rem;line-height:1.4;margin-top:4px;}
+.roles-modo-area {display:flex;align-items:center;gap:8px;margin:9px 0;cursor:pointer;font-size:.92rem;}
+.roles-modo-area input {width:17px;height:17px;accent-color:#2563eb;}
+.roles-areas-wrap {margin-top:12px;padding:12px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;max-height:280px;overflow-y:auto;}
+.roles-areas {display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:8px;}
+.roles-area {display:flex;gap:8px;align-items:flex-start;font-size:.9rem;cursor:pointer;}
+.roles-area input {flex-shrink:0;width:17px;height:17px;margin-top:2px;accent-color:#2563eb;}
+.roles-area small {display:block;color:var(--c-muted);font-size:.8rem;}
+
+.roles-permiso {display:block; cursor:default;}
+.roles-permiso__titulo {display:flex;align-items:flex-start;gap:10px;cursor:pointer;}
+.roles-permiso__acciones {display:flex;flex-wrap:wrap;gap:8px 17px;margin:10px 0 0 28px;border-top:1px solid var(--c-border);padding-top:10px;}
+.roles-permiso__acciones label {display:flex;align-items:center;gap:6px;font-size:.86rem;cursor:pointer;}
+.roles-permiso__acciones input {width:16px;height:16px;margin:0;}
+.roles-permiso__acciones input:disabled {opacity:.45;cursor:not-allowed;}
 </style>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

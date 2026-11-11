@@ -35,29 +35,13 @@ try {
     $pdo = db();
 
     // ============================================================
-    // Determinar la adscripción del usuario actual (si no es super)
-    // ============================================================
-    $adscripcionDelUsuario = null;
-    if (!$isSuper && $areaId) {
-        $stmt = $pdo->prepare("SELECT adscripcion_id FROM areas WHERE id = :id");
-        $stmt->execute([':id' => $areaId]);
-        $adscripcionDelUsuario = $stmt->fetchColumn() ?: null;
-    }
-
-    // ============================================================
-    // Construir WHERE dinámico
+    // Construir WHERE dinámico. Limitar por las áreas consultables del rol,
+    // nunca por adscripción completa (contendría áreas no autorizadas).
     // ============================================================
     $whereBase = [];
     $paramsBase = [];
-
     if (!$isSuper) {
-        if ($adscripcionDelUsuario) {
-            $whereBase[] = "ar.adscripcion_id = :__scope_adsc";
-            $paramsBase[':__scope_adsc'] = $adscripcionDelUsuario;
-        } else {
-            // Usuario sin adscripción → no ve nada
-            $whereBase[] = "1 = 0";
-        }
+        $whereBase[] = read_area_condition('a.area_id', $current);
     } elseif ($adscripcionId !== null) {
         $whereBase[] = "ar.adscripcion_id = :__filter_adsc";
         $paramsBase[':__filter_adsc'] = $adscripcionId;

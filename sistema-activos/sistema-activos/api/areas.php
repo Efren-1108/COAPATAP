@@ -37,7 +37,7 @@ try {
                 ");
                 $stmt->execute([':id' => $id]);
                 $row = $stmt->fetch();
-                if (!$row || (empty($user['es_superusuario']) && (int)$row['id'] !== (int)$user['area_id'])) json_response(['ok' => false, 'error' => 'Área no encontrada'], 404);
+                if (!$row || !can_read_area((int)$row['id'], $user)) json_response(['ok' => false, 'error' => 'Área no encontrada'], 404);
 
                 $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE area_id = :id");
                 $stmtCount->execute([':id' => $row['id']]);
@@ -63,7 +63,7 @@ try {
                 ORDER BY a.activo DESC, ad.nombre ASC NULLS LAST, a.nombre ASC
             ")->fetchAll();
             if (empty($user['es_superusuario'])) {
-                $rows = array_values(array_filter($rows, fn($r) => (int)$r['id'] === (int)$user['area_id']));
+                $rows = array_values(array_filter($rows, fn($r) => can_read_area((int)$r['id'], $user)));
             }
             json_response(['ok' => true, 'data' => $rows]);
             break;

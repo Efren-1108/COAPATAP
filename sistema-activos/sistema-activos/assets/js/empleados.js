@@ -90,6 +90,11 @@ function activarTab(nombre) {
 
 // ============ EVENTOS ============
 function wireEvents() {
+    if (!window.IS_SUPERUSER) {
+        btnNuevaArea.style.display = 'none';
+        btnNuevaAreaInline.style.display = 'none';
+    }
+    if (!window.canRoleAction('empleados','crear')) btnNuevoEmpleado.style.display = 'none';
     btnNuevaArea.addEventListener('click', () => abrirModalArea());
     btnNuevoEmpleado.addEventListener('click', () => abrirModalEmpleado());
 
@@ -193,8 +198,9 @@ function renderAreaCard(area) {
                         <span class="employee-row__cargo">${App.esc(e.cargo)}</span>
                     </div>
                     <div class="employee-row__actions">
-                        <button class="btn btn--ghost btn--sm" data-action="editar-empleado" data-id="${e.id}" title="Editar">✏️</button>
-                        <button class="btn btn--danger btn--sm" data-action="eliminar-empleado" data-id="${e.id}" data-nombre="${App.esc(e.nombre)}" title="Eliminar">🗑️</button>
+                        ${e.puede_modificar === false && e.puede_eliminar === false ? '<span class="muted">Solo consulta</span>' : `
+                        ${e.puede_modificar !== false ? `<button class="btn btn--ghost btn--sm" data-action="editar-empleado" data-id="${e.id}" title="Editar">✏️</button>` : ''}
+                        ${e.puede_eliminar !== false ? `<button class="btn btn--danger btn--sm" data-action="eliminar-empleado" data-id="${e.id}" data-nombre="${App.esc(e.nombre)}" title="Eliminar">🗑️</button>` : ''}`}
                     </div>
                 </div>
             `).join('')}
@@ -219,9 +225,9 @@ function renderAreaCard(area) {
                     </div>
                 </div>
                 <div class="area-card__actions" data-action="stop">
-                    <button class="btn btn--primary btn--sm" data-action="nuevo-empleado-area" data-area-id="${area.id}" title="Agregar empleado a esta área">➕ Empleado</button>
-                    <button class="btn btn--ghost btn--sm" data-action="editar-area" data-id="${area.id}" title="Editar área">✏️</button>
-                    ${area.clave !== 'general'
+                    ${window.canRoleAction('empleados','crear') ? `<button class="btn btn--primary btn--sm" data-action="nuevo-empleado-area" data-area-id="${area.id}" title="Agregar empleado a esta área">➕ Empleado</button>` : ''}
+                    ${window.IS_SUPERUSER ? `<button class="btn btn--ghost btn--sm" data-action="editar-area" data-id="${area.id}" title="Editar área">✏️</button>` : ''}
+                    ${window.IS_SUPERUSER && area.clave !== 'general'
                         ? `<button class="btn btn--danger btn--sm" data-action="eliminar-area" data-id="${area.id}" data-nombre="${App.esc(area.nombre)}" title="Eliminar área">🗑️</button>`
                         : ''}
                     <button class="area-card__toggle" data-action="toggle-area" title="Expandir/Contraer">▾</button>
@@ -231,7 +237,7 @@ function renderAreaCard(area) {
                 ${descripcionHTML}
                 ${empleadosHTML}
                 <div class="area-card__footer">
-                    <button class="btn btn--primary btn--sm" data-action="nuevo-empleado-area" data-area-id="${area.id}">➕ Agregar empleado</button>
+                    ${window.canRoleAction('empleados','crear') ? `<button class="btn btn--primary btn--sm" data-action="nuevo-empleado-area" data-area-id="${area.id}">➕ Agregar empleado</button>` : ''}
                 </div>
             </div>
         </div>
@@ -346,8 +352,9 @@ function renderEmpleados() {
                 <td>${areaTxt}</td>
                 <td style="text-align: right;">
                     <div class="table__actions">
-                        <button type="button" class="btn btn--ghost btn--sm" data-action="editar-empleado" data-id="${e.id}" title="Editar empleado">✏️</button>
-                        <button type="button" class="btn btn--danger btn--sm" data-action="eliminar-empleado" data-id="${e.id}" data-nombre="${App.esc(e.nombre)}" title="Eliminar empleado">🗑️</button>
+                        ${e.puede_modificar === false && e.puede_eliminar === false ? '<span class="muted">Solo consulta</span>' : `
+                        ${e.puede_modificar !== false ? `<button type="button" class="btn btn--ghost btn--sm" data-action="editar-empleado" data-id="${e.id}" title="Editar empleado">✏️</button>` : ''}
+                        ${e.puede_eliminar !== false ? `<button type="button" class="btn btn--danger btn--sm" data-action="eliminar-empleado" data-id="${e.id}" data-nombre="${App.esc(e.nombre)}" title="Eliminar empleado">🗑️</button>` : ''}`}
                     </div>
                 </td>
             </tr>

@@ -67,8 +67,7 @@ try {
     $params = [':n' => $nominaInt];
 
     if (!$isSuper) {
-        $sql .= " AND e.area_id = :__scope_area";
-        $params[':__scope_area'] = $areaId;
+        $sql .= ' AND ' . read_area_condition('e.area_id', $current);
     }
     $sql .= " LIMIT 1";
 
