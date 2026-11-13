@@ -1489,3 +1489,120 @@ input[type="text"]:focus {
 
 }
 
+
+/* COAPATAP: leyenda y firmas inmediatamente después de la tabla.
+   No altera la exportación de Excel. */
+.resguardo-hoja > .imp-pie {
+    margin-top: 3mm;
+}
+@media print {
+    .resguardo-hoja > .imp-pie {
+        margin-top: 3mm;
+    }
+}
+
+/* COAPATAP: corrección de firmas recortadas.
+   No ocultar contenido: la página 2 tiene filas de altura variable.
+   El logotipo sigue anclado a la hoja, sin ocupar una fila adicional. */
+@media print {
+  .resguardo-hoja {
+    height: 198mm !important;
+    min-height: 198mm !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .resguardo-hoja > .imp-pie {
+    margin-top: 3mm !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .resguardo-hoja .imp-firmas {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .resguardo-hoja .resguardo-imagen-inferior {
+    position: absolute !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 1.5mm !important;
+    transform: translateX(-50%) !important;
+    width: 43mm !important;
+    height: 12mm !important;
+    margin: 0 !important;
+    z-index: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .resguardo-hoja .resguardo-imagen-inferior img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+}
+
+/* CORRECCIÓN: el logo inferior sigue a las firmas en el flujo del documento.
+   No se ancla al fondo, pues las filas de la tabla pueden crecer. */
+@media print {
+  .resguardo-hoja { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }
+  .resguardo-hoja > .imp-pie { margin-top: 3mm !important; margin-bottom: 0 !important; padding-bottom: 0 !important; }
+  .resguardo-hoja .resguardo-imagen-inferior {
+    position: relative !important; left: auto !important; right: auto !important; bottom: auto !important;
+    transform: none !important; width: 43mm !important; height: 12mm !important;
+    margin: 3mm auto 0 !important; z-index: 1 !important;
+    break-inside: avoid !important; page-break-inside: avoid !important;
+  }
+  .resguardo-hoja .resguardo-imagen-inferior img {
+    width: auto !important; height: auto !important; max-width: 100% !important; max-height: 100% !important; object-fit: contain !important;
+  }
+}
+
+/* COAPATAP: paginación de impresión con espacio reservado para firmas y logo.
+   Sustituye las correcciones acumuladas, solo para impresión. */
+@media print {
+  .resguardo-hoja {
+    height: 198mm !important;
+    min-height: 198mm !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .resguardo-hoja > .imp-pie {
+    margin-top: 3mm !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    flex-shrink: 0 !important;
+    break-inside: avoid !important;
+  }
+  .resguardo-hoja .imp-firmas {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .resguardo-hoja .resguardo-imagen-inferior {
+    position: absolute !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 2mm !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    width: 43mm !important;
+    height: 12mm !important;
+    z-index: 2 !important;
+  }
+  .resguardo-hoja .resguardo-imagen-inferior img {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+  }
+  /* El pie termina antes de la franja reservada para el logotipo. */
+  .resguardo-hoja .imp-linea { height: 12mm !important; }
+}

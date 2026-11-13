@@ -162,7 +162,8 @@ $nombreAutoriza = mb_substr(
     $nombreAutoriza, 0, 150, 'UTF-8'
 );
 $nominaAutoriza = trim((string)($_GET['nomina_autoriza'] ?? ''));
-$cargoAutoriza = '';
+$cargoAutoriza = mb_substr(trim((string)($_GET['cargo_autoriza'] ?? '')), 0, 150, 'UTF-8');
+$autorizaManual = (($_GET['autoriza_modo'] ?? '') === 'manual');
 
 
 // ==========================================
@@ -412,9 +413,14 @@ try {
                         break;
                     }
                 }
-                // No aceptar nombres arbitrarios o de otras adscripciones.
-                $nombreAutoriza = $autoridadSeleccionada['nombre'] ?? '';
-                $cargoAutoriza = $autoridadSeleccionada['cargo'] ?? '';
+                if ($autorizaManual) {
+                    // El usuario captura explícitamente el nombre y cargo.
+                    $nominaAutoriza = '';
+                } else {
+                    // En selección de empleado, solo se acepta alguien de la adscripción.
+                    $nombreAutoriza = $autoridadSeleccionada['nombre'] ?? '';
+                    $cargoAutoriza = $autoridadSeleccionada['cargo'] ?? '';
+                }
 
                 // ==============================
                 // 6.5 CONSULTAR ACTIVOS
@@ -582,8 +588,39 @@ foreach ($imagenesResguardo as $tipo => $url) {
 // 8. ORGANIZAR PÁGINAS
 // ==========================================
 
-$paginas = array_chunk($bienes, 8);
+// Mantener la paginación original de ocho bienes SOLO para Excel.
+$paginasExcel = array_chunk($bienes, 8);
 
+// La impresión requiere espacio para la leyenda, las tres firmas y el logo.
+// Se limita la cantidad de bienes y se reduce cuando las celdas tienen texto largo.
+$paginas = [];
+$paginaActual = [];
+$ocupacion = 0;
+foreach ($bienes as $bien) {
+    $campos = [
+        (string)($bien['descripcion'] ?? ''),
+        (string)($bien['observaciones'] ?? ''),
+        (string)($bien['modelo'] ?? ''),
+        (string)($bien['serie'] ?? ''),
+    ];
+    $lineas = 1;
+    foreach ($campos as $pos => $valor) {
+        $ancho = $pos === 0 ? 34 : ($pos === 1 ? 22 : 18);
+        $lineas = max($lineas, (int)ceil(mb_strlen($valor, 'UTF-8') / $ancho));
+    }
+    // Filas extensas consumen más del presupuesto de la hoja.
+    $peso = max(1, (int)ceil($lineas / 2));
+    if ($paginaActual && (count($paginaActual) >= 6 || $ocupacion + $peso > 7)) {
+        $paginas[] = $paginaActual;
+        $paginaActual = [];
+        $ocupacion = 0;
+    }
+    $paginaActual[] = $bien;
+    $ocupacion += $peso;
+}
+if ($paginaActual) {
+    $paginas[] = $paginaActual;
+}
 $totalPaginas = count($paginas);
 
 $totalCosto = array_sum(
@@ -812,8 +849,8 @@ if (($_GET['exportar'] ?? '') === 'excel') {
     $estadosPermitidos = ['BUENO', 'NUEVO', 'REGULAR', 'INSERVIBLE'];
 
     // ---------- Una hoja (bloque) por cada página de la vista previa ----------
-    $r = 1; $saltos = []; $maxBloque = 0.0; $totalPag = count($paginas);
-    foreach ($paginas as $indicePag => $paginaBienes) {
+    $r = 1; $saltos = []; $maxBloque = 0.0; $totalPag = count($paginasExcel);
+    foreach ($paginasExcel as $indicePag => $paginaBienes) {
         $inicio = $r;
 
         // --- Encabezado: logo izquierdo | texto | logo Tapachula | nómina y fecha ---
@@ -1393,10 +1430,27 @@ require_once __DIR__ . '/../includes/header.php';
                     ><?= resguardoEsc($persona['numero_nomina'] . ' — ' . $persona['nombre']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <label for="impAutorizaModo" style="margin-top:8px">Forma de autorización</label>
+                <select id="impAutorizaModo" name="autoriza_modo" class="form-control">
+                    <option value="empleado" <?= !$autorizaManual ? 'selected' : '' ?>>Seleccionar empleado</option>
+                    <option value="manual" <?= $autorizaManual ? 'selected' : '' ?>>Escribir nombre y cargo manualmente</option>
+                </select>
+                <div id="impAutorizaManualCampos" style="margin-top:8px;<?= $autorizaManual ? '' : 'display:none;' ?>">
+                    <label for="impAutorizaManualNombre">Nombre de quien autoriza</label>
+                    <input id="impAutorizaManualNombre" class="form-control" type="text" maxlength="150"
+                           autocomplete="off" placeholder="Nombre completo"
+                           value="<?= resguardoEsc($autorizaManual ? $nombreAutoriza : '') ?>">
+                    <label for="impAutorizaManualCargo">Cargo de quien autoriza</label>
+                    <input id="impAutorizaManualCargo" class="form-control" type="text" maxlength="150"
+                           autocomplete="off" placeholder="Ej. Director General"
+                           value="<?= resguardoEsc($autorizaManual ? $cargoAutoriza : '') ?>">
+                </div>
                 <input type="hidden" id="impNombreAutoriza" name="nombre_autoriza"
                        value="<?= resguardoEsc($nombreAutoriza) ?>">
+                <input type="hidden" id="impCargoAutoriza" name="cargo_autoriza"
+                       value="<?= resguardoEsc($cargoAutoriza) ?>">
                 <small class="imp-firmante-ayuda">
-                    El nombre y cargo se toman del empleado seleccionado.
+                    Selecciona un empleado de la adscripción o escribe nombre y cargo.
                 </small>
 
             </div>
@@ -2113,6 +2167,11 @@ require_once __DIR__ . '/../includes/header.php';
 
     const nombreAutoriza =
         document.getElementById('impNombreAutoriza');
+    const cargoAutorizaInput = document.getElementById('impCargoAutoriza');
+    const modoAutoriza = document.getElementById('impAutorizaModo');
+    const camposManual = document.getElementById('impAutorizaManualCampos');
+    const manualNombre = document.getElementById('impAutorizaManualNombre');
+    const manualCargo = document.getElementById('impAutorizaManualCargo');
 
     // Lista de sugerencias.
 
@@ -2316,6 +2375,7 @@ require_once __DIR__ . '/../includes/header.php';
 
         // La autoridad no se restaura desde otra adscripción.
         buscarAutoriza.value = <?= json_encode($nominaAutoriza) ?>;
+        modoAutoriza.value = <?= json_encode($autorizaManual ? 'manual' : 'empleado') ?>;
     }
 
     // ======================================
@@ -2328,20 +2388,27 @@ require_once __DIR__ . '/../includes/header.php';
             obtenerNombre(buscarEntrega.value);
 
         const seleccion = buscarAutoriza.selectedOptions[0];
-        const autoriza = seleccion && seleccion.value
-            ? (seleccion.dataset.nombre || '') : '';
-        const cargo = seleccion && seleccion.value
-            ? (seleccion.dataset.cargo || '') : '';
+        const esManual = modoAutoriza.value === 'manual';
+        camposManual.style.display = esManual ? '' : 'none';
+        buscarAutoriza.style.display = esManual ? 'none' : '';
+        const autoriza = esManual ? manualNombre.value.trim() :
+            (seleccion && seleccion.value ? (seleccion.dataset.nombre || '') : '');
+        const cargo = esManual ? manualCargo.value.trim() :
+            (seleccion && seleccion.value ? (seleccion.dataset.cargo || '') : '');
 
         nombreEntrega.value = entrega;
         nombreAutoriza.value = autoriza;
+        cargoAutorizaInput.value = cargo;
         document.querySelectorAll('[data-cargo-autoriza]').forEach(function (elemento) {
             elemento.textContent = cargo || '\\u00A0';
         });
         const enlaceExcel = document.getElementById('impDescargarExcel');
         if (enlaceExcel) {
             const url = new URL(enlaceExcel.href);
-            if (seleccion && seleccion.value) {
+            url.searchParams.set('autoriza_modo', esManual ? 'manual' : 'empleado');
+            url.searchParams.set('nombre_autoriza', autoriza);
+            url.searchParams.set('cargo_autoriza', cargo);
+            if (!esManual && seleccion && seleccion.value) {
                 url.searchParams.set('nomina_autoriza', seleccion.value);
             } else {
                 url.searchParams.delete('nomina_autoriza');
@@ -2388,10 +2455,10 @@ require_once __DIR__ . '/../includes/header.php';
 
 
 
-    buscarAutoriza.addEventListener(
-        'change',
-        procesarCambio
-    );
+    buscarAutoriza.addEventListener('change', procesarCambio);
+    modoAutoriza.addEventListener('change', procesarCambio);
+    manualNombre.addEventListener('input', procesarCambio);
+    manualCargo.addEventListener('input', procesarCambio);
 
     // ======================================
     // CONSERVAR AL CONSULTAR RESGUARDO
